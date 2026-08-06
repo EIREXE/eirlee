@@ -1,0 +1,22 @@
+# jackdaw project settings. Everything here has a working default;
+# delete any line you are not using.
+
+# The game plugin type inside your lib crate. Uncomment to override
+# source detection.
+# plugin = "GamePlugin"
+
+# In a cargo workspace, the member jackdaw builds as the game.
+# package = "my-game"
+
+# Recorded when this project was set up. Jackdaw compares these on
+# open so an editor upgrade is reported instead of surfacing as a
+# build failure.
+[jackdaw]
+version = "0.19.0"
+bevy = "0.19"
+
+[[run]]
+name = "Play"
+# instances = 2
+# env = { SERVER_ADDR = "127.0.0.1:5000" }
+# args = []

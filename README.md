@@ -1,0 +1,12 @@
+# Game Test
+
+A Bevy game, editable in the [jackdaw](https://github.com/jbuehler23/jackdaw) editor.
+
+- `cargo run` plays the game standalone; no editor required.
+- Open the folder in jackdaw to author scenes, then hit Play. The
+  editor builds its own artifacts into `.jackdaw/` (gitignored) and
+  never modifies your manifest or lockfile.
+- Gameplay lives in `src/lib.rs` (`GamePlugin`); authored scenes live
+  in `assets/*.bsn`.
+- Components you derive `Reflect` on appear in the editor's inspector
+  automatically; no registration code is needed.
