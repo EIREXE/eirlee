@@ -7,7 +7,7 @@ rustflags = ["-C", "link-arg=-fuse-ld=/usr/bin/mold", "-Zshare-generics=y", ]
 codegen-backend = true
 
 [profile.dev]
-codegen-backend = "cranelift"
+codegen-backend = "llvm"
 
 [profile.dev.package."*"]
 codegen-backend = "llvm"

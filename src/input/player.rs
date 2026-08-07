@@ -1,23 +1,28 @@
 use std::collections::VecDeque;
 
 use bevy::prelude::*;
-use arrayvec::ArrayVec;
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct InputFrame {
     pub movement: Vec2,
     pub directional_attack: Vec2
 }
 
-#[derive(Component, Default)]
+#[derive(Component)]
 pub struct FighterInput {
     input_buffer: VecDeque<InputFrame>
+}
+
+impl Default for FighterInput {
+    fn default() -> Self {
+        Self { input_buffer: vec!(InputFrame::default()).into() }
+    }
 }
 
 impl FighterInput {
     const INPUT_BUFFER_SIZE: usize = 5; 
     pub fn get_last_frame(&self) -> Option<&InputFrame> {
-        self.input_buffer.back()
+        Some(self.input_buffer.back().unwrap())
     }
 
     pub fn push_input_frame(&mut self, frame: InputFrame) {
@@ -28,6 +33,7 @@ impl FighterInput {
     }
 
     pub fn clear_buffer(&mut self) {
+        info!("CLEAR");
         while self.input_buffer.len() > 1 {
             self.input_buffer.pop_front();
         }

@@ -1,6 +1,4 @@
 use bevy::prelude::*;
-use crate::fighter::*;
-use crate::input::player::{ControlledBy, Controls, FighterInput};
 use crate::input::{
     logic::{postprocess_input, preprocess_keyboard_input}, player::{BaseInputMap, InputMapAction, KeyboardInputMapElement},
 };

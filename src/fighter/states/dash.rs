@@ -1,5 +1,10 @@
 use crate::{
-    fighter::state::{FighterState, FighterStateContext, FighterStateTransition},
+    fighter::{
+        FighterAttributes, FighterVelocity,
+        state::{FighterState, FighterStateContext, FighterStateTransition},
+        states::grounded,
+    },
+    game_settings::GameSettings,
     input::player::FighterInput,
 };
 use bevy::prelude::*;
@@ -24,7 +29,8 @@ impl FighterState for DashState {
     ) -> Option<FighterStateTransition> {
         if self.frames_in_dash > state_context.fighter_attribs.dash_duration {
             // Dash finish shenanigans
-            super::walk::check_input(state_context)
+            super::run::check_input(state_context)
+                .or_else(|| super::walk::check_input(state_context))
                 .or_else(|| super::wait::check_input(state_context))
         } else if let Some(last_frame) = state_context.input.get_last_frame() {
             check_smash_input_with_dir(state_context)
@@ -57,9 +63,29 @@ fn check_smash_input_with_dir(state_context: &FighterStateContext) -> Option<f32
     )
 }
 
-pub fn dash_update(dash_query: Query<&mut DashState>) {
-    for mut dash in dash_query {
+pub fn dash_update(
+    dash_query: Query<(
+        &mut DashState,
+        &FighterAttributes,
+        &FighterInput,
+        &mut FighterVelocity,
+    )>,
+    game_settings: Res<GameSettings>,
+) {
+    for (mut dash, attributes, input, mut velocity) in dash_query {
         dash.frames_in_dash += 1;
+
+        if let Some(last_frame) = input.get_last_frame() {
+            let (accel, target_vel) = attributes.get_accel_and_target_dashrun(last_frame);
+            let accel = grounded::compute_ground_accel(
+                accel,
+                target_vel,
+                velocity.x,
+                attributes,
+                game_settings.as_ref(),
+            );
+            velocity.x += accel;
+        }
     }
 }
 
@@ -69,10 +95,21 @@ pub fn check_input(state_context: &FighterStateContext) -> Option<FighterStateTr
 
 pub fn on_insert_dash(
     add: On<Insert, DashState>,
-    query: Query<(Entity, &mut FighterInput), With<DashState>>,
+    query: Query<
+        (
+            Entity,
+            &mut FighterInput,
+            &FighterAttributes,
+            &mut FighterVelocity,
+        ),
+        With<DashState>,
+    >,
 ) {
-    for (entity, mut input) in query {
+    for (entity, mut input, attribs, mut velocity) in query {
         if entity == add.entity {
+            if let Some(last_frame) = input.get_last_frame() {
+                velocity.x = attribs.dash_initial_velocity * last_frame.movement.x.signum();
+            }
             input.clear_buffer();
         }
     }

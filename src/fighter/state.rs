@@ -1,11 +1,12 @@
-use bevy::{ecs::relationship::RelationshipSourceCollection, prelude::*};
+use bevy::{prelude::*};
 
 use crate::{fighter::{FighterAttributes, states}, game_settings::GameSettings, input::player::FighterInput};
 
 pub enum FighterStateTransition {
     Wait,
     Walk,
-    Dash
+    Dash,
+    Run,
 }
 
 pub trait FighterState : Component + Sized {
@@ -33,7 +34,26 @@ fn create_state(transition: FighterStateTransition, state_context: FighterStateC
         FighterStateTransition::Wait => ent_cmd.insert(states::wait::WaitState),
         FighterStateTransition::Walk => ent_cmd.insert(states::walk::WalkState),
         FighterStateTransition::Dash => ent_cmd.insert(states::dash::DashState::default()),
+        FighterStateTransition::Run => ent_cmd.insert(states::run::RunState),
     };
+}
+
+fn get_state_debug_name(transition: &FighterStateTransition) -> &'static str {
+    match transition {
+        FighterStateTransition::Wait => "wait",
+        FighterStateTransition::Walk => "walk",
+        FighterStateTransition::Dash => "dash",
+        FighterStateTransition::Run => "run",
+    }
+}
+
+#[derive(Component)]
+pub struct StateNameDebug(pub &'static str);
+
+impl std::fmt::Display for StateNameDebug {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
 
 pub fn state_interrupt_system<T: FighterState + Component + std::fmt::Debug>(
@@ -51,6 +71,7 @@ pub fn state_interrupt_system<T: FighterState + Component + std::fmt::Debug>(
         };
         if let Some(new_state) = state.check_interrupt(&state_context) {
             commands.entity(ent).remove::<T>();
+            commands.entity(ent).insert(StateNameDebug(get_state_debug_name(&new_state)));
             create_state(new_state, state_context, &mut commands);
         }
     }

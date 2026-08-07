@@ -1,5 +1,5 @@
-use bevy::prelude::*;
-use crate::fighter::{state::{FighterState, FighterStateContext, FighterStateTransition}, states::walk};
+use crate::{fighter::{state::{FighterState, FighterStateContext, FighterStateTransition}, states::{grounded, walk}}, game_settings::GameSettings};
+use crate::fighter::*;
 
 #[derive(Component, Debug)]
 pub struct WaitState;
@@ -20,4 +20,15 @@ pub fn check_input(state_context: &FighterStateContext) -> Option<FighterStateTr
         }
     }
     None
+}
+
+pub fn wait_update(query: Query<(&FighterAttributes, &mut FighterVelocity), With<WaitState>>, game_settings: Res<GameSettings>) {
+    for (attribs, mut velocity) in query {
+        let friction = if velocity.x.abs() > attribs.max_walk_vel {
+            attribs.ground_friction * game_settings.figher_common.ground_friction_over_walk_speed_multiplier
+        } else {
+            attribs.ground_friction
+        };
+        velocity.x += grounded::apply_grounded_friction(friction, velocity.x);
+    }
 }

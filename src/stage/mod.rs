@@ -1,4 +1,4 @@
-use bevy::{camera_controller::free_camera::FreeCamera, color::palettes::css::{GREEN, RED}, prelude::*};
+use bevy::{color::palettes::css::{GREEN, RED}, prelude::*};
 
 #[derive(Component, Reflect, Clone, Default)]
 #[reflect(Component)]

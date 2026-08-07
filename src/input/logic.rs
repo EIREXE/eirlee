@@ -5,7 +5,7 @@ use crate::input::player::InputFrame;
 use super::player::{FighterInput, BaseInputMap, InputActionState};
 
 pub fn postprocess_input(input_state: Query<&mut FighterInput>) {
-    for mut player_input in input_state {
+    for _player_input in input_state {
     }
 }
 pub fn preprocess_keyboard_input(key: Res<ButtonInput<KeyCode>>, input_map: Res<BaseInputMap>, mut input_state: Query<&mut FighterInput>) {

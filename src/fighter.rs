@@ -1,14 +1,16 @@
 use bevy::{
-    color::palettes::css::{GREEN, HOT_PINK, RED, YELLOW},
-    ecs::relationship::Relationship,
+    color::palettes::css::{HOT_PINK, YELLOW},
     prelude::*,
 };
 
-use crate::{
-    game_settings::GameSettings,
-    input::player::{ControlledBy, FighterInput},
-    stage::StagePlane,
-};
+pub mod plugin;
+pub mod data;
+pub mod state;
+pub mod states;
+pub use plugin::*;
+pub use data::*;
+
+use crate::stage::StagePlane;
 
 #[derive(Component)]
 pub struct Grounded;
@@ -48,12 +50,9 @@ pub fn debug_draw_ecb(ecbs: Query<(&FighterECB, &FighterTranslation)>, mut gizmo
 }
 
 pub fn integrate_gravity(
-    fighters: Query<(&mut FighterVelocity)>,
-    time: Res<Time<Fixed>>,
+    _fighters: Query<&mut FighterVelocity>,
+    _time: Res<Time<Fixed>>,
 ) {
-    /*for (movement, mut velocity) in fighters {
-        //velocity.y -= movement.gravity;
-    }*/
 }
 
 pub fn apply_motion(
@@ -62,7 +61,7 @@ pub fn apply_motion(
         &mut FighterTranslation,
         &mut FighterPreviousTranslation,
     )>,
-    time: Res<Time<Fixed>>,
+    _time: Res<Time<Fixed>>,
 ) {
     for (velocity, mut translation, mut prev_translation) in fighters {
         prev_translation.0 = translation.0;
@@ -98,3 +97,4 @@ pub fn collide_fighter_with_scene(
 }
 
 pub fn fighter_movement() {}
+

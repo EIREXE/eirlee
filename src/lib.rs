@@ -38,7 +38,7 @@ pub mod game_settings;
 pub struct GamePlugin;
 
 pub fn setup(mut commands: Commands) {
-    let fighter = commands
+    let _fighter = commands
         .spawn((
             Name("Fighter".into()),
             FighterECB {
@@ -52,7 +52,11 @@ pub fn setup(mut commands: Commands) {
                 stick_walk_accel: 0.02,
                 max_walk_vel: 0.16,
                 ground_friction: 0.008,
-                dash_duration: 15
+                dash_duration: 15,
+                base_dash_accel: 0.002,
+                stick_dash_accel: 0.01,
+                max_dash_vel: 0.22,
+                dash_initial_velocity: 0.19,
             },
             WaitState {},
             input::player::FighterInput::default()
@@ -71,7 +75,8 @@ impl Plugin for GamePlugin {
             .insert_resource(GameSettings {
                 figher_common: FighterSettingsCommon {
                     walk_speed_ease: 0.5,
-                    ground_max_horizontal_velocity: 0.3
+                    ground_max_horizontal_velocity: 0.3,
+                    ground_friction_over_walk_speed_multiplier: 2.0
                 },
                 input_common: InputSettingsCommon::default(),
             });
