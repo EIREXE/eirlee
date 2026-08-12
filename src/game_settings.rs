@@ -11,7 +11,8 @@ pub struct InputSettingsCommon {
     pub smash_input_reset_axis_threshold: f32,
     pub smash_input_axis_threshold: f32,
     pub run_stick_threshold: f32,
-    pub smash_input_frame_threshold: u32,
+    pub smash_input_frame_threshold: u8,
+    pub input_buffer_size: u8,
 }
 
 impl Default for InputSettingsCommon {
@@ -22,7 +23,8 @@ impl Default for InputSettingsCommon {
             smash_input_reset_axis_threshold: 0.25,
             smash_input_axis_threshold: 0.8,
             run_stick_threshold: 0.625,
-            smash_input_frame_threshold: 2
+            smash_input_frame_threshold: 2,
+            input_buffer_size: 5
         }
     }
 }

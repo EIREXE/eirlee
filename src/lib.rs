@@ -22,14 +22,29 @@
 //! appears in `Add Component`. No registration code is needed.
 
 use bevy::prelude::*;
+use clap::Parser;
 use jackdaw_runtime::prelude::*;
 
-use crate::{fighter::{states::wait::WaitState, *}, game_settings::{FighterSettingsCommon, GameSettings, InputSettingsCommon}, stage::debug_draw_scene};
+use crate::{
+    fighter::{
+        FighterAttributes, FighterECB, FighterTranslation, FighterVelocity,
+        state::wait::WaitState,
+    },
+    game_settings::{FighterSettingsCommon, GameSettings, InputSettingsCommon},
+    input::FighterInput,
+    player::Player,
+    schedule::GameplaySchedulePlugin,
+};
 
 pub mod fighter;
 pub mod input;
 pub mod stage;
 pub mod game_settings;
+pub mod netcode;
+pub mod player;
+pub mod schedule;
+mod math;
+mod args;
 
 /// Your game's Bevy plugin. The editor finds it by this name (override
 /// with `plugin = "..."` in jackdaw.toml) and runs it on Play; the
@@ -41,6 +56,9 @@ pub fn setup(mut commands: Commands) {
     let _fighter = commands
         .spawn((
             Name("Fighter".into()),
+            Player {
+                handle: 0,
+            },
             FighterECB {
                 vertical_half: 0.5,
                 horizontal_half: 0.25,
@@ -59,19 +77,27 @@ pub fn setup(mut commands: Commands) {
                 dash_initial_velocity: 0.19,
             },
             WaitState {},
-            input::player::FighterInput::default()
+            FighterInput::default()
         ))
         .id();
 }
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, stage::test_scene.spawn())
+        // Each module owns its own systems, rollback registrations and
+        // resources; this plugin only wires them together and supplies the
+        // game-level content and configuration.
+        app.add_plugins((
+            // Brings up GGRS (and with it `GgrsSchedule`), so it goes first.
+            netcode::FighterNetcodePlugin::default(),
+            GameplaySchedulePlugin,
+            input::FighterInputPlugin,
+            fighter::FighterPlugin,
+            stage::StagePlugin,
+        ))
             .add_systems(Startup, setup)
             .add_systems(Update, spin_cubes)
-            .add_systems(Update, debug_draw_scene)
-            .add_plugins(input::plugin::FighterInputPlugin)
-            .add_plugins(fighter::FighterPlugin)
+            .insert_resource(args::Args::parse())
             .insert_resource(GameSettings {
                 figher_common: FighterSettingsCommon {
                     walk_speed_ease: 0.5,
