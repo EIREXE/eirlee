@@ -1,43 +1,69 @@
 use bevy::prelude::*;
 
-use super::{FighterState, FighterStateContext, FighterStateTransition, ground, walk};
+use super::{FighterStateImpl, FighterStateContext, FighterStateTransition, ground, walk};
+use crate::fighter::state::FighterState;
+use crate::fighter::state::fall::FallState;
+use crate::fighter::state::ground::{GroundedMotionResult, GroundedStateCommon};
 use crate::fighter::{FighterAttributes, FighterVelocity};
 use crate::game_settings::GameSettings;
+use crate::stage::line::StageLineID;
 
-#[derive(Component, Debug, Clone, Copy)]
-pub struct WaitState;
+#[derive(Debug, Clone, Hash)]
+pub struct WaitState {
+    pub grounded_common: GroundedStateCommon
+}
 
-impl FighterState for WaitState {
+impl FighterStateImpl for WaitState {
+    const NAME: &'static str = "Wait";
     fn check_interrupt(
         &self,
         state_context: &FighterStateContext,
-    ) -> Option<FighterStateTransition> {
-        walk::check_input(state_context)
+    ) -> Option<FighterState> {
+        walk::check_input(state_context, &self.grounded_common)
+    }
+    
+    fn on_enter(&mut self, _state_context: &mut super::FighterStateContext) {}
+    
+    fn update(&mut self, state_context: &mut super::FighterStateContext) {
+        let friction = if state_context.velocity.x.abs() > state_context.fighter_attribs.max_walk_vel {
+            state_context.fighter_attribs.ground_friction
+                * state_context.game_settings
+                    .figher_common
+                    .ground_friction_over_walk_speed_multiplier
+        } else {
+            state_context.fighter_attribs.ground_friction
+        };
+        state_context.velocity.x += ground::apply_grounded_friction(friction, state_context.velocity.x);
+
+        ground::apply_grounded_motion(
+            state_context.velocity,
+            state_context.translation,
+            state_context.prev_translation,
+        );
+    }
+    
+    fn check_collision_interrupt(
+        &mut self,
+        state_context: &mut FighterStateContext,
+    ) -> Option<FighterState> {
+        if let GroundedMotionResult::InAir = ground::collide_with_stage_grounded(
+            state_context,
+            &mut self.grounded_common,
+            false
+        ) {
+            Some(FighterState::Fall(FallState))
+        } else {
+            None
+        }
     }
 }
 
-pub fn check_input(state_context: &FighterStateContext) -> Option<FighterStateTransition> {
+pub fn check_input(state_context: &FighterStateContext, ground_state_common: &GroundedStateCommon) -> Option<FighterState> {
     let input_frame = state_context.input.get_last_frame();
 
     if input_frame.movement.x.abs() < state_context.game_settings.input_common.stick_deadzone {
-        return Some(FighterStateTransition::Wait);
+        return Some(FighterState::Wait(WaitState { grounded_common: ground_state_common.clone() }));
     }
     None
 }
 
-pub fn wait_update(
-    query: Query<(&FighterAttributes, &mut FighterVelocity), With<WaitState>>,
-    game_settings: Res<GameSettings>,
-) {
-    for (attribs, mut velocity) in query {
-        let friction = if velocity.x.abs() > attribs.max_walk_vel {
-            attribs.ground_friction
-                * game_settings
-                    .figher_common
-                    .ground_friction_over_walk_speed_multiplier
-        } else {
-            attribs.ground_friction
-        };
-        velocity.x += ground::apply_grounded_friction(friction, velocity.x);
-    }
-}

@@ -7,7 +7,7 @@ pub mod debug;
 pub mod line;
 pub mod scene;
 
-pub use line::{StageLine, StagePlaneIntersectResult};
+pub use line::{StagePoly, StagePlaneIntersectResult};
 
 /// Owns the stage geometry: which scene gets spawned and how it is drawn.
 #[derive(Default)]

@@ -21,6 +21,7 @@ pub enum GameplaySet {
     Physics,
     /// Resolve the integrated positions against the stage.
     Collision,
+    Animation
 }
 
 /// Declares the order of [`GameplaySet`] inside [`GgrsSchedule`]. Added by
@@ -37,6 +38,7 @@ impl Plugin for GameplaySchedulePlugin {
                 GameplaySet::StateUpdate,
                 GameplaySet::Physics,
                 GameplaySet::Collision,
+                GameplaySet::Animation,
             )
                 .chain(),
         );

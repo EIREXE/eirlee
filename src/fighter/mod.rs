@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
 use bevy_ggrs::prelude::*;
 
+pub mod animation;
 pub mod attributes;
 pub mod collision;
 pub mod debug;
@@ -20,7 +21,7 @@ pub use attributes::FighterAttributes;
 pub use ecb::FighterECB;
 pub use motion::{FighterPreviousTranslation, FighterTranslation, FighterVelocity, Grounded};
 
-use crate::schedule::GameplaySet;
+use crate::{fighter::state::FighterState, schedule::GameplaySet, stage::line::StageCollision};
 use state::state_interrupt_system;
 
 /// Owns fighter simulation, the rollback registrations for fighter
@@ -28,43 +29,47 @@ use state::state_interrupt_system;
 #[derive(Default)]
 pub struct FighterPlugin;
 
+#[derive(Component, Copy, Clone, Hash)]
+pub enum FighterFacingDirection {
+    Left,
+    Right
+}
+
+#[derive(Component)]
+#[require(Transform)]
+pub struct FighterVisual;
+
 impl Plugin for FighterPlugin {
     fn build(&self, app: &mut App) {
         app
             // Every state gets a chance to interrupt itself, in priority order.
             .add_systems(
                 GgrsSchedule,
-                (
-                    state_interrupt_system::<state::wait::WaitState>,
-                    state_interrupt_system::<state::walk::WalkState>,
-                    state_interrupt_system::<state::dash::DashState>,
-                    state_interrupt_system::<state::run::RunState>,
-                )
-                    .chain()
-                    .in_set(GameplaySet::Interrupt),
+                (animation::setup_fighter_animation_player, state::state_interrupt_system,).in_set(GameplaySet::Interrupt),
             )
             .add_systems(
                 GgrsSchedule,
-                (
-                    state::wait::wait_update,
-                    state::walk::walk_update,
-                    state::dash::dash_update,
-                    state::run::run_update,
-                )
-                    .chain()
-                    .in_set(GameplaySet::StateUpdate),
+                (state::state_update_system,).in_set(GameplaySet::StateUpdate),
             )
-            .add_systems(
+            /*.add_systems(
                 GgrsSchedule,
-                (motion::integrate_gravity, motion::apply_motion)
+                (motion::integrate_gravity, motion::apply_grounded_motion)
                     .chain()
                     .in_set(GameplaySet::Physics),
+            )*/
+            .add_systems(
+                GgrsSchedule,
+                state::state_collision_interrupt_system.in_set(GameplaySet::Collision),
             )
             .add_systems(
                 GgrsSchedule,
-                collision::collide_fighter_with_scene.in_set(GameplaySet::Collision),
+                (
+                    animation::apply_fighter_translation_to_visuals,
+                    animation::apply_animation,
+                )
+                    .chain()
+                    .in_set(GameplaySet::Animation),
             )
-            .add_observer(state::dash::on_insert_dash)
             // Rollback registration lives next to the systems that write these
             // components; a component simulated here but missing from this list
             // is a desync waiting to happen.
@@ -74,13 +79,12 @@ impl Plugin for FighterPlugin {
             .rollback_component_with_copy::<FighterPreviousTranslation>()
             .rollback_component_with_copy::<FighterAttributes>()
             .rollback_component_with_copy::<Grounded>()
-            .rollback_component_with_copy::<state::wait::WaitState>()
-            .rollback_component_with_copy::<state::walk::WalkState>()
-            .rollback_component_with_copy::<state::dash::DashState>()
-            .rollback_component_with_copy::<state::run::RunState>()
-            .checksum_component::<state::dash::DashState>(state::dash::hash_dash_state)
+            .rollback_resource_with_reflect::<StageCollision>()
             // Debug views.
             .add_systems(FixedPostUpdate, debug::debug_draw_ecb)
-            .add_systems(EguiPrimaryContextPass, debug::fighter_debug);
+            .add_systems(EguiPrimaryContextPass, debug::fighter_debug)
+            .add_systems(EguiPrimaryContextPass, debug::update_config)
+            .rollback_component_with_clone::<FighterState>()
+            .checksum_component_with_hash::<FighterState>();
     }
 }

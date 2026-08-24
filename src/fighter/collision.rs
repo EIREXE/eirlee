@@ -2,12 +2,15 @@
 
 use bevy::{color::palettes::css::HOT_PINK, prelude::*};
 
-use crate::fighter::{FighterECB, FighterTranslation, FighterVelocity};
-use crate::stage::StageLine;
-
+use crate::fighter::ecb::FighterPreviousECB;
+use crate::fighter::state::FighterStateContext;
+use crate::fighter::{FighterECB, FighterPreviousTranslation, FighterTranslation, FighterVelocity};
+use crate::stage::StagePoly;
+use crate::stage::line::{StageCollision, StageLineID};
+/*
 pub fn collide_fighter_with_scene(
     fighters: Query<(&FighterECB, &mut FighterVelocity, &mut FighterTranslation)>,
-    stage_planes: Query<&StageLine>,
+    stage_planes: Query<&StagePoly>,
     mut gizmos: Gizmos,
 ) {
     for (ecb, mut velocity, mut translation) in fighters {
@@ -28,4 +31,37 @@ pub fn collide_fighter_with_scene(
             }
         }
     }
+}
+*/
+
+pub struct AirCollisionWithStageResult {
+    pub line_id: StageLineID,
+    pub hit_position: Vec2,
+    pub hit_normal: Vec2,
+}
+
+pub fn air_collide_with_stage(
+    state_context: &FighterStateContext,
+) -> Option<AirCollisionWithStageResult> {
+    let ray_segment = Segment2d::new(
+        state_context.prev_translation.0 + state_context.prev_ecb.get_bottom_point(),
+        state_context.translation.0 + state_context.ecb.get_bottom_point(),
+    );
+
+    for (poly_idx, poly) in state_context.stage_collision.stage_polys.iter().enumerate() {
+        if let Some(intersect_result) = poly.intersect_ray(ray_segment) {
+            return Some(AirCollisionWithStageResult {
+                line_id: {
+                    StageLineID {
+                        polygon: poly_idx,
+                        segment: intersect_result.segment_idx,
+                    }
+                },
+                hit_position: intersect_result.position,
+                hit_normal: intersect_result.normal,
+            });
+        }
+    }
+
+    None
 }

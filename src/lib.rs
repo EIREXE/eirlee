@@ -21,30 +21,26 @@
 //! save, click Rebuild in jackdaw (or run `jd build`) and it
 //! appears in `Add Component`. No registration code is needed.
 
-use bevy::prelude::*;
+use bevy::{mesh::SphereMeshBuilder, prelude::*};
+use bevy_wind_waker_shader::prelude::*;
 use clap::Parser;
 use jackdaw_runtime::prelude::*;
 
 use crate::{
     fighter::{
-        FighterAttributes, FighterECB, FighterTranslation, FighterVelocity,
-        state::wait::WaitState,
-    },
-    game_settings::{FighterSettingsCommon, GameSettings, InputSettingsCommon},
-    input::FighterInput,
-    player::Player,
-    schedule::GameplaySchedulePlugin,
+        FighterAttributes, FighterECB, FighterTranslation, FighterVelocity, FighterVisual, animation::FighterAnimations, state::{FighterState, fall::FallState, wait::WaitState},
+    }, game_settings::{FighterSettingsCommon, GameSettings, InputSettingsCommon}, input::FighterInput, player::Player, schedule::GameplaySchedulePlugin,
 };
 
+mod args;
 pub mod fighter;
-pub mod input;
-pub mod stage;
 pub mod game_settings;
+pub mod input;
+mod math;
 pub mod netcode;
 pub mod player;
 pub mod schedule;
-mod math;
-mod args;
+pub mod stage;
 
 /// Your game's Bevy plugin. The editor finds it by this name (override
 /// with `plugin = "..."` in jackdaw.toml) and runs it on Play; the
@@ -52,34 +48,52 @@ mod args;
 #[derive(Default)]
 pub struct GamePlugin;
 
-pub fn setup(mut commands: Commands) {
-    let _fighter = commands
-        .spawn((
-            Name("Fighter".into()),
-            Player {
-                handle: 0,
-            },
-            FighterECB {
-                vertical_half: 0.5,
-                horizontal_half: 0.25,
-            },
-            FighterVelocity::default(),
-            FighterTranslation(Vec2::new(0.5, 1.25)),
-            FighterAttributes {
-                base_walk_accel: 0.01,
-                stick_walk_accel: 0.02,
-                max_walk_vel: 0.16,
-                ground_friction: 0.008,
-                dash_duration: 15,
-                base_dash_accel: 0.002,
-                stick_dash_accel: 0.01,
-                max_dash_vel: 0.22,
-                dash_initial_velocity: 0.19,
-            },
-            WaitState {},
-            FighterInput::default()
-        ))
-        .id();
+pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    // debug stage
+
+    let _stage = commands.spawn((
+        WorldAssetRoot(asset_server.load("stages/YoshiStory.glb#Scene0")),
+        Transform::from_scale(Vec3::splat(0.1)),
+    ));
+
+    let _fighter =
+        commands
+            .spawn((
+                Name("Fighter".into()),
+                Player { handle: 0 },
+                FighterECB {
+                    vertical_half: 0.5,
+                    horizontal_half: 0.25,
+                },
+                FighterVelocity::default(),
+                FighterTranslation(Vec2::new(0.5, 1.25)),
+                FighterAttributes {
+                    base_walk_accel: 0.01,
+                    stick_walk_accel: 0.02,
+                    max_walk_vel: 0.16,
+                    ground_friction: 0.008,
+                    dash_duration: 15,
+                    base_dash_accel: 0.002,
+                    stick_dash_accel: 0.01,
+                    max_dash_vel: 0.22,
+                    jump_vertical_velocity: 0.25,
+                    dash_initial_velocity: 0.19,
+                    terminal_velocity: 0.28,
+                    gravity: 0.023,
+                },
+                FighterState::Fall(FallState),
+                FighterInput::default(),
+                FighterAnimations {
+                    wait: asset_server.load("fighters/jiggs/jigglypuff-normal.glb#PlyPurin5K_Share_ACTION_Wait")
+                }
+            ))
+            .with_child((
+                FighterVisual,
+                WorldAssetRoot(asset_server.load(
+                    GltfAssetLabel::Scene(0).from_asset("fighters/jiggs/jigglypuff-normal.glb"),
+                )),
+            ))
+            .id();
 }
 
 impl Plugin for GamePlugin {
@@ -88,6 +102,7 @@ impl Plugin for GamePlugin {
         // resources; this plugin only wires them together and supplies the
         // game-level content and configuration.
         app.add_plugins((
+            WindWakerShaderPlugin::default(),
             // Brings up GGRS (and with it `GgrsSchedule`), so it goes first.
             netcode::FighterNetcodePlugin::default(),
             GameplaySchedulePlugin,
@@ -95,17 +110,17 @@ impl Plugin for GamePlugin {
             fighter::FighterPlugin,
             stage::StagePlugin,
         ))
-            .add_systems(Startup, setup)
-            .add_systems(Update, spin_cubes)
-            .insert_resource(args::Args::parse())
-            .insert_resource(GameSettings {
-                figher_common: FighterSettingsCommon {
-                    walk_speed_ease: 0.5,
-                    ground_max_horizontal_velocity: 0.3,
-                    ground_friction_over_walk_speed_multiplier: 2.0
-                },
-                input_common: InputSettingsCommon::default(),
-            });
+        .add_systems(Startup, setup)
+        .add_systems(Update, spin_cubes)
+        .insert_resource(args::Args::parse())
+        .insert_resource(GameSettings {
+            figher_common: FighterSettingsCommon {
+                walk_speed_ease: 0.5,
+                ground_max_horizontal_velocity: 0.3,
+                ground_friction_over_walk_speed_multiplier: 2.0,
+            },
+            input_common: InputSettingsCommon::default(),
+        });
     }
 }
 

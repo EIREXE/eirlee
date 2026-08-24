@@ -28,6 +28,8 @@ bevy_ggrs = { git = "https://github.com/gschup/bevy_ggrs" }
 serde = "1.0.229"
 bitfields = "3.0.0"
 clap = { version = "4.6.6", features = ["derive"] }
+bevy_wind_waker_shader = { git = "https://github.com/lavaeater/bevy_wind_waker_shader.git" }
+fixed = "1.31.0"
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]

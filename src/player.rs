@@ -8,7 +8,7 @@ use bevy_ggrs::prelude::*;
 /// root rather than in `netcode` because "which player is this" is a game
 /// concept; `netcode` only decides where the inputs come from.
 #[derive(Default, Component)]
-#[require(Rollback)]
+#[require(Rollback, Transform)]
 pub struct Player {
     pub handle: usize,
 }

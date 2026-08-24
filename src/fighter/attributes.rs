@@ -17,7 +17,11 @@ pub struct FighterAttributes {
     pub stick_dash_accel: f32,
     pub max_dash_vel: f32,
 
+    pub jump_vertical_velocity: f32,
+
     pub ground_friction: f32,
+    pub terminal_velocity: f32,
+    pub gravity: f32,
 }
 
 impl FighterAttributes {
