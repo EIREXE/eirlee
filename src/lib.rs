@@ -29,7 +29,7 @@ use jackdaw_runtime::prelude::*;
 use crate::{
     fighter::{
         FighterAttributes, FighterECB, FighterTranslation, FighterVelocity, FighterVisual, animation::FighterAnimations, state::{FighterState, fall::FallState, wait::WaitState},
-    }, game_settings::{FighterSettingsCommon, GameSettings, InputSettingsCommon}, input::FighterInput, player::Player, schedule::GameplaySchedulePlugin,
+    }, game_settings::{FighterSettingsCommon, GameSettings, InputSettingsCommon}, input::FighterInput, math::{int::FGi32, vec::FGVec2}, player::Player, schedule::GameplaySchedulePlugin,
 };
 
 mod args;
@@ -62,24 +62,24 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 Name("Fighter".into()),
                 Player { handle: 0 },
                 FighterECB {
-                    vertical_half: 0.5,
-                    horizontal_half: 0.25,
+                    vertical_half: FGi32::lit("0.5"),
+                    horizontal_half: FGi32::lit("0.25"),
                 },
                 FighterVelocity::default(),
-                FighterTranslation(Vec2::new(0.5, 1.25)),
+                FighterTranslation(FGVec2::lit("0.5", "1.25")),
                 FighterAttributes {
-                    base_walk_accel: 0.01,
-                    stick_walk_accel: 0.02,
-                    max_walk_vel: 0.16,
-                    ground_friction: 0.008,
+                    base_walk_accel: FGi32::lit("0.01"),
+                    stick_walk_accel: FGi32::lit("0.02"),
+                    max_walk_vel: FGi32::lit("0.16"),
+                    ground_friction: FGi32::lit("0.008"),
                     dash_duration: 15,
-                    base_dash_accel: 0.002,
-                    stick_dash_accel: 0.01,
-                    max_dash_vel: 0.22,
-                    jump_vertical_velocity: 0.25,
-                    dash_initial_velocity: 0.19,
-                    terminal_velocity: 0.28,
-                    gravity: 0.023,
+                    base_dash_accel: FGi32::lit("0.002"),
+                    stick_dash_accel: FGi32::lit("0.01"),
+                    max_dash_vel: FGi32::lit("0.22"),
+                    jump_vertical_velocity: FGi32::lit("0.25"),
+                    dash_initial_velocity: FGi32::lit("0.19"),
+                    terminal_velocity: FGi32::lit("0.28"),
+                    gravity: FGi32::lit("0.023"),
                 },
                 FighterState::Fall(FallState),
                 FighterInput::default(),
@@ -115,9 +115,9 @@ impl Plugin for GamePlugin {
         .insert_resource(args::Args::parse())
         .insert_resource(GameSettings {
             figher_common: FighterSettingsCommon {
-                walk_speed_ease: 0.5,
-                ground_max_horizontal_velocity: 0.3,
-                ground_friction_over_walk_speed_multiplier: 2.0,
+                walk_speed_ease: FGi32::lit("0.5"),
+                ground_max_horizontal_velocity: FGi32::lit("0.3"),
+                ground_friction_over_walk_speed_multiplier: FGi32::lit("2.0"),
             },
             input_common: InputSettingsCommon::default(),
         });

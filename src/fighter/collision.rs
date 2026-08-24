@@ -5,6 +5,8 @@ use bevy::{color::palettes::css::HOT_PINK, prelude::*};
 use crate::fighter::ecb::FighterPreviousECB;
 use crate::fighter::state::FighterStateContext;
 use crate::fighter::{FighterECB, FighterPreviousTranslation, FighterTranslation, FighterVelocity};
+use crate::math::segment::FGSegment2d;
+use crate::math::vec::FGVec2;
 use crate::stage::StagePoly;
 use crate::stage::line::{StageCollision, StageLineID};
 /*
@@ -36,14 +38,14 @@ pub fn collide_fighter_with_scene(
 
 pub struct AirCollisionWithStageResult {
     pub line_id: StageLineID,
-    pub hit_position: Vec2,
-    pub hit_normal: Vec2,
+    pub hit_position: FGVec2,
+    pub hit_normal: FGVec2,
 }
 
 pub fn air_collide_with_stage(
     state_context: &FighterStateContext,
 ) -> Option<AirCollisionWithStageResult> {
-    let ray_segment = Segment2d::new(
+    let ray_segment = FGSegment2d::new(
         state_context.prev_translation.0 + state_context.prev_ecb.get_bottom_point(),
         state_context.translation.0 + state_context.ecb.get_bottom_point(),
     );

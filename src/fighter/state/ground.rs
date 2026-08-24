@@ -7,17 +7,20 @@ use crate::fighter::{
     FighterAttributes, FighterECB, FighterPreviousTranslation, FighterTranslation, FighterVelocity,
 };
 use crate::game_settings::GameSettings;
+use crate::math::int::FGi32;
+use crate::math::vec::FGVec2;
 use crate::stage::StagePoly;
 use crate::stage::line::{StageCollision, StageLineID, StagePolyLineSegment, StagePolyLineSegmentType};
 
 use bevy::prelude::*;
+use fixed::traits::Fixed;
 
 #[derive(Reflect, Hash, Clone, Debug)]
 pub struct GroundedStateCommon {
     pub current_line_id: StageLineID,
 }
 
-pub fn apply_grounded_friction(friction: f32, ground_vel: f32) -> f32 {
+pub fn apply_grounded_friction(friction: FGi32, ground_vel: FGi32) -> FGi32 {
     if friction.abs() > ground_vel.abs() {
         -ground_vel
     } else {
@@ -28,21 +31,21 @@ pub fn apply_grounded_friction(friction: f32, ground_vel: f32) -> f32 {
 pub fn move_accelerate() {}
 
 pub fn compute_ground_accel(
-    accel: f32,
-    target_vel: f32,
-    gr_vel: f32,
+    accel: FGi32,
+    target_vel: FGi32,
+    gr_vel: FGi32,
     attribs: &FighterAttributes,
     game_settings: &GameSettings,
-) -> f32 {
+) -> FGi32 {
     if target_vel == 0.0 {
         apply_grounded_friction(attribs.ground_friction, gr_vel)
     } else {
         let mut accel = accel;
         let ground_max_horizontal_velocity =
             game_settings.figher_common.ground_max_horizontal_velocity;
-        if !(gr_vel * accel < 0.0) {
+        if !(gr_vel * accel < FGi32::ZERO) {
             // accelerating, not reversing
-            if accel > 0.0 {
+            if accel > FGi32::ZERO {
                 if gr_vel + accel > target_vel {
                     accel = -attribs.ground_friction;
                     if gr_vel + accel < target_vel {
@@ -78,7 +81,7 @@ pub fn apply_grounded_motion(
 ) {
     // Vertical velocity should be 0 on the ground
     prev_translation.0 = translation.0;
-    translation.0 += Vec2::new(velocity.0.x ,0.0);
+    translation.0 += FGVec2::new(velocity.0.x ,FGi32::ZERO);
 }
 
 pub fn collide_with_stage_grounded(
@@ -96,34 +99,29 @@ pub fn collide_with_stage_grounded(
 
     if let Some(stage_poly) = stage_poly {
         let ecb_bottom_pos = translation.0 + ecb.get_bottom_point();
-        let left_segment_idx = ground_common
-            .current_line_id
-            .segment
-            .checked_sub(1)
-            .unwrap_or(0);
-        let right_segment_idx =
-            (ground_common.current_line_id.segment + 1) % stage_poly.segments.len();
+        let current_segment_idx = ground_common.current_line_id.segment;
 
         // First, we check the current segment, if that fails, we check the surrounding ones
         let grounded_ecb_bottom_pos = [
-            ground_common.current_line_id.segment.clone(),
-            left_segment_idx,
-            right_segment_idx,
+            Some(current_segment_idx),
+            stage_poly.get_prev_segment_index(current_segment_idx),
+            stage_poly.get_next_segment_index(current_segment_idx),
         ]
-        .iter()
+        .into_iter()
+        .flatten()
         .find_map(|segment_idx| {
-            let segment = stage_poly.get_segment(*segment_idx)?;
+            let segment = stage_poly.get_segment(segment_idx)?;
             if segment.segment_type != StagePolyLineSegmentType::Floor {
                 return None;
             }
 
             let line_dir = segment.segment.direction();
-            let projected_point = segment.segment.point1() + (ecb_bottom_pos - segment.segment.point1()).project_onto(line_dir.as_vec2());
+            let projected_point = segment.segment.point1() + (ecb_bottom_pos - segment.segment.point1()).project_onto(line_dir);
             let closest_point = segment.segment.closest_point(ecb_bottom_pos);
             let distance = closest_point.distance(projected_point);
-            
+
             if distance < 0.01 {
-                return Some((projected_point, *segment_idx, segment.normal));
+                return Some((projected_point, segment_idx, segment.normal));
             }
 
             None

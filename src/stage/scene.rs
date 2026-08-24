@@ -4,19 +4,19 @@ use std::f32::consts::PI;
 
 use bevy::{camera_controller::free_camera::FreeCamera, prelude::*};
 
-use crate::stage::{StagePoly, line::StagePolyLineSegmentType, line::StageCollision};
+use crate::{math::vec::FGVec2, stage::{StagePoly, line::{StageCollision, StagePolyLineSegmentType}}};
 
 /// set up a simple 3D scene
 pub fn test_scene() -> impl SceneList {
 
     let stage_poly = StagePoly::build(crate::stage::line::StagePolyType::Closed, &[
-        (Vec2::new(-5.6, -0.35), StagePolyLineSegmentType::Floor),
-        (Vec2::new(-3.92, 0.0), StagePolyLineSegmentType::Floor),
-        (Vec2::new(0.0, 0.0), StagePolyLineSegmentType::Floor),
-        (Vec2::new(3.92, 0.0), StagePolyLineSegmentType::Floor),
-        (Vec2::new(5.6, -0.35), StagePolyLineSegmentType::Wall),
-        (Vec2::new(5.6, -20.0), StagePolyLineSegmentType::Ceiling),
-        (Vec2::new(-5.6, -20.0), StagePolyLineSegmentType::Wall)
+        (FGVec2::lit("-5.6", "-0.35"), StagePolyLineSegmentType::Floor),
+        (FGVec2::lit("-3.92", "0.0"), StagePolyLineSegmentType::Floor),
+        (FGVec2::lit("0.0", "0.0"), StagePolyLineSegmentType::Floor),
+        (FGVec2::lit("3.92", "0.0"), StagePolyLineSegmentType::Floor),
+        (FGVec2::lit("5.6", "-0.35"), StagePolyLineSegmentType::Wall),
+        (FGVec2::lit("5.6", "-20.0"), StagePolyLineSegmentType::Ceiling),
+        (FGVec2::lit("-5.6", "-20.0"), StagePolyLineSegmentType::Wall)
     ]);
 
     bsn_list! [

@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use bevy::prelude::*;
 
-use super::{FighterStateImpl, FighterStateContext, FighterStateTransition, ground, run, wait, walk};
+use super::{FighterStateImpl, FighterStateContext, ground, run, wait, walk};
 use crate::fighter::state::ground::GroundedStateCommon;
 use crate::fighter::state::wait::WaitState;
 use crate::fighter::state::{FighterState};
@@ -12,11 +12,12 @@ use crate::input::{
     FighterCommands::{SmashMoveLeft, SmashMoveRight},
     FighterInput,
 };
+use crate::math::int::FGi32;
 
 #[derive(Debug, Clone)]
 pub struct DashState {
     frames_in_dash: u32,
-    direction: f32,
+    direction: FGi32,
     ground_common: GroundedStateCommon
 }
 
@@ -28,7 +29,7 @@ impl std::hash::Hash for DashState {
 }
 
 impl DashState {
-    pub fn new(direction: f32, ground_common: GroundedStateCommon) -> Self {
+    pub fn new(direction: FGi32, ground_common: GroundedStateCommon) -> Self {
         Self {
             frames_in_dash: 0,
             direction,
@@ -98,11 +99,11 @@ impl FighterStateImpl for DashState {
     }
 }
 
-fn check_smash_input_with_dir(state_context: &FighterStateContext) -> Option<f32> {
+fn check_smash_input_with_dir(state_context: &FighterStateContext) -> Option<FGi32> {
     if state_context.input.has_command(SmashMoveLeft) {
-        return Some(-1.0);
+        return Some(FGi32::NEG_ONE);
     } else if state_context.input.has_command(SmashMoveRight) {
-        return Some(1.0);
+        return Some(FGi32::ONE);
     } else {
         None
     }

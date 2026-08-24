@@ -13,7 +13,7 @@ pub struct FighterAnimationPlayerLink(Entity);
 pub fn apply_fighter_translation_to_visuals(query: Query<(&FighterTranslation, &FighterECB, &mut Transform)>) {
     for (translation, ecb, mut transform) in query {
         let translation = translation.0 + ecb.get_bottom_point();
-        transform.translation = Vec3::new(translation.x, translation.y, 0.0);
+        transform.translation = Vec3::new(translation.x.to_num(), translation.y.to_num(), 0.0);
     }
 }
 

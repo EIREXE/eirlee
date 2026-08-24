@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use bevy_ggrs::{LocalInputs, LocalPlayers};
 
 use crate::input::{BaseInputMap, FighterInputFrame, InputActionState, InputMapAction};
+use crate::math::int::FGi32;
 use crate::netcode::GGRSCfg;
 
 pub fn preprocess_keyboard_input(
@@ -32,16 +33,16 @@ pub fn preprocess_keyboard_input(
             };
 
             let action_strength = match action_state {
-                InputActionState::JustPressed | InputActionState::Pressed => 1.0f32,
-                InputActionState::JustReleased | InputActionState::Released => 0.0f32,
+                InputActionState::JustPressed | InputActionState::Pressed => FGi32::ONE,
+                InputActionState::JustReleased | InputActionState::Released => FGi32::ZERO,
             };
 
             match keyboard_elment.action {
                 InputMapAction::MovementXDir(sign) => {
-                    input_frame.movement.x += (sign as f32) * action_strength
+                    input_frame.movement.x += (sign) * action_strength
                 }
                 InputMapAction::MovementYDir(sign) => {
-                    input_frame.movement.y += (sign as f32) * action_strength
+                    input_frame.movement.y += (sign) * action_strength
                 }
                 InputMapAction::Jump => todo!(),
             }

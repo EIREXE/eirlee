@@ -11,6 +11,7 @@ use crate::fighter::ecb::FighterPreviousECB;
 use crate::fighter::{FighterAttributes, FighterECB, FighterPreviousTranslation, FighterTranslation, FighterVelocity};
 use crate::game_settings::GameSettings;
 use crate::input::FighterInput;
+use crate::math::int::FGi32;
 use crate::schedule::GameplaySet;
 use crate::stage::StagePoly;
 use crate::stage::line::StageCollision;
@@ -23,14 +24,6 @@ pub mod walk;
 pub mod fall;
 pub mod air;
 pub mod jump;
-
-pub enum FighterStateTransition {
-    Wait,
-    Walk,
-    Dash(f32),
-    Run,
-    Fall,
-}
 
 macro_rules! fighter_states {
     ($($variant:ident => $ty:ty),* $(,)?) => {
@@ -80,7 +73,7 @@ pub trait FighterStateImpl: Sized {
     }
 }
 
-pub struct FighterStateContext<'a> {
+pub struct FighterStateContext<'a, 'w, 's> {
     pub translation: &'a mut FighterTranslation,
     pub prev_translation: &'a mut FighterPreviousTranslation,
     pub input: &'a mut FighterInput,
@@ -91,6 +84,7 @@ pub struct FighterStateContext<'a> {
     pub game_settings: &'a GameSettings,
     pub entity: Entity,
     pub stage_collision: &'a StageCollision,
+    pub gizmos: Option<&'a mut Gizmos<'w, 's>>,
 }
 
 fighter_states! {
@@ -98,7 +92,9 @@ fighter_states! {
     Walk => walk::WalkState,
     Dash => dash::DashState,
     Run => run::RunState,
-    Fall => fall::FallState
+    Fall => fall::FallState,
+    JumpSquat => jump::JumpSquatState,
+    Jump => jump::JumpState
 }
 
 #[derive(Component)]
@@ -128,6 +124,7 @@ pub fn state_update_system(
             game_settings: &game_settings,
             entity: ent,
             stage_collision: &stage_collision,
+            gizmos: Some(&mut gizmos),
         };
         state.update(&mut update_ctx);
     }
@@ -150,7 +147,8 @@ pub fn state_interrupt_system (
             fighter_attribs: &attribs,
             game_settings: &game_settings,
             entity: ent,
-            stage_collision: &stage_collision
+            stage_collision: &stage_collision,
+            gizmos: None,
         };
         if let Some(new_state) = state.check_interrupt(&state_context) {
             let mut new_state = new_state;
@@ -171,6 +169,7 @@ pub fn state_collision_interrupt_system(
     stage_collision: Res<StageCollision>,
     game_settings: Res<GameSettings>,
     mut commands: Commands,
+    mut gizmos: Gizmos,
 ) {
     for (ent, mut state, mut translation, mut prev_translation, mut input, mut velocity, mut ecb, mut prev_ecb, attribs) in query {
         let mut state_context = FighterStateContext {
@@ -183,7 +182,8 @@ pub fn state_collision_interrupt_system(
             fighter_attribs: &attribs,
             game_settings: &game_settings,
             entity: ent,
-            stage_collision: &stage_collision
+            stage_collision: &stage_collision,
+            gizmos: Some(&mut gizmos),
         };
         if let Some(new_state) = state.check_collision_interrupt(&mut state_context) {
             let mut new_state = new_state;

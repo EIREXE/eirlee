@@ -1,12 +1,22 @@
 use bevy::math::Vec2;
-use std::ops::{Add, Div, Mul, Sub};
+use bevy::prelude::*;
+use fixed::types::I32F32;
+use serde::{Deserialize, Serialize};
+use std::ops::{AddAssign, Add, Div, Mul, Sub};
 
 use super::int::FGi32;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Default, Debug, Reflect, Serialize, Deserialize)]
+#[reflect(opaque)]
 pub struct FGVec2 {
     pub x: FGi32,
     pub y: FGi32,
+}
+
+impl std::fmt::Display for FGVec2 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}, {}]", self.x, self.y)
+    }
 }
 
 impl FGVec2 {
@@ -15,6 +25,11 @@ impl FGVec2 {
     #[inline(always)]
     pub const fn new(x: FGi32, y: FGi32) -> Self {
         Self { x, y }
+    }
+
+    #[inline(always)]
+    pub const fn lit(x: &str, y: &str) -> Self {
+        Self { x: FGi32::lit(x), y: FGi32::lit(y) }
     }
 
     #[inline(always)]
@@ -31,17 +46,78 @@ impl FGVec2 {
     }
 
     #[inline]
-    pub fn length(&self) -> FGi32 {
+    pub fn length(self) -> FGi32 {
         (self.x * self.x + self.y * self.y).sqrt()
     }
 
+    /// Returns the vector projection of `self` onto `rhs`.
+    ///
+    /// `rhs` must be normalized.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `rhs` is not normalized when `glam_assert` is enabled.
     #[inline]
-    pub fn normalized_or_zero(&self) -> Self {
-        let len = self.length();
-        if len.is_zero() {
-            Self::ZERO
+    #[must_use]
+    pub fn project_onto_normalized(self, rhs: Self) -> Self {
+        assert!(rhs.is_normalized());
+
+        rhs * self.dot(rhs)
+    }
+
+    const EPS: FGi32 = FGi32::from_bits(6);
+
+    #[inline]
+    #[must_use]
+    pub fn is_normalized(self) -> bool {
+        let diff = self.length() - FGi32::ONE;
+        diff.abs() <= Self::EPS
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn dot(self, rhs: Self) -> FGi32 {
+        (self.x * rhs.x) + (self.y * rhs.y)
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn project_onto(self, rhs: Self) -> Self {
+        let other_len_sq = rhs.dot(rhs);
+        assert!(other_len_sq != FGi32::ZERO);
+        rhs * (self.dot(rhs) / other_len_sq)
+    }
+
+    #[inline]
+    pub fn normalize_or_zero(&self) -> Self {
+        self.normalize().unwrap_or(FGVec2::ZERO)
+    }
+
+    #[inline]
+    pub fn direction_to(self, to: Self) -> Option<Self> {
+        (to - self).normalize()
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn distance(self, to: Self) -> FGi32 {
+        (to - self).length()
+    }
+
+    #[inline]
+    pub fn normalize(&self) -> Option<Self> {
+        let x = I32F32::from_num(self.x);
+        let y = I32F32::from_num(self.y);
+        let length_squared = x * x + y * y;
+
+        if length_squared.is_zero() {
+            None
         } else {
-            self / len
+            let length = length_squared.sqrt();
+            Some(Self::new(
+                FGi32::from_num(x / length),
+                FGi32::from_num(y / length),
+            ))
         }
     }
 
@@ -78,6 +154,14 @@ impl Sub for FGVec2 {
     }
 }
 
+impl Sub<&FGVec2> for &FGVec2 {
+    type Output = FGVec2;
+    #[inline]
+    fn sub(self, rhs: &FGVec2) -> FGVec2 {
+        (*self).sub(*rhs)
+    }
+}
+
 impl Div for FGVec2 {
     type Output = Self;
 
@@ -111,5 +195,119 @@ impl Div<FGi32> for &FGVec2 {
     #[inline]
     fn div(self, rhs: FGi32) -> Self::Output {
         (*self).div(rhs)
+    }
+}
+
+impl AddAssign for FGVec2 {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = Self {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y 
+        }
+    }
+}
+
+#[cfg(test)]
+mod is_normalized_tests {
+    use super::*;
+    use fixed::types::I16F16 as FGi32;
+
+    // Normalization is computed in Q32.32, so the Q16.16 error comes from the
+    // two final component conversions and length_squared()'s multiplications.
+    const EPS_FIXED_BITS: i32 = 4;
+
+    #[test]
+    fn normalizes_small_axis_vector_without_losing_squared_precision() {
+        let normalized = FGVec2::lit("0.01", "0").normalize().unwrap();
+
+        assert_eq!(normalized, FGVec2::lit("1", "0"));
+        assert!(normalized.is_normalized());
+    }
+
+    #[test]
+    fn measure_normalize_error_bound() {
+        let mut max_abs_diff_bits: i32 = 0;
+        let mut worst_case: Option<(f64, f64, i32)> = None;
+
+        let angle_steps = 3600; // 0.1 degree resolution
+        let magnitudes: &[f64] = &[
+            0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 10.0, 100.0, 1000.0, 30000.0,
+        ];
+
+        for &mag in magnitudes {
+            for i in 0..angle_steps {
+                let theta = (i as f64) * std::f64::consts::TAU / (angle_steps as f64);
+                let x = mag * theta.cos();
+                let y = mag * theta.sin();
+
+                let Some(fx) = FGi32::checked_from_num(x) else { continue };
+                let Some(fy) = FGi32::checked_from_num(y) else { continue };
+
+                let v = FGVec2 { x: fx, y: fy };
+
+                if let Some(normalized) = v.normalize() {
+                    let ls = normalized.length_squared();
+                    let diff_bits = ls.to_bits() - FGi32::ONE.to_bits();
+                    let abs_diff_bits = diff_bits.abs();
+
+                    if abs_diff_bits > max_abs_diff_bits {
+                        max_abs_diff_bits = abs_diff_bits;
+                        worst_case = Some((x, y, abs_diff_bits));
+                    }
+                }
+            }
+        }
+
+        let ulp_value = FGi32::DELTA.to_num::<f64>();
+        println!(
+            "Max |length_squared - 1.0| = {} raw bits ({:e} real), worst case: {:?}",
+            max_abs_diff_bits,
+            max_abs_diff_bits as f64 * ulp_value,
+            worst_case
+        );
+
+        assert!(
+            max_abs_diff_bits <= EPS_FIXED_BITS,
+            "measured error ({} bits) exceeds analytical bound ({} bits) — \
+             revisit the epsilon derivation",
+            max_abs_diff_bits,
+            EPS_FIXED_BITS
+        );
+
+        println!(
+            "Bound: {} bits, measured: {} bits (headroom: {} bits)",
+            EPS_FIXED_BITS,
+            max_abs_diff_bits,
+            EPS_FIXED_BITS - max_abs_diff_bits
+        );
+    }
+
+    #[test]
+    fn is_normalized_behaves_correctly() {
+        let angle_steps = 360;
+        for i in 0..angle_steps {
+            let theta = (i as f64) * std::f64::consts::TAU / (angle_steps as f64);
+            for &mag in &[0.01, 1.0, 100.0, 10000.0] {
+                let x = mag * theta.cos();
+                let y = mag * theta.sin();
+                let Some(fx) = FGi32::checked_from_num(x) else { continue };
+                let Some(fy) = FGi32::checked_from_num(y) else { continue };
+                let v = FGVec2 { x: fx, y: fy };
+
+                if let Some(normalized) = v.normalize() {
+                    assert!(
+                        normalized.is_normalized(),
+                        "normalized({}, {}) failed is_normalized(): length_squared = {:?}",
+                        x, y, normalized.length_squared()
+                    );
+                }
+            }
+        }
+
+        let non_unit = FGVec2 { x: FGi32::from_num(2.0), y: FGi32::from_num(0.0) };
+        assert!(!non_unit.is_normalized());
+
+        let non_unit_small = FGVec2 { x: FGi32::from_num(0.5), y: FGi32::from_num(0.0) };
+        assert!(!non_unit_small.is_normalized());
     }
 }

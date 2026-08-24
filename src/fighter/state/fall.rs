@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::{FighterStateImpl, FighterStateContext, FighterStateTransition, ground, walk};
+use super::{FighterStateImpl, FighterStateContext, ground, walk};
 use crate::fighter::state::{FighterState, air};
 use crate::fighter::state::ground::GroundedStateCommon;
 use crate::fighter::state::wait::WaitState;

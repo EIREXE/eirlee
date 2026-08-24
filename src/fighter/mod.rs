@@ -45,7 +45,12 @@ impl Plugin for FighterPlugin {
             // Every state gets a chance to interrupt itself, in priority order.
             .add_systems(
                 GgrsSchedule,
-                (animation::setup_fighter_animation_player, state::state_interrupt_system,).in_set(GameplaySet::Interrupt),
+                (
+                    ecb::snapshot_fighter_ecb.before(state_interrupt_system),
+                    animation::setup_fighter_animation_player,
+                    state::state_interrupt_system,
+                )
+                    .in_set(GameplaySet::Interrupt),
             )
             .add_systems(
                 GgrsSchedule,
@@ -74,6 +79,7 @@ impl Plugin for FighterPlugin {
             // components; a component simulated here but missing from this list
             // is a desync waiting to happen.
             .rollback_component_with_copy::<FighterECB>()
+            .rollback_component_with_copy::<ecb::FighterPreviousECB>()
             .rollback_component_with_copy::<FighterVelocity>()
             .rollback_component_with_copy::<FighterTranslation>()
             .rollback_component_with_copy::<FighterPreviousTranslation>()

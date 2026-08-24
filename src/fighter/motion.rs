@@ -3,20 +3,20 @@
 
 use bevy::prelude::*;
 
-use crate::fighter::FighterAttributes;
+use crate::{fighter::FighterAttributes, math::vec::FGVec2};
 
 #[derive(Component, Clone, Copy)]
 pub struct Grounded;
 
 #[derive(Component, Deref, DerefMut, Default, Debug, Clone, Copy)]
-pub struct FighterVelocity(pub Vec2);
+pub struct FighterVelocity(pub FGVec2);
 
 #[derive(Component, Deref, DerefMut, Default, Clone, Copy)]
-pub struct FighterPreviousTranslation(pub Vec2);
+pub struct FighterPreviousTranslation(pub FGVec2);
 
 #[derive(Component, Deref, DerefMut, Default, Clone, Copy)]
 #[require(FighterPreviousTranslation)]
-pub struct FighterTranslation(pub Vec2);
+pub struct FighterTranslation(pub FGVec2);
 
 pub fn apply_air_motion(
     fighters: Query<(
@@ -37,7 +37,7 @@ pub fn copy_fighter_transform_to_visuals(
     fighters: Query<(&FighterTranslation, &mut Transform)>,
 ) {
     for (translation, mut transform) in fighters {
-        transform.translation = Vec3::new(translation.x, translation.y, 0.0);
+        transform.translation = Vec3::new(translation.x.to_num(), translation.y.to_num(), 0.0);
     }
 }
 

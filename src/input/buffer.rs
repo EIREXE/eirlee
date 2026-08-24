@@ -17,6 +17,7 @@ struct FighterInputBufferedActions {}
 pub enum FighterCommands {
     SmashMoveLeft,
     SmashMoveRight,
+    Jump,
 }
 
 /// Frames of life remaining for each buffered command. Indexed by
@@ -25,6 +26,7 @@ pub enum FighterCommands {
 pub struct FighterCommandLifetimes {
     smash_move_left: u8,
     smash_move_right: u8,
+    jump: u8,
 }
 
 impl Index<FighterCommands> for FighterCommandLifetimes {
@@ -34,6 +36,7 @@ impl Index<FighterCommands> for FighterCommandLifetimes {
         match command {
             FighterCommands::SmashMoveLeft => &self.smash_move_left,
             FighterCommands::SmashMoveRight => &self.smash_move_right,
+            FighterCommands::Jump => &self.jump,
         }
     }
 }
@@ -43,6 +46,7 @@ impl IndexMut<FighterCommands> for FighterCommandLifetimes {
         match command {
             FighterCommands::SmashMoveLeft => &mut self.smash_move_left,
             FighterCommands::SmashMoveRight => &mut self.smash_move_right,
+            FighterCommands::Jump => &mut self.jump,
         }
     }
 }

@@ -1,9 +1,11 @@
 use bevy::prelude::*;
 
+use crate::math::int::FGi32;
+
 pub struct FighterSettingsCommon {
-    pub walk_speed_ease: f32,
-    pub ground_max_horizontal_velocity: f32,
-    pub ground_friction_over_walk_speed_multiplier: f32
+    pub walk_speed_ease: FGi32,
+    pub ground_max_horizontal_velocity: FGi32,
+    pub ground_friction_over_walk_speed_multiplier: FGi32
 }
 pub struct InputSettingsCommon {
     pub stick_deadzone: f32,

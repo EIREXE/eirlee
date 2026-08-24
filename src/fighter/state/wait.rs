@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::{FighterStateImpl, FighterStateContext, FighterStateTransition, ground, walk};
+use super::{FighterStateImpl, FighterStateContext, ground, walk};
 use crate::fighter::state::FighterState;
 use crate::fighter::state::fall::FallState;
 use crate::fighter::state::ground::{GroundedMotionResult, GroundedStateCommon};
@@ -33,7 +33,10 @@ impl FighterStateImpl for WaitState {
         } else {
             state_context.fighter_attribs.ground_friction
         };
-        state_context.velocity.x += ground::apply_grounded_friction(friction, state_context.velocity.x);
+
+        let ground_velocity = state_context.velocity.x;
+
+        state_context.velocity.x += ground::apply_grounded_friction(friction, ground_velocity);
 
         ground::apply_grounded_motion(
             state_context.velocity,
