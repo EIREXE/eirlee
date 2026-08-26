@@ -39,10 +39,25 @@ impl Plugin for FighterInputPlugin {
                     key: KeyCode::KeyA,
                     action: InputMapAction::MovementXDir(-1),
                 },
+                // up
+                KeyboardInputMapElement {
+                    key: KeyCode::KeyW,
+                    action: InputMapAction::MovementYDir(1),
+                },
+                // down
+                KeyboardInputMapElement {
+                    key: KeyCode::KeyS,
+                    action: InputMapAction::MovementYDir(-1),
+                },
                 // jump
                 KeyboardInputMapElement {
                     key: KeyCode::Space,
                     action: InputMapAction::Jump,
+                },
+                // shield/airdodge
+                KeyboardInputMapElement {
+                    key: KeyCode::ShiftLeft,
+                    action: InputMapAction::Shield,
                 },
             ],
         })

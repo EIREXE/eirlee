@@ -89,4 +89,5 @@ pub enum AnimKind {
     JumpForward,
     JumpBack,
     Landing,
+    AirDodge,
 }

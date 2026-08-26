@@ -24,6 +24,7 @@ pub mod run;
 pub mod wait;
 pub mod walk;
 pub mod land;
+pub mod air_dodge;
 
 macro_rules! fighter_states {
     ($($variant:ident => $ty:ty),* $(,)?) => {
@@ -95,7 +96,8 @@ fighter_states! {
     Fall => fall::FallState,
     JumpSquat => jump::JumpSquatState,
     Jump => jump::JumpState,
-    Land => land::LandingState
+    Land => land::LandingState,
+    AirDodge => air_dodge::AirDodgeState
 }
 
 #[derive(QueryData)]

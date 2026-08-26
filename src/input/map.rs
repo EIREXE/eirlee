@@ -19,6 +19,7 @@ pub enum InputMapAction {
     MovementXDir(i32),
     MovementYDir(i32),
     Jump,
+    Shield,
 }
 
 #[derive(Debug)]

@@ -2,7 +2,7 @@ use bevy::math::Vec2;
 use bevy::prelude::*;
 use fixed::types::I32F32;
 use serde::{Deserialize, Serialize};
-use std::ops::{Add, AddAssign, Div, Mul, Sub};
+use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Sub};
 
 use super::int::{FGWide, FGi32};
 
@@ -217,6 +217,24 @@ impl AddAssign for FGVec2 {
         *self = Self {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
+        }
+    }
+}
+
+impl MulAssign for FGVec2 {
+    fn mul_assign(&mut self, rhs: Self) {
+        *self = Self {
+            x: self.x * rhs.x,
+            y: self.y * rhs.y,
+        }
+    }
+}
+
+impl MulAssign<FGi32> for FGVec2 {
+    fn mul_assign(&mut self, rhs: FGi32) {
+        *self = Self {
+            x: self.x * rhs,
+            y: self.y * rhs,
         }
     }
 }

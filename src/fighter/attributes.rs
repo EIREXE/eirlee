@@ -35,6 +35,10 @@ pub struct FighterAttributes {
     pub terminal_velocity: FGi32,
     pub gravity: FGi32,
     pub air_friction: FGi32,
+
+    pub air_dodge_duration: u32,
+    pub air_dodge_velocity: FGi32,
+    pub air_dodge_decay: FGi32
 }
 
 impl FighterAttributes {

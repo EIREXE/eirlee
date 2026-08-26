@@ -19,6 +19,7 @@ pub enum FighterCommands {
     SmashMoveLeft,
     SmashMoveRight,
     Jump,
+    Shield,
 }
 
 /// Frames of life remaining for each buffered command. Indexed by
@@ -28,6 +29,7 @@ pub struct FighterCommandLifetimes {
     smash_move_left: u8,
     smash_move_right: u8,
     jump: u8,
+    shield: u8,
 }
 
 impl Index<FighterCommands> for FighterCommandLifetimes {
@@ -38,6 +40,7 @@ impl Index<FighterCommands> for FighterCommandLifetimes {
             FighterCommands::SmashMoveLeft => &self.smash_move_left,
             FighterCommands::SmashMoveRight => &self.smash_move_right,
             FighterCommands::Jump => &self.jump,
+            FighterCommands::Shield => &self.shield,
         }
     }
 }
@@ -48,6 +51,7 @@ impl IndexMut<FighterCommands> for FighterCommandLifetimes {
             FighterCommands::SmashMoveLeft => &mut self.smash_move_left,
             FighterCommands::SmashMoveRight => &mut self.smash_move_right,
             FighterCommands::Jump => &mut self.jump,
+            FighterCommands::Shield => &mut self.shield,
         }
     }
 }
@@ -129,6 +133,13 @@ pub fn postprocess_input(
         if !input.prev_frame.jump && input.current_frame.jump {
             input.set_lifetime(
                 FighterCommands::Jump,
+                game_settings.input_common.input_buffer_size,
+            );
+        }
+
+        if !input.prev_frame.shield && input.current_frame.shield {
+            input.set_lifetime(
+                FighterCommands::Shield,
                 game_settings.input_common.input_buffer_size,
             );
         }

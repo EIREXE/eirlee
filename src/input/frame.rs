@@ -9,4 +9,5 @@ pub struct FighterInputFrame {
     pub movement: FGVec2,
     pub directional_attack: FGVec2,
     pub jump: bool,
+    pub shield: bool,
 }
