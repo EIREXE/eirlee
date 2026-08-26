@@ -2,7 +2,7 @@
 
 use std::f32::consts::PI;
 
-use bevy::{camera_controller::free_camera::FreeCamera, prelude::*};
+use bevy::prelude::*;
 
 use crate::{
     math::vec::FGVec2,

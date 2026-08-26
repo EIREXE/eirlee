@@ -49,8 +49,8 @@ pub fn fighter_debug(
 pub fn update_config(
     mut config_store: ResMut<GizmoConfigStore>,
     keyboard: Res<ButtonInput<KeyCode>>,
-    real_time: Res<Time<Real>>,
-    mut virtual_time: ResMut<Time<Virtual>>,
+    _real_time: Res<Time<Real>>,
+    _virtual_time: ResMut<Time<Virtual>>,
 ) {
     if keyboard.just_pressed(KeyCode::KeyT) {
         for (_, config, _) in config_store.iter_mut() {

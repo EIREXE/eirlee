@@ -1,6 +1,6 @@
 use bevy::{color::palettes::css::RED, prelude::*};
 
-use crate::stage::{StagePoly, line::StageCollision};
+use crate::stage::line::StageCollision;
 
 pub fn debug_draw_scene(mut gizmos: Gizmos, stage_collision: Res<StageCollision>) {
     for poly in stage_collision.stage_polys.iter() {

@@ -1,8 +1,7 @@
 //! Stage collision geometry.
 
-use std::default;
 
-use bevy::{math::InvalidDirectionError, prelude::*};
+use bevy::prelude::*;
 
 use crate::math::{segment::FGSegment2d, vec::FGVec2};
 

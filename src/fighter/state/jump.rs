@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use crate::{
     fighter::{
         animation::AnimKind, collision, state::{
-            FighterState, FighterStateContext, FighterStateImpl, air, fall::FallState, ground::{self, GroundedMotionResult, GroundedStateCommon}, land::LandingState, wait::WaitState,
+            FighterState, FighterStateContext, FighterStateImpl, air, fall::FallState, ground::{self, GroundedMotionResult, GroundedStateCommon}, land::LandingState,
         },
     }, input::FighterCommands,
 };
@@ -98,7 +98,7 @@ impl FighterStateImpl for JumpSquatState {
 
 impl FighterStateImpl for JumpState {
     const NAME: &'static str = "Jump";
-    fn check_interrupt(&self, state_context: &FighterStateContext) -> Option<FighterState> {
+    fn check_interrupt(&self, _state_context: &FighterStateContext) -> Option<FighterState> {
         None
     }
 

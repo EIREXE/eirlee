@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use crate::{fighter::FighterAttributes, math::vec::FGVec2};
+use crate::math::vec::FGVec2;
 
 #[derive(Component, Clone, Copy)]
 pub struct Grounded;
@@ -27,7 +27,7 @@ pub fn apply_air_motion(
     )>,
     _time: Res<Time<Fixed>>,
 ) {
-    for (velocity, mut translation, mut prev_translation, mut transform) in fighters {
+    for (velocity, mut translation, mut prev_translation, _transform) in fighters {
         prev_translation.0 = translation.0;
         translation.0 += velocity.0;
     }

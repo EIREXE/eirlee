@@ -1,7 +1,7 @@
 //! Everything fighter-shaped: the components that describe a fighter, the
 //! state machine that drives it, and the plugin that schedules it all.
 
-use bevy::{ecs::name::HashedStr, prelude::*};
+use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
 use bevy_ggrs::prelude::*;
 

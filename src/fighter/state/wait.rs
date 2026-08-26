@@ -9,9 +9,6 @@ use crate::fighter::state::ground::{
     GroundedMotionResult, GroundedStateCommon, grounded_movement_common_interrupts,
 };
 use crate::fighter::state::{FighterState, dash};
-use crate::fighter::{FighterAttributes, FighterVelocity};
-use crate::game_settings::GameSettings;
-use crate::stage::line::StageLineID;
 
 #[derive(Debug, Clone, Hash)]
 pub struct WaitState {

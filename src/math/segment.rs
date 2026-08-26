@@ -1,4 +1,3 @@
-use bevy::math::{Vec2, primitives::Segment2d};
 
 use bevy::prelude::*;
 use fixed::prelude::*;

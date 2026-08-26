@@ -8,14 +8,8 @@ use crate::fighter::animation::AnimKind;
 use crate::fighter::state::FighterState;
 use crate::fighter::state::fall::FallState;
 use crate::fighter::state::ground::{GroundedMotionResult, GroundedStateCommon};
-use crate::fighter::state::wait::WaitState;
-use crate::fighter::{FighterAttributes, FighterFacingDirection, FighterVelocity, collision};
-use crate::game_settings::GameSettings;
-use crate::input::{
-    FighterCommands::{SmashMoveLeft, SmashMoveRight},
-    FighterInput,
-};
-use crate::math::int::FGi32;
+use crate::fighter::FighterFacingDirection;
+use crate::input::FighterCommands::{SmashMoveLeft, SmashMoveRight};
 
 #[derive(Debug, Clone)]
 pub struct DashState {

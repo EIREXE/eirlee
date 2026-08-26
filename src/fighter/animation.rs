@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use bevy::{mesh::skinning::SkinnedMesh, prelude::*};
+use bevy::prelude::*;
 
 use crate::{
     fighter::{FighterECB, FighterFacingDirection, FighterTranslation, FighterVisual, visual::FighterAnimations}, player::Player,

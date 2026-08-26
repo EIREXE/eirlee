@@ -1,14 +1,11 @@
 //! Resolving an integrated fighter position against the stage.
 
-use bevy::{color::palettes::css::HOT_PINK, prelude::*};
+use bevy::prelude::*;
 
-use crate::fighter::ecb::FighterPreviousECB;
 use crate::fighter::state::FighterStateContext;
-use crate::fighter::{FighterECB, FighterPreviousTranslation, FighterTranslation, FighterVelocity};
 use crate::math::segment::FGSegment2d;
 use crate::math::vec::FGVec2;
-use crate::stage::StagePoly;
-use crate::stage::line::{StageCollision, StageLineID};
+use crate::stage::line::StageLineID;
 /*
 pub fn collide_fighter_with_scene(
     fighters: Query<(&FighterECB, &mut FighterVelocity, &mut FighterTranslation)>,

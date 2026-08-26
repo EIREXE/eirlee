@@ -1,4 +1,3 @@
-use bevy::prelude::*;
 use fixed::traits::Fixed;
 
 use crate::fighter::*;

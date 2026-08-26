@@ -4,14 +4,13 @@
 
 use crate::fighter::state::{FighterState, FighterStateContext};
 use crate::fighter::{
-    FighterAttributes, FighterECB, FighterPreviousTranslation, FighterTranslation, FighterVelocity,
+    FighterAttributes, FighterPreviousTranslation, FighterTranslation, FighterVelocity,
 };
 use crate::game_settings::GameSettings;
 use crate::math::int::FGi32;
 use crate::math::vec::FGVec2;
-use crate::stage::StagePoly;
 use crate::stage::line::{
-    StageCollision, StageLineID, StagePolyLineSegment, StagePolyLineSegmentType,
+    StageLineID, StagePolyLineSegmentType,
 };
 
 use bevy::prelude::*;
@@ -89,7 +88,7 @@ pub fn apply_grounded_motion(
 pub fn collide_with_stage_grounded(
     state_context: &mut FighterStateContext,
     ground_common: &mut GroundedStateCommon,
-    can_walk_off: bool,
+    _can_walk_off: bool,
 ) -> GroundedMotionResult {
     let translation = &mut state_context.translation;
     let ecb = &state_context.ecb;

@@ -1,20 +1,16 @@
-use bevy::prelude::*;
 
-use super::{FighterStateContext, FighterStateImpl, ground, walk};
+use super::{FighterStateContext, FighterStateImpl};
 use crate::fighter::state::ground::GroundedStateCommon;
 use crate::fighter::state::land::LandingState;
-use crate::fighter::state::wait::WaitState;
 use crate::fighter::state::{FighterState, air};
-use crate::fighter::{FighterAttributes, FighterVelocity, collision, motion};
-use crate::game_settings::GameSettings;
-use crate::stage::line::StageCollision;
+use crate::fighter::collision;
 
 #[derive(Debug, Clone, Copy, Hash)]
 pub struct FallState;
 
 impl FighterStateImpl for FallState {
     const NAME: &'static str = "Fall";
-    fn check_interrupt(&self, state_context: &FighterStateContext) -> Option<FighterState> {
+    fn check_interrupt(&self, _state_context: &FighterStateContext) -> Option<FighterState> {
         None
     }
 

@@ -6,10 +6,7 @@ use super::{FighterStateContext, FighterStateImpl, dash, ground, wait};
 use crate::fighter::animation::AnimKind;
 use crate::fighter::state::fall::FallState;
 use crate::fighter::state::ground::{GroundedMotionResult, GroundedStateCommon};
-use crate::fighter::state::{self, FighterState};
-use crate::fighter::{FighterAttributes, FighterVelocity};
-use crate::game_settings::GameSettings;
-use crate::input::FighterInput;
+use crate::fighter::state::FighterState;
 
 #[derive(Debug, Clone, Hash)]
 pub struct WalkState {
