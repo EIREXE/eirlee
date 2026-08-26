@@ -9,11 +9,24 @@ use crate::fighter::state::StateNameDebug;
 use crate::fighter::{FighterECB, FighterPreviousTranslation, FighterTranslation, FighterVelocity};
 use crate::input::FighterInput;
 
-pub fn debug_draw_ecb(ecbs: Query<(&FighterECB, &FighterTranslation, &FighterPreviousECB, &FighterPreviousTranslation)>, mut gizmos: Gizmos) {
+pub fn debug_draw_ecb(
+    ecbs: Query<(
+        &FighterECB,
+        &FighterTranslation,
+        &FighterPreviousECB,
+        &FighterPreviousTranslation,
+    )>,
+    mut gizmos: Gizmos,
+) {
     for (ecb, trf, ecb_prev, trf_prev) in ecbs {
-        let transformed = ecb.to_3d_lineloop(Transform::from_xyz(trf.x.to_num(), trf.y.to_num(), 0.0));
+        let transformed =
+            ecb.to_3d_lineloop(Transform::from_xyz(trf.x.to_num(), trf.y.to_num(), 0.0));
         gizmos.lineloop(transformed, YELLOW);
-        let prev_transformed = ecb_prev.to_3d_lineloop(Transform::from_xyz(trf_prev.x.to_num(), trf_prev.y.to_num(), -0.1));
+        let prev_transformed = ecb_prev.to_3d_lineloop(Transform::from_xyz(
+            trf_prev.x.to_num(),
+            trf_prev.y.to_num(),
+            -0.1,
+        ));
         gizmos.lineloop(prev_transformed, ORANGE);
     }
 }

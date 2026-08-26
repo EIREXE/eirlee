@@ -4,51 +4,52 @@ use std::default;
 
 use bevy::{math::InvalidDirectionError, prelude::*};
 
-use crate::math::{segment::{FGSegment2d}, vec::FGVec2};
+use crate::math::{segment::FGSegment2d, vec::FGVec2};
 
 #[derive(Reflect, Clone, Copy, PartialEq)]
 pub enum StagePolyLineSegmentType {
-    Floor, Wall, Ceiling
+    Floor,
+    Wall,
+    Ceiling,
 }
-
 
 #[derive(Reflect, Clone)]
 pub struct StagePolyLineSegment {
     pub segment: FGSegment2d,
     pub normal: FGVec2,
-    pub segment_type: StagePolyLineSegmentType
+    pub segment_type: StagePolyLineSegmentType,
 }
 
 #[derive(Reflect, Clone, Default)]
 pub enum StagePolyType {
     #[default]
     Closed,
-    Platform
+    Platform,
 }
 
 #[derive(Reflect, Hash, Debug, Clone, Copy, Default)]
 pub struct StageLineID {
     pub polygon: usize,
-    pub segment: usize
+    pub segment: usize,
 }
 
 #[derive(Component, Reflect, Clone, Default)]
 #[reflect(Component)]
 pub struct StagePoly {
     poly_type: StagePolyType,
-    pub segments: Vec<StagePolyLineSegment>
+    pub segments: Vec<StagePolyLineSegment>,
 }
 
 pub struct StagePlaneIntersectResult {
     pub position: FGVec2,
     pub segment_idx: usize,
-    pub normal: FGVec2
+    pub normal: FGVec2,
 }
 
 #[derive(Resource, Reflect, Clone, Default)]
 #[reflect(Resource)]
 pub struct StageCollision {
-    pub stage_polys: Vec<StagePoly>
+    pub stage_polys: Vec<StagePoly>,
 }
 
 impl StagePoly {
@@ -134,20 +135,22 @@ impl StagePoly {
             .zip(points.iter().cycle().skip(1))
             .take(segment_count);
 
-        let segments = windows.map(|segment_window| {
-            let (first_point, segment_type) = segment_window.0;
-            let (second_point, _) = segment_window.1;
-            let segment = FGSegment2d::new(*first_point, *second_point);
-            StagePolyLineSegment {
-                segment_type: *segment_type,
-                segment,
-                normal: segment.left_normal()
-            }
-        }).collect();
+        let segments = windows
+            .map(|segment_window| {
+                let (first_point, segment_type) = segment_window.0;
+                let (second_point, _) = segment_window.1;
+                let segment = FGSegment2d::new(*first_point, *second_point);
+                StagePolyLineSegment {
+                    segment_type: *segment_type,
+                    segment,
+                    normal: segment.left_normal(),
+                }
+            })
+            .collect();
 
         Self {
             poly_type,
-            segments
+            segments,
         }
     }
 }
@@ -205,7 +208,10 @@ mod tests {
         };
 
         let hit = stage_poly
-            .intersect_ray(FGSegment2d::new(FGVec2::lit("0", "2"), FGVec2::lit("0", "-1")))
+            .intersect_ray(FGSegment2d::new(
+                FGVec2::lit("0", "2"),
+                FGVec2::lit("0", "-1"),
+            ))
             .unwrap();
 
         assert_eq!(hit.segment_idx, 1);
@@ -214,35 +220,53 @@ mod tests {
 
     #[test]
     fn ray_intersection_test() {
-        let stage_poly = StagePoly::build(crate::stage::line::StagePolyType::Platform, &[
-            (FGVec2::lit("-4.5", "0.0"), StagePolyLineSegmentType::Floor),
-            (FGVec2::lit("4.5", "0.0"), StagePolyLineSegmentType::Floor),
-        ]);
+        let stage_poly = StagePoly::build(
+            crate::stage::line::StagePolyType::Platform,
+            &[
+                (FGVec2::lit("-4.5", "0.0"), StagePolyLineSegmentType::Floor),
+                (FGVec2::lit("4.5", "0.0"), StagePolyLineSegmentType::Floor),
+            ],
+        );
 
-        let res = stage_poly.intersect_ray(FGSegment2d::new(FGVec2::lit("0.0", "1.0"), FGVec2::lit("0.0", "-1.0")));
+        let res = stage_poly.intersect_ray(FGSegment2d::new(
+            FGVec2::lit("0.0", "1.0"),
+            FGVec2::lit("0.0", "-1.0"),
+        ));
         assert!(res.is_some());
         assert_eq!(res.unwrap().position, FGVec2::ZERO);
     }
 
     #[test]
     fn ray_intersection_test_side() {
-        let stage_poly = StagePoly::build(crate::stage::line::StagePolyType::Platform, &[
-            (FGVec2::lit("-4.5", "0.0"), StagePolyLineSegmentType::Floor),
-            (FGVec2::lit("4.5", "0.0"), StagePolyLineSegmentType::Floor),
-        ]);
+        let stage_poly = StagePoly::build(
+            crate::stage::line::StagePolyType::Platform,
+            &[
+                (FGVec2::lit("-4.5", "0.0"), StagePolyLineSegmentType::Floor),
+                (FGVec2::lit("4.5", "0.0"), StagePolyLineSegmentType::Floor),
+            ],
+        );
 
-        let res = stage_poly.intersect_ray(FGSegment2d::new(FGVec2::lit("2.0", "1.0"), FGVec2::lit("2.0", "-1.0")));
+        let res = stage_poly.intersect_ray(FGSegment2d::new(
+            FGVec2::lit("2.0", "1.0"),
+            FGVec2::lit("2.0", "-1.0"),
+        ));
         assert!(res.is_some());
         assert!(res.unwrap().position.distance(FGVec2::lit("2.0", "0.0")) < FGi32::from_bits(4));
     }
     #[test]
     fn ray_intersection_test_diagonal() {
-        let stage_poly = StagePoly::build(crate::stage::line::StagePolyType::Platform, &[
-            (FGVec2::lit("0.0", "0.0"), StagePolyLineSegmentType::Floor),
-            (FGVec2::lit("2.0", "2.0"), StagePolyLineSegmentType::Floor),
-        ]);
+        let stage_poly = StagePoly::build(
+            crate::stage::line::StagePolyType::Platform,
+            &[
+                (FGVec2::lit("0.0", "0.0"), StagePolyLineSegmentType::Floor),
+                (FGVec2::lit("2.0", "2.0"), StagePolyLineSegmentType::Floor),
+            ],
+        );
 
-        let res = stage_poly.intersect_ray(FGSegment2d::new(FGVec2::lit("1.0", "2.0"), FGVec2::lit("1.0", "-2.0")));
+        let res = stage_poly.intersect_ray(FGSegment2d::new(
+            FGVec2::lit("1.0", "2.0"),
+            FGVec2::lit("1.0", "-2.0"),
+        ));
         assert!(res.is_some());
         assert_eq!(res.unwrap().position, FGVec2::lit("1.0", "1.0"));
     }

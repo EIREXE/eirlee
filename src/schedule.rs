@@ -21,7 +21,7 @@ pub enum GameplaySet {
     Physics,
     /// Resolve the integrated positions against the stage.
     Collision,
-    Animation
+    Animation,
 }
 
 /// Declares the order of [`GameplaySet`] inside [`GgrsSchedule`]. Added by

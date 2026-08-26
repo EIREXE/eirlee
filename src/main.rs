@@ -5,12 +5,10 @@
 use bevy::camera_controller::free_camera::FreeCameraPlugin;
 use bevy::image::{ImageAddressMode, ImagePlugin, ImageSamplerDescriptor};
 use bevy::prelude::*;
+use bevy::remote::RemotePlugin;
 use bevy::remote::http::RemoteHttpPlugin;
-use bevy::remote::{RemotePlugin};
 use bevy_egui::EguiPlugin;
-use bevy_inspector_egui::{
-    quick::WorldInspectorPlugin
-};
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 fn main() -> AppExit {
     // A `Repeat` sampler so the tileable materials authored in the

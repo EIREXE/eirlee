@@ -2,7 +2,7 @@ use bevy::math::Vec2;
 use bevy::prelude::*;
 use fixed::types::I32F32;
 use serde::{Deserialize, Serialize};
-use std::ops::{AddAssign, Add, Div, Mul, Sub};
+use std::ops::{Add, AddAssign, Div, Mul, Sub};
 
 use super::int::{FGWide, FGi32};
 
@@ -29,7 +29,10 @@ impl FGVec2 {
 
     #[inline(always)]
     pub const fn lit(x: &str, y: &str) -> Self {
-        Self { x: FGi32::lit(x), y: FGi32::lit(y) }
+        Self {
+            x: FGi32::lit(x),
+            y: FGi32::lit(y),
+        }
     }
 
     #[inline(always)]
@@ -213,7 +216,7 @@ impl AddAssign for FGVec2 {
     fn add_assign(&mut self, rhs: Self) {
         *self = Self {
             x: self.x + rhs.x,
-            y: self.y + rhs.y 
+            y: self.y + rhs.y,
         }
     }
 }
@@ -251,8 +254,12 @@ mod is_normalized_tests {
                 let x = mag * theta.cos();
                 let y = mag * theta.sin();
 
-                let Some(fx) = FGi32::checked_from_num(x) else { continue };
-                let Some(fy) = FGi32::checked_from_num(y) else { continue };
+                let Some(fx) = FGi32::checked_from_num(x) else {
+                    continue;
+                };
+                let Some(fy) = FGi32::checked_from_num(y) else {
+                    continue;
+                };
 
                 let v = FGVec2 { x: fx, y: fy };
 
@@ -301,24 +308,36 @@ mod is_normalized_tests {
             for &mag in &[0.01, 1.0, 100.0, 10000.0] {
                 let x = mag * theta.cos();
                 let y = mag * theta.sin();
-                let Some(fx) = FGi32::checked_from_num(x) else { continue };
-                let Some(fy) = FGi32::checked_from_num(y) else { continue };
+                let Some(fx) = FGi32::checked_from_num(x) else {
+                    continue;
+                };
+                let Some(fy) = FGi32::checked_from_num(y) else {
+                    continue;
+                };
                 let v = FGVec2 { x: fx, y: fy };
 
                 if let Some(normalized) = v.normalize() {
                     assert!(
                         normalized.is_normalized(),
                         "normalized({}, {}) failed is_normalized(): length_squared = {:?}",
-                        x, y, normalized.length_squared()
+                        x,
+                        y,
+                        normalized.length_squared()
                     );
                 }
             }
         }
 
-        let non_unit = FGVec2 { x: FGi32::from_num(2.0), y: FGi32::from_num(0.0) };
+        let non_unit = FGVec2 {
+            x: FGi32::from_num(2.0),
+            y: FGi32::from_num(0.0),
+        };
         assert!(!non_unit.is_normalized());
 
-        let non_unit_small = FGVec2 { x: FGi32::from_num(0.5), y: FGi32::from_num(0.0) };
+        let non_unit_small = FGVec2 {
+            x: FGi32::from_num(0.5),
+            y: FGi32::from_num(0.0),
+        };
         assert!(!non_unit_small.is_normalized());
     }
 

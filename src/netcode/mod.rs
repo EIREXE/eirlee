@@ -19,7 +19,6 @@ impl Plugin for FighterNetcodePlugin {
     fn build(&self, app: &mut App) {
         let plugin = GgrsPlugin::<GGRSCfg>::default();
         app.add_plugins(plugin)
-            .add_systems(Startup, session::netcode_setup)
             // Engine-level components that every rolled-back entity may carry.
             // Gameplay components are registered by the plugin that owns them.
             .rollback_component_with_clone::<Transform>()

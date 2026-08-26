@@ -11,15 +11,13 @@ use crate::math::{
 #[derive(Clone, Copy, PartialEq, Reflect)]
 pub struct FGSegment2d {
     point1: FGVec2,
-    point2: FGVec2
+    point2: FGVec2,
 }
 
 impl FGSegment2d {
     #[inline]
     pub fn new(point1: FGVec2, point2: FGVec2) -> Self {
-        Self {
-            point1, point2
-        }
+        Self { point1, point2 }
     }
 
     #[inline]
@@ -41,7 +39,8 @@ impl FGSegment2d {
     /// Panics if a valid direction could not be computed, for example when the endpoints are coincident, NaN, or infinite.
     #[inline]
     pub fn direction(&self) -> FGVec2 {
-        self.try_direction().expect("Failed to compute the direction of a line segment")
+        self.try_direction()
+            .expect("Failed to compute the direction of a line segment")
     }
 
     /// Try to compute the normalized direction pointing from the first endpoint to the second endpoint.
@@ -100,7 +99,10 @@ impl FGSegment2d {
     ///
     /// Panics if a valid normal could not be computed, for example when the endpoints are coincident
     pub fn left_normal(&self) -> FGVec2 {
-        self.point1.direction_to(self.point2).map(|o| { FGVec2::new(-o.y, o.x)}).expect("a valid normal could not be computed")
+        self.point1
+            .direction_to(self.point2)
+            .map(|o| FGVec2::new(-o.y, o.x))
+            .expect("a valid normal could not be computed")
     }
 
     pub fn segment_intersection(&self, rhs: &FGSegment2d) -> Option<FGVec2> {
@@ -150,9 +152,18 @@ mod tests {
     fn closest_point_projects_and_clamps_to_segment() {
         let segment = FGSegment2d::new(FGVec2::lit("-4", "0"), FGVec2::lit("4", "0"));
 
-        assert_eq!(segment.closest_point(FGVec2::lit("2", "1")), FGVec2::lit("2", "0"));
-        assert_eq!(segment.closest_point(FGVec2::lit("-6", "1")), segment.point1());
-        assert_eq!(segment.closest_point(FGVec2::lit("6", "1")), segment.point2());
+        assert_eq!(
+            segment.closest_point(FGVec2::lit("2", "1")),
+            FGVec2::lit("2", "0")
+        );
+        assert_eq!(
+            segment.closest_point(FGVec2::lit("-6", "1")),
+            segment.point1()
+        );
+        assert_eq!(
+            segment.closest_point(FGVec2::lit("6", "1")),
+            segment.point2()
+        );
     }
 
     #[test]

@@ -44,7 +44,7 @@ pub fn compute_ground_accel(
     } else {
         let mut accel = accel;
         let ground_max_horizontal_velocity =
-            game_settings.figher_common.ground_max_horizontal_velocity;
+            game_settings.fighter_common.ground_max_horizontal_velocity;
         if !(gr_vel * accel < FGi32::ZERO) {
             // accelerating, not reversing
             if accel > FGi32::ZERO {
@@ -146,7 +146,7 @@ pub fn collide_with_stage_grounded(
 
 pub fn grounded_movement_common_interrupts(
     state_context: &FighterStateContext,
-    ground_common: &GroundedStateCommon
+    ground_common: &GroundedStateCommon,
 ) -> Option<FighterState> {
     super::jump::check_input(state_context, ground_common)
 }

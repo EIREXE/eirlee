@@ -10,6 +10,7 @@ pub mod attributes;
 pub mod collision;
 pub mod debug;
 pub mod ecb;
+pub mod manifest;
 pub mod motion;
 pub mod state;
 pub mod visual;
@@ -20,6 +21,7 @@ pub mod visual;
 // silently change what this module exports.
 pub use attributes::FighterAttributes;
 pub use ecb::FighterECB;
+pub use manifest::FighterId;
 pub use motion::{FighterPreviousTranslation, FighterTranslation, FighterVelocity, Grounded};
 
 use crate::{
@@ -41,10 +43,19 @@ use state::state_interrupt_system;
 #[derive(Default)]
 pub struct FighterPlugin;
 
-#[derive(Component, Copy, Clone, Hash)]
+#[derive(Component, Copy, Clone, Hash, Debug, PartialEq, Reflect)]
 pub enum FighterFacingDirection {
     Left,
     Right,
+}
+
+impl FighterFacingDirection {
+    pub fn to_sign(&self) -> FGi32 {
+        match self {
+            FighterFacingDirection::Left => FGi32::NEG_ONE,
+            FighterFacingDirection::Right => FGi32::ONE,
+        }
+    }
 }
 
 #[derive(Component)]
@@ -105,41 +116,32 @@ impl Plugin for FighterPlugin {
         .add_systems(EguiPrimaryContextPass, debug::fighter_debug)
         .add_systems(EguiPrimaryContextPass, debug::update_config)
         .rollback_component_with_clone::<FighterState>()
-        .checksum_component_with_hash::<FighterState>();
+        .checksum_component_with_hash::<FighterState>()
+        .register_type::<FighterFacingDirection>();
     }
 }
 
 pub fn spawn_fighter(
     commands: &mut Commands,
+    player_handle: usize,
+    spawn_position: FGVec2,
+    attributes: FighterAttributes,
     animations: FighterAnimations,
     visual_root: WorldAssetRoot,
 ) {
     commands.spawn((
-        Name("Fighter".into()),
-        Player { handle: 0 },
+        Name(format!("Fighter {player_handle}").into()),
+        Player {
+            handle: player_handle,
+        },
         FighterFacingDirection::Right,
         FighterECB {
             vertical_half: FGi32::lit("5.0"),
             horizontal_half: FGi32::lit("2.5"),
         },
         FighterVelocity::default(),
-        FighterTranslation(FGVec2::lit("5.0", "12.5")),
-        FighterAttributes {
-            base_walk_accel: FGi32::lit("0.1"),
-            stick_walk_accel: FGi32::lit("0.16"),
-            max_walk_vel: FGi32::lit("0.7"),
-            ground_friction: FGi32::lit("0.09"),
-            dash_acceleration_duration: 13,
-            dash_duration: 24,
-            base_dash_accel: FGi32::lit("0.02"),
-            stick_dash_accel: FGi32::lit("0.065"),
-            max_dash_vel: FGi32::lit("1.1"),
-            jump_vertical_velocity: FGi32::lit("2.5"),
-            dash_initial_velocity: FGi32::lit("1.4"),
-            terminal_velocity: FGi32::lit("2.8"),
-            gravity: FGi32::lit("0.23"),
-            jumpsquat_duration: 4,
-        },
+        FighterTranslation(spawn_position),
+        attributes,
         visual_root,
         animations,
         FighterState::Fall(FallState),

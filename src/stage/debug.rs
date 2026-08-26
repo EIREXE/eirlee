@@ -14,6 +14,5 @@ pub fn debug_draw_scene(mut gizmos: Gizmos, stage_collision: Res<StageCollision>
             let midpoint = (from_3d + end_3d) * 0.5;
             gizmos.arrow(midpoint, midpoint + normal_3d, RED);
         }
-
     }
 }

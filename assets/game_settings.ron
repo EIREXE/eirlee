@@ -1,0 +1,20 @@
+(   
+    input_common: (
+        stick_deadzone: "0.28",
+        trigger_deadzone: "0.3",
+        smash_input_reset_axis_threshold: "0.25",
+        smash_input_axis_threshold: "0.8",
+        run_stick_threshold: "0.625",
+        smash_input_frame_threshold: 2,
+        input_buffer_size: 5
+    
+    ),
+    fighter_common: (
+        walk_speed_ease: "0.5",
+        ground_max_horizontal_velocity: "3.0",
+        ground_friction_over_walk_speed_multiplier: "2.0"
+    ),
+    fighter_manifest_paths: [
+        "fighters/test/test.fighter.ron"
+    ]
+)

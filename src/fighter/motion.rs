@@ -33,9 +33,7 @@ pub fn apply_air_motion(
     }
 }
 
-pub fn copy_fighter_transform_to_visuals(
-    fighters: Query<(&FighterTranslation, &mut Transform)>,
-) {
+pub fn copy_fighter_transform_to_visuals(fighters: Query<(&FighterTranslation, &mut Transform)>) {
     for (translation, mut transform) in fighters {
         transform.translation = Vec3::new(translation.x.to_num(), translation.y.to_num(), 0.0);
     }

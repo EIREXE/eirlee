@@ -100,7 +100,6 @@ pub fn postprocess_input(
     game_settings: Res<GameSettings>,
 ) {
     for (mut input, player) in query {
-
         for command in FighterCommands::iter() {
             input.reduce_command_lifetime(command);
         }
@@ -128,7 +127,10 @@ pub fn postprocess_input(
         }
 
         if !input.prev_frame.jump && input.current_frame.jump {
-            input.set_lifetime(FighterCommands::Jump, game_settings.input_common.input_buffer_size);
+            input.set_lifetime(
+                FighterCommands::Jump,
+                game_settings.input_common.input_buffer_size,
+            );
         }
 
         if x_abs >= axis_threshold && input.frames_in_smash_move_deadzone <= frame_threshold {

@@ -28,9 +28,7 @@ impl From<FighterECB> for FighterPreviousECB {
     }
 }
 
-pub fn snapshot_fighter_ecb(
-    fighters: Query<(&FighterECB, &mut FighterPreviousECB)>,
-) {
+pub fn snapshot_fighter_ecb(fighters: Query<(&FighterECB, &mut FighterPreviousECB)>) {
     for (ecb, mut previous_ecb) in fighters {
         *previous_ecb = (*ecb).into();
     }

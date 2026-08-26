@@ -1,11 +1,13 @@
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::{input::FighterInputFrame, math::int::FGi32};
 
 /// Per-fighter tuning values. These are character data, not global rules —
 /// anything that applies to every fighter belongs in
 /// [`crate::game_settings::FighterSettingsCommon`] instead.
-#[derive(Component, Clone, Copy)]
+#[derive(Asset, Component, Clone, Copy, Reflect, Serialize, Deserialize)]
+#[reflect(opaque)]
 pub struct FighterAttributes {
     pub base_walk_accel: FGi32,
     pub stick_walk_accel: FGi32,
@@ -19,7 +21,9 @@ pub struct FighterAttributes {
     pub max_dash_vel: FGi32,
 
     pub jumpsquat_duration: u32,
-    pub jump_vertical_velocity: FGi32,
+    pub short_hop_vertical_velocity: FGi32,
+    pub full_jump_vertical_velocity: FGi32,
+    pub jump_horizontal_velocity: FGi32,
 
     pub ground_friction: FGi32,
     pub terminal_velocity: FGi32,
@@ -27,7 +31,11 @@ pub struct FighterAttributes {
 }
 
 impl FighterAttributes {
-    pub fn get_accel_and_target_dashrun(&self, input: &FighterInputFrame, direction: FGi32) -> (FGi32, FGi32) {
+    pub fn get_accel_and_target_dashrun(
+        &self,
+        input: &FighterInputFrame,
+        direction: FGi32,
+    ) -> (FGi32, FGi32) {
         let accel = input.movement.x * self.stick_dash_accel;
         let accel = accel + direction * self.base_dash_accel;
         let target_vel = input.movement.x * self.max_dash_vel;
@@ -44,4 +52,8 @@ impl FighterAttributes {
 
         (accel, target_vel)
     }
+}
+
+pub struct FighterAttributesLink {
+    attributes: Handle<FighterAttributes>,
 }

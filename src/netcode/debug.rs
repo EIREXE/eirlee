@@ -6,10 +6,7 @@ use bevy_ggrs::prelude::*;
 
 use crate::netcode::GGRSCfg;
 
-pub fn network_debug(
-    mut contexts: EguiContexts,
-    session: Option<Res<Session<GGRSCfg>>>,
-) -> Result {
+pub fn network_debug(mut contexts: EguiContexts, session: Option<Res<Session<GGRSCfg>>>) -> Result {
     if let Some(sess) = session {
         match sess.as_ref() {
             Session::P2P(s) => {

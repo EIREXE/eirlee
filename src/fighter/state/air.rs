@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::fighter::{*};
+use crate::fighter::*;
 
 pub fn integrate_gravity(velocity: &mut FighterVelocity, attributes: &FighterAttributes) {
     velocity.y -= attributes.gravity;

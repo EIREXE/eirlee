@@ -4,11 +4,11 @@ use bevy::prelude::*;
 
 use super::{FighterStateContext, FighterStateImpl, ground, walk};
 use crate::fighter::animation::AnimKind;
-use crate::fighter::state::{FighterState, dash};
 use crate::fighter::state::fall::FallState;
 use crate::fighter::state::ground::{
     GroundedMotionResult, GroundedStateCommon, grounded_movement_common_interrupts,
 };
+use crate::fighter::state::{FighterState, dash};
 use crate::fighter::{FighterAttributes, FighterVelocity};
 use crate::game_settings::GameSettings;
 use crate::stage::line::StageLineID;
@@ -21,17 +21,21 @@ pub struct WaitState {
 impl FighterStateImpl for WaitState {
     const NAME: &'static str = "Wait";
     fn check_interrupt(&self, state_context: &FighterStateContext) -> Option<FighterState> {
-        dash::check_input(state_context, &self.grounded_common).or_else(||
-        grounded_movement_common_interrupts(state_context, &self.grounded_common)
-            .or_else(|| walk::check_input(state_context, &self.grounded_common)))
+        dash::check_input(state_context, &self.grounded_common).or_else(|| {
+            grounded_movement_common_interrupts(state_context, &self.grounded_common)
+                .or_else(|| walk::check_input(state_context, &self.grounded_common))
+        })
     }
 
     fn on_enter(&mut self, state_context: &mut super::FighterStateContext) {
-        state_context.animation_transitions.play(
-            &mut state_context.animation_player,
-            state_context.animations.clips[&AnimKind::Wait],
-            Duration::ZERO,
-        ).repeat();
+        state_context
+            .animation_transitions
+            .play(
+                &mut state_context.animation_player,
+                state_context.animations.clips[&AnimKind::Wait],
+                Duration::ZERO,
+            )
+            .repeat();
     }
 
     fn update(&mut self, state_context: &mut super::FighterStateContext) {
@@ -40,7 +44,7 @@ impl FighterStateImpl for WaitState {
                 state_context.fighter_attribs.ground_friction
                     * state_context
                         .game_settings
-                        .figher_common
+                        .fighter_common
                         .ground_friction_over_walk_speed_multiplier
             } else {
                 state_context.fighter_attribs.ground_friction

@@ -21,21 +21,22 @@
 //! save, click Rebuild in jackdaw (or run `jd build`) and it
 //! appears in `Add Component`. No registration code is needed.
 
-use bevy::{mesh::SphereMeshBuilder, prelude::*};
+use bevy::prelude::*;
+use bevy_asset_loader::prelude::*;
 use bevy_wind_waker_shader::prelude::*;
 use clap::Parser;
-use jackdaw_runtime::prelude::*;
+use jackdaw_runtime::EditorCategory;
 
 use crate::{
-    fighter::{
-        FighterAttributes, FighterECB, FighterTranslation, FighterVelocity, FighterVisual, animation::{AnimManifest}, state::{FighterState, fall::FallState, wait::WaitState}, visual::resolve_character_assets,
-    }, game_settings::{FighterSettingsCommon, GameSettings, InputSettingsCommon}, input::FighterInput, math::{int::FGi32, vec::FGVec2}, player::Player, schedule::GameplaySchedulePlugin,
+    fighter::manifest::FighterManifest, game_settings::GameSettings,
+    schedule::GameplaySchedulePlugin,
 };
 
 mod args;
 pub mod fighter;
 pub mod game_settings;
 pub mod input;
+pub mod match_loading;
 mod math;
 pub mod netcode;
 pub mod player;
@@ -45,8 +46,15 @@ pub mod stage;
 #[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
 pub enum AppState {
     #[default]
-    LoadingCharacters,
-    InGame,
+    LoadCommonAssets,
+    LoadFighterManifests,
+    PrepareFighterManifests,
+    CommonAssetLoadFailed,
+    Idle,
+    LoadingMatch,
+    PreparingMatch,
+    InMatch,
+    MatchLoadFailed,
 }
 
 /// Your game's Bevy plugin. The editor finds it by this name (override
@@ -55,47 +63,57 @@ pub enum AppState {
 #[derive(Default)]
 pub struct GamePlugin;
 
-pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    // debug stage
-
-    let _stage = commands.spawn((
-        WorldAssetRoot(asset_server.load("stages/YoshiStory.glb#Scene0")),
-    ));
-}
-
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         // Each module owns its own systems, rollback registrations and
         // resources; this plugin only wires them together and supplies the
         // game-level content and configuration.
-        app
-        .init_state::<AppState>()
-        .add_plugins((
-            WindWakerShaderPlugin::default(),
-            // Brings up GGRS (and with it `GgrsSchedule`), so it goes first.
-            netcode::FighterNetcodePlugin::default(),
-            GameplaySchedulePlugin,
-            input::FighterInputPlugin,
-            fighter::FighterPlugin,
-            stage::StagePlugin,
-            bevy_common_assets::ron::RonAssetPlugin::<AnimManifest>::new(&[])
-        ))
-        .add_systems(Startup, setup)
-        .add_systems(Update, spin_cubes)
-        .insert_resource(args::Args::parse())
-        .insert_resource(GameSettings {
-            figher_common: FighterSettingsCommon {
-                walk_speed_ease: FGi32::lit("0.5"),
-                ground_max_horizontal_velocity: FGi32::lit("3.0"),
-                ground_friction_over_walk_speed_multiplier: FGi32::lit("2.0"),
-            },
-            input_common: InputSettingsCommon::default(),
-        })
-        .add_systems(OnEnter(AppState::LoadingCharacters), crate::fighter::visual::start_loading)
-        .add_systems(
-            Update,
-            resolve_character_assets.run_if(in_state(AppState::LoadingCharacters)),
-        );
+        app.init_state::<AppState>()
+            .add_plugins((
+                WindWakerShaderPlugin::default(),
+                // Brings up GGRS (and with it `GgrsSchedule`), so it goes first.
+                netcode::FighterNetcodePlugin::default(),
+                GameplaySchedulePlugin,
+                input::FighterInputPlugin,
+                fighter::FighterPlugin,
+                stage::StagePlugin,
+                bevy_common_assets::ron::RonAssetPlugin::<FighterManifest>::new(&["fighter.ron"]),
+                bevy_common_assets::ron::RonAssetPlugin::<GameSettings>::new(&["ron"]),
+            ))
+            .add_loading_state(
+                LoadingState::new(AppState::LoadingMatch)
+                    .continue_to_state(AppState::PreparingMatch)
+                    .on_failure_continue_to_state(AppState::MatchLoadFailed)
+                    .load_collection::<match_loading::MatchAssets>(),
+            )
+            .add_loading_state(
+                LoadingState::new(AppState::LoadCommonAssets)
+                    .continue_to_state(AppState::LoadFighterManifests)
+                    .on_failure_continue_to_state(AppState::CommonAssetLoadFailed)
+                    .load_collection::<game_settings::CommonAssets>()
+                    .finally_init_resource::<GameSettings>(),
+            )
+            .add_loading_state(
+                LoadingState::new(AppState::LoadFighterManifests)
+                    .continue_to_state(AppState::PrepareFighterManifests)
+                    .on_failure_continue_to_state(AppState::CommonAssetLoadFailed)
+                    .load_collection::<fighter::manifest::FighterManifestAssets>(),
+            )
+            .add_systems(
+                OnEnter(AppState::PrepareFighterManifests),
+                fighter::manifest::prepare_fighter_manifests,
+            )
+            .add_systems(
+                OnEnter(AppState::Idle),
+                match_loading::initiate_default_match,
+            )
+            .add_systems(
+                OnEnter(AppState::PreparingMatch),
+                match_loading::prepare_match,
+            )
+            .add_systems(OnExit(AppState::InMatch), match_loading::cleanup_match)
+            .add_systems(Update, spin_cubes)
+            .insert_resource(args::Args::parse());
     }
 }
 

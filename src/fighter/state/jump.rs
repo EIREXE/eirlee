@@ -1,12 +1,13 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 
 use crate::{
-    fighter::state::{
+    fighter::{animation::AnimKind, state::{
         FighterState, FighterStateContext, FighterStateImpl,
         fall::FallState,
         ground::{self, GroundedMotionResult, GroundedStateCommon},
-    },
-    input::FighterCommands,
+    }}, input::FighterCommands,
 };
 
 pub enum JumpType {
@@ -52,7 +53,7 @@ impl FighterStateImpl for JumpSquatState {
                 state_context.fighter_attribs.ground_friction
                     * state_context
                         .game_settings
-                        .figher_common
+                        .fighter_common
                         .ground_friction_over_walk_speed_multiplier
             } else {
                 state_context.fighter_attribs.ground_friction
@@ -81,6 +82,17 @@ impl FighterStateImpl for JumpSquatState {
             None
         }
     }
+    
+    fn play_animation(
+        &self,
+        transitions: &mut AnimationTransitions,
+        player: &mut AnimationPlayer,
+        anims: &crate::fighter::visual::FighterAnimations,
+    ) {
+        transitions.play(player, anims.clips[&AnimKind::JumpSquat], Duration::ZERO);
+    }
+    
+    fn on_enter(&mut self, _state_context: &mut FighterStateContext) {}
 }
 
 impl FighterStateImpl for JumpState {
@@ -99,7 +111,5 @@ pub fn check_input(
     state_context
         .input
         .has_command(FighterCommands::Jump)
-        .then(|| FighterState::JumpSquat(JumpSquatState::create(
-            ground_common.clone(),
-        )))
+        .then(|| FighterState::JumpSquat(JumpSquatState::create(ground_common.clone())))
 }

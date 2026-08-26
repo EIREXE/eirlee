@@ -7,7 +7,7 @@ pub mod debug;
 pub mod line;
 pub mod scene;
 
-pub use line::{StagePoly, StagePlaneIntersectResult};
+pub use line::{StagePlaneIntersectResult, StagePoly};
 
 /// Owns the stage geometry: which scene gets spawned and how it is drawn.
 #[derive(Default)]
@@ -15,7 +15,14 @@ pub struct StagePlugin;
 
 impl Plugin for StagePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, scene::test_scene.spawn())
-            .add_systems(Update, debug::debug_draw_scene);
+        app.add_systems(
+            Update,
+            debug::debug_draw_scene.run_if(resource_exists::<line::StageCollision>),
+        );
     }
+}
+
+pub fn spawn_stage(commands: &mut Commands, match_root: Entity, visual: Handle<WorldAsset>) {
+    commands.entity(match_root).insert(WorldAssetRoot(visual));
+    scene::spawn_stage_support(commands, match_root);
 }

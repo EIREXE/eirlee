@@ -3,13 +3,13 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 
-use super::{FighterStateImpl, FighterStateContext, ground, run, wait, walk};
+use super::{FighterStateContext, FighterStateImpl, ground, run, wait, walk};
 use crate::fighter::animation::AnimKind;
+use crate::fighter::state::FighterState;
 use crate::fighter::state::fall::FallState;
 use crate::fighter::state::ground::{GroundedMotionResult, GroundedStateCommon};
 use crate::fighter::state::wait::WaitState;
-use crate::fighter::state::{FighterState};
-use crate::fighter::{FighterAttributes, FighterVelocity, collision};
+use crate::fighter::{FighterAttributes, FighterFacingDirection, FighterVelocity, collision};
 use crate::game_settings::GameSettings;
 use crate::input::{
     FighterCommands::{SmashMoveLeft, SmashMoveRight},
@@ -20,33 +20,30 @@ use crate::math::int::FGi32;
 #[derive(Debug, Clone)]
 pub struct DashState {
     frames_in_dash: u32,
-    direction: FGi32,
-    ground_common: GroundedStateCommon
+    direction: FighterFacingDirection,
+    ground_common: GroundedStateCommon,
 }
 
 impl std::hash::Hash for DashState {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.direction.to_bits().hash(state);
+        self.direction.hash(state);
         self.frames_in_dash.hash(state);
     }
 }
 
 impl DashState {
-    pub fn new(direction: FGi32, ground_common: GroundedStateCommon) -> Self {
+    pub fn new(direction: FighterFacingDirection, ground_common: GroundedStateCommon) -> Self {
         Self {
             frames_in_dash: 0,
             direction,
-            ground_common
+            ground_common,
         }
     }
 }
 
 impl FighterStateImpl for DashState {
     const NAME: &'static str = "Dash";
-    fn check_interrupt(
-        &self,
-        state_context: &FighterStateContext,
-    ) -> Option<FighterState> {
+    fn check_interrupt(&self, state_context: &FighterStateContext) -> Option<FighterState> {
         if self.frames_in_dash > state_context.fighter_attribs.dash_duration {
             run::check_input(state_context, &self.ground_common)
                 .or_else(|| walk::check_input(state_context, &self.ground_common))
@@ -58,13 +55,20 @@ impl FighterStateImpl for DashState {
         } else {
             check_smash_input_with_dir(state_context)
                 .filter(|dir| *dir != self.direction)
-                .and_then(|dir| Some(FighterState::Dash(DashState::new(dir, self.ground_common.clone()))))
+                .and_then(|dir| {
+                    Some(FighterState::Dash(DashState::new(
+                        dir,
+                        self.ground_common.clone(),
+                    )))
+                })
         }
     }
-    
+
     fn on_enter(&mut self, state_context: &mut FighterStateContext) {
+        *state_context.facing_direction = self.direction;
         state_context.input.clear_buffer();
-        state_context.velocity.x = state_context.fighter_attribs.dash_initial_velocity * self.direction;
+        state_context.velocity.x =
+            state_context.fighter_attribs.dash_initial_velocity * self.direction.to_sign();
 
         state_context.animation_transitions.play(
             &mut state_context.animation_player,
@@ -72,14 +76,16 @@ impl FighterStateImpl for DashState {
             Duration::ZERO,
         );
     }
-    
+
     fn update(&mut self, state_context: &mut FighterStateContext) {
         self.frames_in_dash += 1;
 
         info!("{}", self.frames_in_dash);
 
         let last_frame = state_context.input.get_last_frame();
-        let (accel, target_vel) = state_context.fighter_attribs.get_accel_and_target_dashrun(&last_frame, self.direction);
+        let (accel, target_vel) = state_context
+            .fighter_attribs
+            .get_accel_and_target_dashrun(&last_frame, self.direction.to_sign());
         let accel = ground::compute_ground_accel(
             accel,
             target_vel,
@@ -100,11 +106,9 @@ impl FighterStateImpl for DashState {
         &mut self,
         state_context: &mut FighterStateContext,
     ) -> Option<FighterState> {
-        if let GroundedMotionResult::InAir = ground::collide_with_stage_grounded(
-            state_context,
-            &mut self.ground_common,
-            true
-        ) {
+        if let GroundedMotionResult::InAir =
+            ground::collide_with_stage_grounded(state_context, &mut self.ground_common, true)
+        {
             Some(FighterState::Fall(FallState))
         } else {
             None
@@ -112,16 +116,20 @@ impl FighterStateImpl for DashState {
     }
 }
 
-fn check_smash_input_with_dir(state_context: &FighterStateContext) -> Option<FGi32> {
+fn check_smash_input_with_dir(state_context: &FighterStateContext) -> Option<FighterFacingDirection> {
     if state_context.input.has_command(SmashMoveLeft) {
-        return Some(FGi32::NEG_ONE);
+        return Some(FighterFacingDirection::Left);
     } else if state_context.input.has_command(SmashMoveRight) {
-        return Some(FGi32::ONE);
+        return Some(FighterFacingDirection::Right);
     } else {
         None
     }
 }
 
-pub fn check_input(state_context: &FighterStateContext, ground_common: &GroundedStateCommon) -> Option<FighterState> {
-    check_smash_input_with_dir(state_context).map(|dir| FighterState::Dash(DashState::new(dir, ground_common.clone())))
+pub fn check_input(
+    state_context: &FighterStateContext,
+    ground_common: &GroundedStateCommon,
+) -> Option<FighterState> {
+    check_smash_input_with_dir(state_context)
+        .map(|dir| FighterState::Dash(DashState::new(dir, ground_common.clone())))
 }

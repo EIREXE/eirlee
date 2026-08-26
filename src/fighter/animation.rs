@@ -1,9 +1,9 @@
-use std::{collections::HashMap, time::Duration};
+use std::time::Duration;
 
 use bevy::{mesh::skinning::SkinnedMesh, prelude::*};
 
 use crate::{
-    fighter::{FighterECB, FighterTranslation, FighterVisual, visual::FighterAnimations}, player::Player,
+    fighter::{FighterECB, FighterFacingDirection, FighterTranslation, FighterVisual, visual::FighterAnimations}, player::Player,
 };
 
 #[derive(Component)]
@@ -47,44 +47,43 @@ pub fn setup_fighter_animation_player(
     }
 }
 
-pub fn apply_animation(children: Query<&mut Transform, With<FighterVisual>>) {
-    for mut trf in children {
+pub fn apply_animation(children: Query<(&mut Transform, &FighterFacingDirection), With<FighterVisual>>) {
+    for (mut trf, facing_direction) in children {
         // Melee model scale is in decimeters
         trf.rotation = Quat::IDENTITY;
-        trf.rotate_local_y(std::f32::consts::PI * 0.5);
+        trf.rotate_local_y(std::f32::consts::PI * 0.5 * facing_direction.to_sign().to_num::<f32>());
     }
 }
 
 pub fn animation_init(
     fighters: Query<
-        (
-            &FighterAnimations,
-            &FighterAnimationPlayerLink,
-        ),
-        Added<FighterAnimationPlayerLink>
+        (&FighterAnimations, &FighterAnimationPlayerLink),
+        Added<FighterAnimationPlayerLink>,
     >,
     mut commands: Commands,
-    mut anim_player_query: Query<(&mut AnimationPlayer, &mut AnimationTransitions)>
+    mut anim_player_query: Query<(&mut AnimationPlayer, &mut AnimationTransitions)>,
 ) {
     for (anim, link) in fighters {
-        commands.entity(link.0).insert(
-            AnimationGraphHandle(anim.graph.clone())
-        );
+        commands
+            .entity(link.0)
+            .insert(AnimationGraphHandle(anim.graph.clone()));
         info!("BEGIN! {:?}", fighters);
         if let Ok((mut player, mut transitions)) = anim_player_query.get_mut(link.0) {
             info!("DOS");
-            transitions.play(&mut player, anim.clips[&AnimKind::Wait], Duration::ZERO).repeat();
+            transitions
+                .play(&mut player, anim.clips[&AnimKind::Wait], Duration::ZERO)
+                .repeat();
         }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, Reflect,
+)]
 pub enum AnimKind {
     Wait,
     Walk,
     Run,
     Dash,
+    JumpSquat,
 }
-
-#[derive(serde::Deserialize, bevy::asset::Asset, bevy::reflect::TypePath)]
-pub struct AnimManifest(pub HashMap<AnimKind, String>);

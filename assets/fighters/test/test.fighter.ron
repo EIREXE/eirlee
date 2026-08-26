@@ -1,0 +1,31 @@
+(
+    id: TestFighter,
+    model_path: "fighters/test/test-fighter-normal.glb",
+    attributes: (
+        base_walk_accel: "0.1",
+        stick_walk_accel: "0.16",
+        max_walk_vel: "0.7",
+        ground_friction: "0.09",
+        dash_acceleration_duration: 13,
+        dash_duration: 24,
+        base_dash_accel: "0.02",
+        stick_dash_accel: "0.065",
+        max_dash_vel: "1.1",
+        short_hop_vertical_velocity: "1.05",
+        full_jump_vertical_velocity: "1.6",
+        jump_horizontal_velocity: "0.7",
+        dash_initial_velocity: "1.4",
+        terminal_velocity: "2.8",
+        gravity: "0.23",
+        jumpsquat_duration: 4,
+    ),
+    animations: {
+        Wait: "PlyPurin5K_Share_ACTION_Wait",
+        Walk: "PlyPurin5K_Share_ACTION_WalkFast",
+        Run: "PlyPurin5K_Share_ACTION_Run",
+        Dash: "PlyPurin5K_Share_ACTION_Dash",
+        JumpSquat: "PlyPurin5K_Share_ACTION_Landing"
+        JumpForward: "PlyPurin5K_Share_ACTION_JumpF"
+        JumpBack: "PlyPurin5K_Share_ACTION_JumpB"
+    }
+)

@@ -24,11 +24,14 @@ impl FighterStateImpl for WalkState {
     }
 
     fn on_enter(&mut self, state_context: &mut FighterStateContext) {
-        state_context.animation_transitions.play(
-            &mut state_context.animation_player,
-            state_context.animations.clips[&AnimKind::Walk],
-            Duration::ZERO,
-        ).repeat();
+        state_context
+            .animation_transitions
+            .play(
+                &mut state_context.animation_player,
+                state_context.animations.clips[&AnimKind::Walk],
+                Duration::ZERO,
+            )
+            .repeat();
     }
 
     fn update(&mut self, state_context: &mut FighterStateContext) {

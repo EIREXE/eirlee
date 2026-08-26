@@ -9,7 +9,7 @@ use crate::fighter::animation::FighterAnimationPlayerLink;
 use crate::fighter::ecb::FighterPreviousECB;
 use crate::fighter::visual::FighterAnimations;
 use crate::fighter::{
-    FighterAttributes, FighterECB, FighterPreviousTranslation, FighterTranslation, FighterVelocity,
+    FighterAttributes, FighterECB, FighterFacingDirection, FighterPreviousTranslation, FighterTranslation, FighterVelocity,
 };
 use crate::game_settings::GameSettings;
 use crate::input::FighterInput;
@@ -88,6 +88,7 @@ pub struct FighterStateContext<'a> {
     pub ecb: &'a mut FighterECB,
     pub prev_ecb: &'a mut FighterPreviousECB,
     pub fighter_attribs: &'a FighterAttributes,
+    pub facing_direction: &'a mut FighterFacingDirection,
     pub game_settings: &'a GameSettings,
     pub stage_collision: &'a StageCollision,
     pub animations: &'a FighterAnimations,
@@ -114,6 +115,7 @@ pub struct FighterFrameQuery {
     pub velocity: &'static mut FighterVelocity,
     pub ecb: &'static mut FighterECB,
     pub prev_ecb: &'static mut FighterPreviousECB,
+    pub facing_direction: &'static mut FighterFacingDirection,
     pub attributes: &'static FighterAttributes,
 }
 
@@ -133,6 +135,7 @@ impl<'w, 's> FighterFrameQueryItem<'w, 's> {
             velocity: &mut self.velocity,
             ecb: &mut self.ecb,
             prev_ecb: &mut self.prev_ecb,
+            facing_direction: &mut self.facing_direction,
             fighter_attribs: self.attributes,
             game_settings,
             stage_collision,
