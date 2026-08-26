@@ -23,6 +23,7 @@ pub mod jump;
 pub mod run;
 pub mod wait;
 pub mod walk;
+pub mod land;
 
 macro_rules! fighter_states {
     ($($variant:ident => $ty:ty),* $(,)?) => {
@@ -37,9 +38,6 @@ macro_rules! fighter_states {
                 match self { $(Self::$variant(s) => s.check_interrupt(ctx)),* }
             }
 
-            pub fn play_animation(&self, transitions: &mut AnimationTransitions, player: &mut AnimationPlayer, anims: &FighterAnimations) {
-                match self { $(Self::$variant(s) => s.play_animation(transitions, player, anims)),* }
-            }
             pub fn update(&mut self, ctx: &mut FighterStateContext) {
                 match self { $(Self::$variant(s) => s.update(ctx)),* }
             }
@@ -62,13 +60,6 @@ pub trait FighterStateImpl: Sized {
     const NAME: &'static str;
     fn check_interrupt(&self, state_context: &FighterStateContext) -> Option<FighterState>;
 
-    fn play_animation(
-        &self,
-        _transitions: &mut AnimationTransitions,
-        _player: &mut AnimationPlayer,
-        _anims: &FighterAnimations,
-    ) {
-    }
     fn on_enter(&mut self, _state_context: &mut FighterStateContext) {}
     fn update(&mut self, _state_context: &mut FighterStateContext);
 
@@ -103,7 +94,8 @@ fighter_states! {
     Run => run::RunState,
     Fall => fall::FallState,
     JumpSquat => jump::JumpSquatState,
-    Jump => jump::JumpState
+    Jump => jump::JumpState,
+    Land => land::LandingState
 }
 
 #[derive(QueryData)]

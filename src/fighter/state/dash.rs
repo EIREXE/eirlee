@@ -43,25 +43,35 @@ impl DashState {
 
 impl FighterStateImpl for DashState {
     const NAME: &'static str = "Dash";
-    fn check_interrupt(&self, state_context: &FighterStateContext) -> Option<FighterState> {
-        if self.frames_in_dash > state_context.fighter_attribs.dash_duration {
-            run::check_input(state_context, &self.ground_common)
-                .or_else(|| walk::check_input(state_context, &self.ground_common))
-                .or_else(|| wait::check_input(state_context, &self.ground_common))
-        } else if self.frames_in_dash > state_context.fighter_attribs.dash_acceleration_duration {
-            // Dash finish shenanigans
-            run::check_input(state_context, &self.ground_common)
-                .or_else(|| walk::check_input(state_context, &self.ground_common))
-        } else {
-            check_smash_input_with_dir(state_context)
-                .filter(|dir| *dir != self.direction)
-                .and_then(|dir| {
-                    Some(FighterState::Dash(DashState::new(
-                        dir,
-                        self.ground_common.clone(),
-                    )))
-                })
+    fn check_interrupt(&self, ctx: &FighterStateContext) -> Option<FighterState> {
+        let ground = &self.ground_common;
+        let attributes = ctx.fighter_attribs;
+
+        // A reverse dash can interrupt before IASA
+        if let Some(direction) =
+            check_smash_input_with_dir(ctx).filter(|direction| *direction != self.direction)
+        {
+            return Some(FighterState::Dash(DashState::new(
+                direction,
+                ground.clone(),
+            )));
         }
+
+        if let Some(state) = ground::grounded_movement_common_interrupts(ctx, ground) {
+            return Some(state);
+        }
+
+        if self.frames_in_dash > attributes.dash_duration {
+            return run::check_input(ctx, ground)
+                .or_else(|| walk::check_input(ctx, ground))
+                .or_else(|| wait::check_input(ctx, ground));
+        }
+
+        if self.frames_in_dash > attributes.dash_acceleration_duration {
+            return run::check_input(ctx, ground);
+        }
+
+        None
     }
 
     fn on_enter(&mut self, state_context: &mut FighterStateContext) {
@@ -75,12 +85,16 @@ impl FighterStateImpl for DashState {
             state_context.animations.clips[&AnimKind::Dash],
             Duration::ZERO,
         );
+
+        state_context.input.clear_buffer();
     }
 
     fn update(&mut self, state_context: &mut FighterStateContext) {
         self.frames_in_dash += 1;
 
-        info!("{}", self.frames_in_dash);
+        if  self.frames_in_dash < state_context.fighter_attribs.dash_acceleration_duration {
+
+        }
 
         let last_frame = state_context.input.get_last_frame();
         let (accel, target_vel) = state_context

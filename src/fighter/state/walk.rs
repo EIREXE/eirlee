@@ -19,6 +19,9 @@ pub struct WalkState {
 impl FighterStateImpl for WalkState {
     const NAME: &'static str = "Walk";
     fn check_interrupt(&self, state_context: &FighterStateContext) -> Option<FighterState> {
+        if let Some(state) = ground::grounded_movement_common_interrupts(state_context, &self.grounded_common) {
+            return Some(state);
+        }
         wait::check_input(state_context, &self.grounded_common)
             .or_else(|| dash::check_input(state_context, &self.grounded_common))
     }

@@ -134,6 +134,9 @@ impl FGSegment2d {
         let t = (s2_x * (p0_y - p2_y) - s2_y * (p0_x - p2_x)) / denom;
 
         if s >= FGWide::ZERO && s <= FGWide::ONE && t >= FGWide::ZERO && t <= FGWide::ONE {
+            if self.left_normal().dot(rhs.point2() - rhs.point1()) >= FGi32::ZERO {
+                return None;
+            }
             Some(FGVec2::new(
                 FGi32::from_num(p0_x + t * s1_x),
                 FGi32::from_num(p0_y + t * s1_y),

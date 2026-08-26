@@ -15,17 +15,25 @@
         full_jump_vertical_velocity: "1.6",
         jump_horizontal_velocity: "0.7",
         dash_initial_velocity: "1.4",
-        terminal_velocity: "2.8",
-        gravity: "0.23",
+        terminal_velocity: "1.3",
+        gravity: "0.064",
         jumpsquat_duration: 4,
+        landing_iasa: 4,
+        landing_duration: 30,
+
+        max_air_horizontal_velocity: "1.35",
+        air_acceleration_base: "0.19",
+        air_acceleration_stick: "0.09",
+        air_friction: "0.05",
     ),
     animations: {
         Wait: "PlyPurin5K_Share_ACTION_Wait",
         Walk: "PlyPurin5K_Share_ACTION_WalkFast",
         Run: "PlyPurin5K_Share_ACTION_Run",
         Dash: "PlyPurin5K_Share_ACTION_Dash",
-        JumpSquat: "PlyPurin5K_Share_ACTION_Landing"
-        JumpForward: "PlyPurin5K_Share_ACTION_JumpF"
-        JumpBack: "PlyPurin5K_Share_ACTION_JumpB"
+        JumpSquat: "PlyPurin5K_Share_ACTION_Landing",
+        JumpForward: "PlyPurin5K_Share_ACTION_JumpF",
+        JumpBack: "PlyPurin5K_Share_ACTION_JumpB",
+        Landing: "PlyPurin5K_Share_ACTION_Landing",
     }
 )

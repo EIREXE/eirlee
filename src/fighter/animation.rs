@@ -86,4 +86,7 @@ pub enum AnimKind {
     Run,
     Dash,
     JumpSquat,
+    JumpForward,
+    JumpBack,
+    Landing,
 }

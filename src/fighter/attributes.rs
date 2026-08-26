@@ -24,10 +24,17 @@ pub struct FighterAttributes {
     pub short_hop_vertical_velocity: FGi32,
     pub full_jump_vertical_velocity: FGi32,
     pub jump_horizontal_velocity: FGi32,
+    pub landing_iasa: u32,
+    pub landing_duration: u32,
+
+    pub air_acceleration_base: FGi32,
+    pub air_acceleration_stick: FGi32,
+    pub max_air_horizontal_velocity: FGi32,
 
     pub ground_friction: FGi32,
     pub terminal_velocity: FGi32,
     pub gravity: FGi32,
+    pub air_friction: FGi32,
 }
 
 impl FighterAttributes {

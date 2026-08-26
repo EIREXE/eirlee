@@ -20,6 +20,10 @@ pub struct RunState {
 impl FighterStateImpl for RunState {
     const NAME: &'static str = "Run";
     fn check_interrupt(&self, state_context: &FighterStateContext) -> Option<FighterState> {
+        if let Some(state) = ground::grounded_movement_common_interrupts(state_context, &self.grounded_common) {
+            return Some(state);
+        }
+
         let input_frame = state_context.input.get_last_frame();
         if input_frame.movement.x.abs()
             >= state_context.game_settings.input_common.run_stick_threshold

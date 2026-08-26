@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use super::{FighterStateContext, FighterStateImpl, ground, walk};
 use crate::fighter::state::ground::GroundedStateCommon;
+use crate::fighter::state::land::LandingState;
 use crate::fighter::state::wait::WaitState;
 use crate::fighter::state::{FighterState, air};
 use crate::fighter::{FighterAttributes, FighterVelocity, collision, motion};
@@ -38,7 +39,7 @@ impl FighterStateImpl for FallState {
             let grounded_common = GroundedStateCommon {
                 current_line_id: res.line_id,
             };
-            Some(FighterState::Wait(WaitState { grounded_common }))
+            Some(FighterState::Land(LandingState { grounded_common, duration_counter: 0 }))
         } else {
             None
         }

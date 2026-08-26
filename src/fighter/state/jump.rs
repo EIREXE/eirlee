@@ -3,13 +3,13 @@ use std::time::Duration;
 use bevy::prelude::*;
 
 use crate::{
-    fighter::{animation::AnimKind, state::{
-        FighterState, FighterStateContext, FighterStateImpl,
-        fall::FallState,
-        ground::{self, GroundedMotionResult, GroundedStateCommon},
-    }}, input::FighterCommands,
+    fighter::{
+        animation::AnimKind, collision, state::{
+            FighterState, FighterStateContext, FighterStateImpl, air, fall::FallState, ground::{self, GroundedMotionResult, GroundedStateCommon}, land::LandingState, wait::WaitState,
+        },
+    }, input::FighterCommands,
 };
-
+#[derive(Debug, Hash, Clone, Copy)]
 pub enum JumpType {
     ShortHop,
     LongJump,
@@ -17,7 +17,9 @@ pub enum JumpType {
 }
 
 #[derive(Debug, Clone, Hash)]
-pub struct JumpState {}
+pub struct JumpState {
+    jump_type: JumpType
+}
 
 #[derive(Debug, Clone, Hash)]
 pub struct JumpSquatState {
@@ -39,7 +41,9 @@ impl FighterStateImpl for JumpSquatState {
 
     fn check_interrupt(&self, state_context: &FighterStateContext) -> Option<FighterState> {
         if self.duration_counter >= state_context.fighter_attribs.jumpsquat_duration {
-            Some(FighterState::Jump(JumpState {}))
+            info!("Jump {}", state_context.input.get_last_frame().jump);
+            let jump_type = if state_context.input.get_last_frame().jump {JumpType::LongJump} else {JumpType::ShortHop};
+            Some(FighterState::Jump(JumpState { jump_type}))
         } else {
             None
         }
@@ -82,17 +86,14 @@ impl FighterStateImpl for JumpSquatState {
             None
         }
     }
-    
-    fn play_animation(
-        &self,
-        transitions: &mut AnimationTransitions,
-        player: &mut AnimationPlayer,
-        anims: &crate::fighter::visual::FighterAnimations,
-    ) {
-        transitions.play(player, anims.clips[&AnimKind::JumpSquat], Duration::ZERO);
+
+    fn on_enter(&mut self, state_context: &mut FighterStateContext) {
+        state_context.animation_transitions.play(
+            state_context.animation_player,
+            state_context.animations.clips[&AnimKind::JumpSquat],
+            Duration::ZERO,
+        );
     }
-    
-    fn on_enter(&mut self, _state_context: &mut FighterStateContext) {}
 }
 
 impl FighterStateImpl for JumpState {
@@ -101,7 +102,61 @@ impl FighterStateImpl for JumpState {
         None
     }
 
-    fn update(&mut self, _state_context: &mut FighterStateContext) {}
+    fn update(&mut self, state_context: &mut FighterStateContext) {
+        info!("TRF1 {}", state_context.translation.0);
+        air::integrate_gravity(state_context.velocity, state_context.fighter_attribs);
+        air::apply_air_drift(state_context.velocity, state_context.fighter_attribs, state_context.input);
+        air::apply_air_motion(
+            state_context.velocity,
+            state_context.translation,
+            state_context.prev_translation,
+        );
+        info!("TRF12 {}", state_context.translation.0);
+    }
+
+    fn on_enter(&mut self, state_context: &mut FighterStateContext) {
+        
+        let movement_stick_x = state_context.input.get_last_frame().movement.x;
+        if movement_stick_x.is_zero() || movement_stick_x.signum() == state_context.facing_direction.to_sign() {
+            state_context.animation_transitions.play(
+                state_context.animation_player,
+                state_context.animations.clips[&AnimKind::JumpForward],
+                Duration::ZERO,
+            );
+        } else {
+            state_context.animation_transitions.play(
+                state_context.animation_player,
+                state_context.animations.clips[&AnimKind::JumpBack],
+                Duration::ZERO,
+            );
+        }
+
+        let vertical_vel = match self.jump_type {
+            JumpType::ShortHop => state_context.fighter_attribs.short_hop_vertical_velocity,
+            JumpType::LongJump => state_context.fighter_attribs.full_jump_vertical_velocity,
+            JumpType::DoubleJump => todo!(),
+        };
+
+        state_context.velocity.y = vertical_vel;
+        state_context.velocity.x += state_context.fighter_attribs.jump_horizontal_velocity * movement_stick_x;
+        state_context.input.clear_buffer();
+    }
+
+    fn check_collision_interrupt(
+        &mut self,
+        state_context: &mut FighterStateContext,
+    ) -> Option<FighterState> {
+        if let Some(res) = collision::air_collide_with_stage(state_context) {
+            // Adjust translation
+            state_context.translation.0 = res.hit_position - state_context.ecb.get_bottom_point();
+            let grounded_common = GroundedStateCommon {
+                current_line_id: res.line_id,
+            };
+            Some(FighterState::Land(LandingState { grounded_common, duration_counter: 0 }))
+        } else {
+            None
+        }
+    }
 }
 
 pub fn check_input(
