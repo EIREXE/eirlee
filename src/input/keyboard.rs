@@ -44,7 +44,9 @@ pub fn preprocess_keyboard_input(
                 InputMapAction::MovementYDir(sign) => {
                     input_frame.movement.y += (sign) * action_strength
                 }
-                InputMapAction::Jump => todo!(),
+                InputMapAction::Jump => {
+                    input_frame.jump = action_strength != FGi32::ZERO
+                },
             }
         }
 

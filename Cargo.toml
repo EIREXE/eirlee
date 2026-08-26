@@ -30,10 +30,9 @@ bitfields = "3.0.0"
 clap = { version = "4.6.6", features = ["derive"] }
 bevy_wind_waker_shader = { git = "https://github.com/lavaeater/bevy_wind_waker_shader.git" }
 fixed = { version = "1.31.0", features = ["serde"] }
-
-# Enable a small amount of optimization in the dev profile.
-[profile.dev]
-opt-level = 1
+strum = "0.28.0"
+strum_macros = "0.28.0"
+bevy_common_assets = { version = "0.17.0", features = ["ron"] }
 
 # Enable a large amount of optimization in the dev profile for dependencies.
 [profile.dev.package."*"]

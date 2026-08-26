@@ -28,7 +28,7 @@ use jackdaw_runtime::prelude::*;
 
 use crate::{
     fighter::{
-        FighterAttributes, FighterECB, FighterTranslation, FighterVelocity, FighterVisual, animation::FighterAnimations, state::{FighterState, fall::FallState, wait::WaitState},
+        FighterAttributes, FighterECB, FighterTranslation, FighterVelocity, FighterVisual, animation::{AnimManifest}, state::{FighterState, fall::FallState, wait::WaitState}, visual::resolve_character_assets,
     }, game_settings::{FighterSettingsCommon, GameSettings, InputSettingsCommon}, input::FighterInput, math::{int::FGi32, vec::FGVec2}, player::Player, schedule::GameplaySchedulePlugin,
 };
 
@@ -42,6 +42,13 @@ pub mod player;
 pub mod schedule;
 pub mod stage;
 
+#[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
+pub enum AppState {
+    #[default]
+    LoadingCharacters,
+    InGame,
+}
+
 /// Your game's Bevy plugin. The editor finds it by this name (override
 /// with `plugin = "..."` in jackdaw.toml) and runs it on Play; the
 /// standalone binary adds it in `main.rs`.
@@ -53,47 +60,7 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     let _stage = commands.spawn((
         WorldAssetRoot(asset_server.load("stages/YoshiStory.glb#Scene0")),
-        Transform::from_scale(Vec3::splat(0.1)),
     ));
-
-    let _fighter =
-        commands
-            .spawn((
-                Name("Fighter".into()),
-                Player { handle: 0 },
-                FighterECB {
-                    vertical_half: FGi32::lit("0.5"),
-                    horizontal_half: FGi32::lit("0.25"),
-                },
-                FighterVelocity::default(),
-                FighterTranslation(FGVec2::lit("0.5", "1.25")),
-                FighterAttributes {
-                    base_walk_accel: FGi32::lit("0.01"),
-                    stick_walk_accel: FGi32::lit("0.02"),
-                    max_walk_vel: FGi32::lit("0.16"),
-                    ground_friction: FGi32::lit("0.008"),
-                    dash_duration: 15,
-                    base_dash_accel: FGi32::lit("0.002"),
-                    stick_dash_accel: FGi32::lit("0.01"),
-                    max_dash_vel: FGi32::lit("0.22"),
-                    jump_vertical_velocity: FGi32::lit("0.25"),
-                    dash_initial_velocity: FGi32::lit("0.19"),
-                    terminal_velocity: FGi32::lit("0.28"),
-                    gravity: FGi32::lit("0.023"),
-                },
-                FighterState::Fall(FallState),
-                FighterInput::default(),
-                FighterAnimations {
-                    wait: asset_server.load("fighters/jiggs/jigglypuff-normal.glb#PlyPurin5K_Share_ACTION_Wait")
-                }
-            ))
-            .with_child((
-                FighterVisual,
-                WorldAssetRoot(asset_server.load(
-                    GltfAssetLabel::Scene(0).from_asset("fighters/jiggs/jigglypuff-normal.glb"),
-                )),
-            ))
-            .id();
 }
 
 impl Plugin for GamePlugin {
@@ -101,7 +68,9 @@ impl Plugin for GamePlugin {
         // Each module owns its own systems, rollback registrations and
         // resources; this plugin only wires them together and supplies the
         // game-level content and configuration.
-        app.add_plugins((
+        app
+        .init_state::<AppState>()
+        .add_plugins((
             WindWakerShaderPlugin::default(),
             // Brings up GGRS (and with it `GgrsSchedule`), so it goes first.
             netcode::FighterNetcodePlugin::default(),
@@ -109,6 +78,7 @@ impl Plugin for GamePlugin {
             input::FighterInputPlugin,
             fighter::FighterPlugin,
             stage::StagePlugin,
+            bevy_common_assets::ron::RonAssetPlugin::<AnimManifest>::new(&[])
         ))
         .add_systems(Startup, setup)
         .add_systems(Update, spin_cubes)
@@ -116,11 +86,16 @@ impl Plugin for GamePlugin {
         .insert_resource(GameSettings {
             figher_common: FighterSettingsCommon {
                 walk_speed_ease: FGi32::lit("0.5"),
-                ground_max_horizontal_velocity: FGi32::lit("0.3"),
+                ground_max_horizontal_velocity: FGi32::lit("3.0"),
                 ground_friction_over_walk_speed_multiplier: FGi32::lit("2.0"),
             },
             input_common: InputSettingsCommon::default(),
-        });
+        })
+        .add_systems(OnEnter(AppState::LoadingCharacters), crate::fighter::visual::start_loading)
+        .add_systems(
+            Update,
+            resolve_character_assets.run_if(in_state(AppState::LoadingCharacters)),
+        );
     }
 }
 

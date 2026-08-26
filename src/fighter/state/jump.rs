@@ -99,8 +99,7 @@ pub fn check_input(
     state_context
         .input
         .has_command(FighterCommands::Jump)
-        .then_some(FighterState::JumpSquat(JumpSquatState::create(
+        .then(|| FighterState::JumpSquat(JumpSquatState::create(
             ground_common.clone(),
-        )));
-    None
+        )))
 }

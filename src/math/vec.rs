@@ -4,7 +4,7 @@ use fixed::types::I32F32;
 use serde::{Deserialize, Serialize};
 use std::ops::{AddAssign, Add, Div, Mul, Sub};
 
-use super::int::FGi32;
+use super::int::{FGWide, FGi32};
 
 #[derive(Clone, Copy, PartialEq, Default, Debug, Reflect, Serialize, Deserialize)]
 #[reflect(opaque)]
@@ -41,13 +41,15 @@ impl FGVec2 {
     }
 
     #[inline]
-    pub fn length_squared(&self) -> FGi32 {
-        self.x * self.x + self.y * self.y
+    pub fn length_squared(&self) -> FGWide {
+        let x = FGWide::from_num(self.x);
+        let y = FGWide::from_num(self.y);
+        x * x + y * y
     }
 
     #[inline]
     pub fn length(self) -> FGi32 {
-        (self.x * self.x + self.y * self.y).sqrt()
+        FGi32::from_num(self.length_squared().sqrt())
     }
 
     /// Returns the vector projection of `self` onto `rhs`.
@@ -62,7 +64,11 @@ impl FGVec2 {
     pub fn project_onto_normalized(self, rhs: Self) -> Self {
         assert!(rhs.is_normalized());
 
-        rhs * self.dot(rhs)
+        let scale = self.dot(rhs);
+        Self::new(
+            FGi32::from_num(FGWide::from_num(rhs.x) * scale),
+            FGi32::from_num(FGWide::from_num(rhs.y) * scale),
+        )
     }
 
     const EPS: FGi32 = FGi32::from_bits(6);
@@ -76,16 +82,21 @@ impl FGVec2 {
 
     #[inline]
     #[must_use]
-    pub fn dot(self, rhs: Self) -> FGi32 {
-        (self.x * rhs.x) + (self.y * rhs.y)
+    pub fn dot(self, rhs: Self) -> FGWide {
+        FGWide::from_num(self.x) * FGWide::from_num(rhs.x)
+            + FGWide::from_num(self.y) * FGWide::from_num(rhs.y)
     }
 
     #[inline]
     #[must_use]
     pub fn project_onto(self, rhs: Self) -> Self {
         let other_len_sq = rhs.dot(rhs);
-        assert!(other_len_sq != FGi32::ZERO);
-        rhs * (self.dot(rhs) / other_len_sq)
+        assert!(other_len_sq != FGWide::ZERO);
+        let scale = self.dot(rhs) / other_len_sq;
+        Self::new(
+            FGi32::from_num(FGWide::from_num(rhs.x) * scale),
+            FGi32::from_num(FGWide::from_num(rhs.y) * scale),
+        )
     }
 
     #[inline]
@@ -246,7 +257,7 @@ mod is_normalized_tests {
                 let v = FGVec2 { x: fx, y: fy };
 
                 if let Some(normalized) = v.normalize() {
-                    let ls = normalized.length_squared();
+                    let ls = FGi32::from_num(normalized.length_squared());
                     let diff_bits = ls.to_bits() - FGi32::ONE.to_bits();
                     let abs_diff_bits = diff_bits.abs();
 
@@ -309,5 +320,13 @@ mod is_normalized_tests {
 
         let non_unit_small = FGVec2 { x: FGi32::from_num(0.5), y: FGi32::from_num(0.0) };
         assert!(!non_unit_small.is_normalized());
+    }
+
+    #[test]
+    fn dot_and_length_squared_use_wide_intermediates() {
+        let vector = FGVec2::lit("200", "200");
+
+        assert_eq!(vector.dot(vector), FGWide::from_num(80_000));
+        assert_eq!(vector.length_squared(), FGWide::from_num(80_000));
     }
 }

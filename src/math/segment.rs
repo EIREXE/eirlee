@@ -3,9 +3,10 @@ use bevy::math::{Vec2, primitives::Segment2d};
 use bevy::prelude::*;
 use fixed::prelude::*;
 
-use crate::math::vec::FGVec2;
-
-type FGi32 = fixed::FixedI32<fixed::types::extra::U16>;
+use crate::math::{
+    int::{FGWide, FGi32},
+    vec::FGVec2,
+};
 
 #[derive(Clone, Copy, PartialEq, Reflect)]
 pub struct FGSegment2d {
@@ -81,7 +82,14 @@ impl FGSegment2d {
 
         // Point lies somewhere in the middle, we compute the closest point by finding the parameter along the line.
         let t = projection_scaled / length_squared;
-        self.point1 + segment_vector * t
+        FGVec2::new(
+            FGi32::from_num(
+                FGWide::from_num(self.point1.x) + FGWide::from_num(segment_vector.x) * t,
+            ),
+            FGi32::from_num(
+                FGWide::from_num(self.point1.y) + FGWide::from_num(segment_vector.y) * t,
+            ),
+        )
     }
 
     /// Compute the normalized counterclockwise normal on the left-hand side of the line segment.
@@ -100,22 +108,34 @@ impl FGSegment2d {
         let p1 = self.point2();
         let p2 = rhs.point1();
         let p3 = rhs.point2();
-        
-        let s1_x = p1.x - p0.x;
-        let s1_y = p1.y - p0.y;
-        let s2_x = p3.x - p2.x;
-        let s2_y = p3.y - p2.y;
+
+        let p0_x = FGWide::from_num(p0.x);
+        let p0_y = FGWide::from_num(p0.y);
+        let p1_x = FGWide::from_num(p1.x);
+        let p1_y = FGWide::from_num(p1.y);
+        let p2_x = FGWide::from_num(p2.x);
+        let p2_y = FGWide::from_num(p2.y);
+        let p3_x = FGWide::from_num(p3.x);
+        let p3_y = FGWide::from_num(p3.y);
+
+        let s1_x = p1_x - p0_x;
+        let s1_y = p1_y - p0_y;
+        let s2_x = p3_x - p2_x;
+        let s2_y = p3_y - p2_y;
 
         let denom = -s2_x * s1_y + s1_x * s2_y;
-        if denom == FGi32::ZERO {
+        if denom == FGWide::ZERO {
             return None; // Parallel or collinear
         }
+        info!("{p0}, {p1}, {p2}, {p3}");
+        let s = (-s1_y * (p0_x - p2_x) + s1_x * (p0_y - p2_y)) / denom;
+        let t = (s2_x * (p0_y - p2_y) - s2_y * (p0_x - p2_x)) / denom;
 
-        let s = (-s1_y * (p0.x - p2.x) + s1_x * (p0.y - p2.y)) / denom;
-        let t = ( s2_x * (p0.y - p2.y) - s2_y * (p0.x - p2.x)) / denom;
-
-        if s >= FGi32::ZERO && s <= FGi32::ONE && t >= FGi32::ZERO && t <= FGi32::ONE {
-            Some(FGVec2::new(p0.x + (t * s1_x), p0.y + (t * s1_y)))
+        if s >= FGWide::ZERO && s <= FGWide::ONE && t >= FGWide::ZERO && t <= FGWide::ONE {
+            Some(FGVec2::new(
+                FGi32::from_num(p0_x + t * s1_x),
+                FGi32::from_num(p0_y + t * s1_y),
+            ))
         } else {
             None
         }
@@ -133,5 +153,27 @@ mod tests {
         assert_eq!(segment.closest_point(FGVec2::lit("2", "1")), FGVec2::lit("2", "0"));
         assert_eq!(segment.closest_point(FGVec2::lit("-6", "1")), segment.point1());
         assert_eq!(segment.closest_point(FGVec2::lit("6", "1")), segment.point2());
+    }
+
+    #[test]
+    fn segment_intersection_avoids_cross_product_overflow() {
+        let segment = FGSegment2d::new(FGVec2::lit("56", "-3.5"), FGVec2::lit("56", "-200"));
+        let rhs = FGSegment2d::new(
+            FGVec2::lit("-111.26334", "-130.22586"),
+            FGVec2::lit("-112.36334", "-133.02586"),
+        );
+
+        assert_eq!(segment.segment_intersection(&rhs), None);
+    }
+
+    #[test]
+    fn segment_intersection_handles_large_crossing_segments() {
+        let horizontal = FGSegment2d::new(FGVec2::lit("-200", "0"), FGVec2::lit("200", "0"));
+        let vertical = FGSegment2d::new(FGVec2::lit("0", "-200"), FGVec2::lit("0", "200"));
+
+        assert_eq!(
+            horizontal.segment_intersection(&vertical),
+            Some(FGVec2::ZERO)
+        );
     }
 }

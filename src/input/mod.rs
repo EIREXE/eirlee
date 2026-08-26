@@ -39,6 +39,11 @@ impl Plugin for FighterInputPlugin {
                     key: KeyCode::KeyA,
                     action: InputMapAction::MovementXDir(-1),
                 },
+                // jump
+                KeyboardInputMapElement {
+                    key: KeyCode::Space,
+                    action: InputMapAction::Jump,
+                },
             ],
         })
         .add_systems(ReadInputs, keyboard::preprocess_keyboard_input)

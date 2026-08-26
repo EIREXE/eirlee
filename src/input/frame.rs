@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::math::vec::FGVec2;
+use crate::{input::InputActionState, math::vec::FGVec2};
 
 /// One frame of a player's raw input. This is the type GGRS serializes and
 /// sends over the wire, so keep it small and keep it `PartialEq`.
@@ -9,4 +9,5 @@ use crate::math::vec::FGVec2;
 pub struct FighterInputFrame {
     pub movement: FGVec2,
     pub directional_attack: FGVec2,
+    pub jump: bool
 }

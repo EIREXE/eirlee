@@ -10,13 +10,13 @@ use crate::{math::vec::FGVec2, stage::{StagePoly, line::{StageCollision, StagePo
 pub fn test_scene() -> impl SceneList {
 
     let stage_poly = StagePoly::build(crate::stage::line::StagePolyType::Closed, &[
-        (FGVec2::lit("-5.6", "-0.35"), StagePolyLineSegmentType::Floor),
-        (FGVec2::lit("-3.92", "0.0"), StagePolyLineSegmentType::Floor),
+        (FGVec2::lit("-56.0", "-3.5"), StagePolyLineSegmentType::Floor),
+        (FGVec2::lit("-39.2", "0.0"), StagePolyLineSegmentType::Floor),
         (FGVec2::lit("0.0", "0.0"), StagePolyLineSegmentType::Floor),
-        (FGVec2::lit("3.92", "0.0"), StagePolyLineSegmentType::Floor),
-        (FGVec2::lit("5.6", "-0.35"), StagePolyLineSegmentType::Wall),
-        (FGVec2::lit("5.6", "-20.0"), StagePolyLineSegmentType::Ceiling),
-        (FGVec2::lit("-5.6", "-20.0"), StagePolyLineSegmentType::Wall)
+        (FGVec2::lit("39.2", "0.0"), StagePolyLineSegmentType::Floor),
+        (FGVec2::lit("56.0", "-3.5"), StagePolyLineSegmentType::Wall),
+        (FGVec2::lit("56.0", "-200.0"), StagePolyLineSegmentType::Ceiling),
+        (FGVec2::lit("-56", "-200.0"), StagePolyLineSegmentType::Wall)
     ]);
 
     bsn_list! [

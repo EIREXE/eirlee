@@ -2,28 +2,27 @@
 //! implements, the context they inspect, and the generic system that runs the
 //! interrupt check. One state per submodule.
 
-use bevy::ecs::component::Mutable;
-use bevy::ecs::system::ScheduleSystem;
+use bevy::ecs::query::QueryData;
 use bevy::prelude::*;
-use bevy_ggrs::{GgrsSchedule, RollbackApp};
 
+use crate::fighter::animation::FighterAnimationPlayerLink;
 use crate::fighter::ecb::FighterPreviousECB;
-use crate::fighter::{FighterAttributes, FighterECB, FighterPreviousTranslation, FighterTranslation, FighterVelocity};
+use crate::fighter::visual::FighterAnimations;
+use crate::fighter::{
+    FighterAttributes, FighterECB, FighterPreviousTranslation, FighterTranslation, FighterVelocity,
+};
 use crate::game_settings::GameSettings;
 use crate::input::FighterInput;
-use crate::math::int::FGi32;
-use crate::schedule::GameplaySet;
-use crate::stage::StagePoly;
 use crate::stage::line::StageCollision;
 
+pub mod air;
 pub mod dash;
+pub mod fall;
 pub mod ground;
+pub mod jump;
 pub mod run;
 pub mod wait;
 pub mod walk;
-pub mod fall;
-pub mod air;
-pub mod jump;
 
 macro_rules! fighter_states {
     ($($variant:ident => $ty:ty),* $(,)?) => {
@@ -36,6 +35,10 @@ macro_rules! fighter_states {
             }
             pub fn check_interrupt(&self, ctx: &FighterStateContext) -> Option<FighterState> {
                 match self { $(Self::$variant(s) => s.check_interrupt(ctx)),* }
+            }
+
+            pub fn play_animation(&self, transitions: &mut AnimationTransitions, player: &mut AnimationPlayer, anims: &FighterAnimations) {
+                match self { $(Self::$variant(s) => s.play_animation(transitions, player, anims)),* }
             }
             pub fn update(&mut self, ctx: &mut FighterStateContext) {
                 match self { $(Self::$variant(s) => s.update(ctx)),* }
@@ -57,11 +60,15 @@ macro_rules! fighter_states {
 
 pub trait FighterStateImpl: Sized {
     const NAME: &'static str;
-    fn check_interrupt(
-        &self,
-        state_context: &FighterStateContext,
-    ) -> Option<FighterState>;
+    fn check_interrupt(&self, state_context: &FighterStateContext) -> Option<FighterState>;
 
+    fn play_animation(
+        &self,
+        _transitions: &mut AnimationTransitions,
+        _player: &mut AnimationPlayer,
+        _anims: &FighterAnimations,
+    ) {
+    }
     fn on_enter(&mut self, _state_context: &mut FighterStateContext) {}
     fn update(&mut self, _state_context: &mut FighterStateContext);
 
@@ -73,7 +80,7 @@ pub trait FighterStateImpl: Sized {
     }
 }
 
-pub struct FighterStateContext<'a, 'w, 's> {
+pub struct FighterStateContext<'a> {
     pub translation: &'a mut FighterTranslation,
     pub prev_translation: &'a mut FighterPreviousTranslation,
     pub input: &'a mut FighterInput,
@@ -82,9 +89,10 @@ pub struct FighterStateContext<'a, 'w, 's> {
     pub prev_ecb: &'a mut FighterPreviousECB,
     pub fighter_attribs: &'a FighterAttributes,
     pub game_settings: &'a GameSettings,
-    pub entity: Entity,
     pub stage_collision: &'a StageCollision,
-    pub gizmos: Option<&'a mut Gizmos<'w, 's>>,
+    pub animations: &'a FighterAnimations,
+    pub animation_player: &'a mut AnimationPlayer,
+    pub animation_transitions: &'a mut AnimationTransitions,
 }
 
 fighter_states! {
@@ -97,6 +105,54 @@ fighter_states! {
     Jump => jump::JumpState
 }
 
+#[derive(QueryData)]
+#[query_data(mutable)]
+pub struct FighterFrameQuery {
+    pub translation: &'static mut FighterTranslation,
+    pub prev_translation: &'static mut FighterPreviousTranslation,
+    pub input: &'static mut FighterInput,
+    pub velocity: &'static mut FighterVelocity,
+    pub ecb: &'static mut FighterECB,
+    pub prev_ecb: &'static mut FighterPreviousECB,
+    pub attributes: &'static FighterAttributes,
+}
+
+impl<'w, 's> FighterFrameQueryItem<'w, 's> {
+    fn context<'a>(
+        &'a mut self,
+        game_settings: &'a GameSettings,
+        stage_collision: &'a StageCollision,
+        animations: &'a FighterAnimations,
+        animation_player: &'a mut AnimationPlayer,
+        animation_transitions: &'a mut AnimationTransitions,
+    ) -> FighterStateContext<'a> {
+        FighterStateContext {
+            translation: &mut self.translation,
+            prev_translation: &mut self.prev_translation,
+            input: &mut self.input,
+            velocity: &mut self.velocity,
+            ecb: &mut self.ecb,
+            prev_ecb: &mut self.prev_ecb,
+            fighter_attribs: self.attributes,
+            game_settings,
+            stage_collision,
+            animations,
+            animation_player,
+            animation_transitions,
+        }
+    }
+}
+
+#[derive(QueryData)]
+#[query_data(mutable)]
+pub struct StatefulFighterQuery {
+    pub entity: Entity,
+    pub state: &'static mut FighterState,
+    pub frame: FighterFrameQuery,
+    pub animations: &'static FighterAnimations,
+    pub animation_player_link: &'static FighterAnimationPlayerLink,
+}
+
 #[derive(Component)]
 pub struct StateNameDebug(pub &'static str);
 
@@ -107,93 +163,110 @@ impl std::fmt::Display for StateNameDebug {
 }
 
 pub fn state_update_system(
-    query: Query<(Entity, &mut FighterState, &mut FighterTranslation, &mut FighterPreviousTranslation, &mut FighterInput, &mut FighterVelocity, &mut FighterECB, &mut FighterPreviousECB, &FighterAttributes)>,
+    mut query: Query<StatefulFighterQuery>,
+    mut animation_players: Query<(&mut AnimationPlayer, &mut AnimationTransitions)>,
     stage_collision: Res<StageCollision>,
     game_settings: Res<GameSettings>,
-    mut gizmos: Gizmos,
 ) {
-    for (ent, mut state, mut translation,  mut prev_translation, mut input, mut velocity, mut ecb, mut prev_ecb, attribs) in query {
-        let mut update_ctx = FighterStateContext {
-            translation: &mut translation,
-            prev_translation: &mut prev_translation,
-            input: &mut input,
-            velocity: &mut velocity,
-            ecb: &mut ecb,
-            prev_ecb: &mut prev_ecb,
-            fighter_attribs: &attribs,
-            game_settings: &game_settings,
-            entity: ent,
-            stage_collision: &stage_collision,
-            gizmos: Some(&mut gizmos),
+    for fighter in &mut query {
+        let StatefulFighterQueryItem {
+            mut state,
+            mut frame,
+            animations,
+            animation_player_link,
+            ..
+        } = fighter;
+        let Ok((mut animation_player, mut animation_transitions)) =
+            animation_players.get_mut(animation_player_link.player())
+        else {
+            continue;
         };
+        let mut update_ctx = frame.context(
+            &game_settings,
+            &stage_collision,
+            animations,
+            &mut animation_player,
+            &mut animation_transitions,
+        );
         state.update(&mut update_ctx);
     }
 }
 
-pub fn state_interrupt_system (
-    query: Query<(Entity, &FighterState, &mut FighterTranslation, &mut FighterPreviousTranslation, &mut FighterInput, &mut FighterVelocity, &mut FighterECB, &mut FighterPreviousECB, &FighterAttributes)>,
+pub fn state_interrupt_system(
+    mut query: Query<StatefulFighterQuery>,
+    mut animation_players: Query<(&mut AnimationPlayer, &mut AnimationTransitions)>,
     stage_collision: Res<StageCollision>,
     game_settings: Res<GameSettings>,
     mut commands: Commands,
 ) {
-    for (ent, state, mut translation, mut prev_translation, mut input, mut velocity, mut ecb, mut prev_ecb, attribs) in query {
-        let mut state_context = FighterStateContext {
-            translation: &mut translation,
-            prev_translation: &mut prev_translation,
-            input: &mut input,
-            velocity: &mut velocity,
-            ecb: &mut ecb,
-            prev_ecb: &mut prev_ecb,
-            fighter_attribs: &attribs,
-            game_settings: &game_settings,
-            entity: ent,
-            stage_collision: &stage_collision,
-            gizmos: None,
+    for fighter in &mut query {
+        let StatefulFighterQueryItem {
+            entity,
+            state,
+            mut frame,
+            animations,
+            animation_player_link,
+        } = fighter;
+        let Ok((mut animation_player, mut animation_transitions)) =
+            animation_players.get_mut(animation_player_link.player())
+        else {
+            continue;
         };
+        let mut state_context = frame.context(
+            &game_settings,
+            &stage_collision,
+            animations,
+            &mut animation_player,
+            &mut animation_transitions,
+        );
         if let Some(new_state) = state.check_interrupt(&state_context) {
             let mut new_state = new_state;
             let old_state_name = state.name();
             let new_state_name = new_state.name();
             new_state.on_enter(&mut state_context);
-            commands.entity(ent).insert((
-                new_state,
-                StateNameDebug(new_state_name)
-            ));
+            commands
+                .entity(entity)
+                .insert((new_state, StateNameDebug(new_state_name)));
             info!("State {} -> {}", old_state_name, new_state_name);
         }
     }
 }
 
 pub fn state_collision_interrupt_system(
-    query: Query<(Entity, &mut FighterState, &mut FighterTranslation, &mut FighterPreviousTranslation, &mut FighterInput, &mut FighterVelocity, &mut FighterECB, &mut FighterPreviousECB, &FighterAttributes)>,
+    mut query: Query<StatefulFighterQuery>,
+    mut animation_players: Query<(&mut AnimationPlayer, &mut AnimationTransitions)>,
     stage_collision: Res<StageCollision>,
     game_settings: Res<GameSettings>,
     mut commands: Commands,
-    mut gizmos: Gizmos,
 ) {
-    for (ent, mut state, mut translation, mut prev_translation, mut input, mut velocity, mut ecb, mut prev_ecb, attribs) in query {
-        let mut state_context = FighterStateContext {
-            translation: &mut translation,
-            prev_translation: &mut prev_translation,
-            input: &mut input,
-            velocity: &mut velocity,
-            ecb: &mut ecb,
-            prev_ecb: &mut prev_ecb,
-            fighter_attribs: &attribs,
-            game_settings: &game_settings,
-            entity: ent,
-            stage_collision: &stage_collision,
-            gizmos: Some(&mut gizmos),
+    for fighter in &mut query {
+        let StatefulFighterQueryItem {
+            entity,
+            mut state,
+            mut frame,
+            animations,
+            animation_player_link,
+        } = fighter;
+        let Ok((mut animation_player, mut animation_transitions)) =
+            animation_players.get_mut(animation_player_link.player())
+        else {
+            continue;
         };
+        let mut state_context = frame.context(
+            &game_settings,
+            &stage_collision,
+            animations,
+            &mut animation_player,
+            &mut animation_transitions,
+        );
         if let Some(new_state) = state.check_collision_interrupt(&mut state_context) {
             let mut new_state = new_state;
             let old_state_name = state.name();
             let new_state_name = new_state.name();
             new_state.on_enter(&mut state_context);
-            commands.entity(ent).insert((
-                new_state,
-                StateNameDebug(new_state_name)
-            ));
+            commands
+                .entity(entity)
+                .insert((new_state, StateNameDebug(new_state_name)));
             info!("State {} -> {}", old_state_name, new_state_name);
         }
     }

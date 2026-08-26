@@ -11,6 +11,7 @@ pub struct FighterAttributes {
     pub stick_walk_accel: FGi32,
     pub max_walk_vel: FGi32,
 
+    pub dash_acceleration_duration: u32,
     pub dash_duration: u32,
     pub dash_initial_velocity: FGi32,
     pub base_dash_accel: FGi32,
@@ -26,10 +27,12 @@ pub struct FighterAttributes {
 }
 
 impl FighterAttributes {
-    pub fn get_accel_and_target_dashrun(&self, input: &FighterInputFrame) -> (FGi32, FGi32) {
+    pub fn get_accel_and_target_dashrun(&self, input: &FighterInputFrame, direction: FGi32) -> (FGi32, FGi32) {
         let accel = input.movement.x * self.stick_dash_accel;
-        let accel = accel + input.movement.x.signum() * self.base_dash_accel;
+        let accel = accel + direction * self.base_dash_accel;
         let target_vel = input.movement.x * self.max_dash_vel;
+
+        info!("ACCEL {}", accel);
 
         (accel, target_vel)
     }

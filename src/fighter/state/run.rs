@@ -1,12 +1,16 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 
 use super::{FighterStateImpl, FighterStateContext, ground, wait, walk};
+use crate::fighter::animation::AnimKind;
 use crate::fighter::state::FighterState;
 use crate::fighter::state::fall::FallState;
 use crate::fighter::state::ground::{GroundedMotionResult, GroundedStateCommon};
 use crate::fighter::{FighterAttributes, FighterVelocity};
 use crate::game_settings::GameSettings;
 use crate::input::FighterInput;
+use crate::math::int::FGi32;
 
 #[derive(Component, Debug, Clone, Hash)]
 pub struct RunState {
@@ -27,11 +31,17 @@ impl FighterStateImpl for RunState {
         }
     }
     
-    fn on_enter(&mut self, _state_context: &mut super::FighterStateContext) {}
+    fn on_enter(&mut self, state_context: &mut super::FighterStateContext) {
+        state_context.animation_transitions.play(
+            &mut state_context.animation_player,
+            state_context.animations.clips[&AnimKind::Run],
+            Duration::ZERO,
+        ).repeat();
+    }
     
     fn update(&mut self, state_context: &mut super::FighterStateContext) {
         let last_frame = state_context.input.get_last_frame();
-        let (accel, target_vel) = state_context.fighter_attribs.get_accel_and_target_dashrun(&last_frame);
+        let (accel, target_vel) = state_context.fighter_attribs.get_accel_and_target_dashrun(&last_frame, FGi32::ONE);
         let accel = ground::compute_ground_accel(
             accel,
             target_vel,

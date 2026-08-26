@@ -6,14 +6,15 @@ use std::ops::{Index, IndexMut};
 
 use bevy::prelude::*;
 use bevy_ggrs::{PlayerInputs, Rollback};
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 
 use crate::game_settings::GameSettings;
 use crate::input::FighterInputFrame;
 use crate::netcode::GGRSCfg;
 use crate::player::Player;
 
-struct FighterInputBufferedActions {}
-
+#[derive(Clone, Copy, EnumIter)]
 pub enum FighterCommands {
     SmashMoveLeft,
     SmashMoveRight,
@@ -85,6 +86,10 @@ impl FighterInput {
     pub fn has_command(&self, command: FighterCommands) -> bool {
         self.command_lifetimes[command] > 0
     }
+
+    pub fn reduce_command_lifetime(&mut self, command: FighterCommands) {
+        self.command_lifetimes[command] = self.command_lifetimes[command].saturating_sub(1);
+    }
 }
 
 /// Turns this frame's rolled-back inputs into per-fighter [`FighterInput`]
@@ -95,6 +100,11 @@ pub fn postprocess_input(
     game_settings: Res<GameSettings>,
 ) {
     for (mut input, player) in query {
+
+        for command in FighterCommands::iter() {
+            input.reduce_command_lifetime(command);
+        }
+
         input.push_input_frame(inputs[player.handle].0);
 
         // Directional smash detection
@@ -115,6 +125,10 @@ pub fn postprocess_input(
             } else {
                 input.frames_in_smash_move_deadzone += 1;
             }
+        }
+
+        if !input.prev_frame.jump && input.current_frame.jump {
+            input.set_lifetime(FighterCommands::Jump, game_settings.input_common.input_buffer_size);
         }
 
         if x_abs >= axis_threshold && input.frames_in_smash_move_deadzone <= frame_threshold {

@@ -2,7 +2,7 @@
 //! ECS types so it stays cheap to reason about and to unit-test — it has to be
 //! bit-for-bit deterministic for rollback.
 
-use crate::fighter::state::FighterStateContext;
+use crate::fighter::state::{FighterState, FighterStateContext};
 use crate::fighter::{
     FighterAttributes, FighterECB, FighterPreviousTranslation, FighterTranslation, FighterVelocity,
 };
@@ -10,7 +10,9 @@ use crate::game_settings::GameSettings;
 use crate::math::int::FGi32;
 use crate::math::vec::FGVec2;
 use crate::stage::StagePoly;
-use crate::stage::line::{StageCollision, StageLineID, StagePolyLineSegment, StagePolyLineSegmentType};
+use crate::stage::line::{
+    StageCollision, StageLineID, StagePolyLineSegment, StagePolyLineSegmentType,
+};
 
 use bevy::prelude::*;
 use fixed::traits::Fixed;
@@ -37,7 +39,7 @@ pub fn compute_ground_accel(
     attribs: &FighterAttributes,
     game_settings: &GameSettings,
 ) -> FGi32 {
-    if target_vel == 0.0 {
+    if target_vel == FGi32::ZERO {
         apply_grounded_friction(attribs.ground_friction, gr_vel)
     } else {
         let mut accel = accel;
@@ -81,13 +83,13 @@ pub fn apply_grounded_motion(
 ) {
     // Vertical velocity should be 0 on the ground
     prev_translation.0 = translation.0;
-    translation.0 += FGVec2::new(velocity.0.x ,FGi32::ZERO);
+    translation.0 += FGVec2::new(velocity.0.x, FGi32::ZERO);
 }
 
 pub fn collide_with_stage_grounded(
     state_context: &mut FighterStateContext,
     ground_common: &mut GroundedStateCommon,
-    can_walk_off: bool
+    can_walk_off: bool,
 ) -> GroundedMotionResult {
     let translation = &mut state_context.translation;
     let ecb = &state_context.ecb;
@@ -116,7 +118,8 @@ pub fn collide_with_stage_grounded(
             }
 
             let line_dir = segment.segment.direction();
-            let projected_point = segment.segment.point1() + (ecb_bottom_pos - segment.segment.point1()).project_onto(line_dir);
+            let projected_point = segment.segment.point1()
+                + (ecb_bottom_pos - segment.segment.point1()).project_onto(line_dir);
             let closest_point = segment.segment.closest_point(ecb_bottom_pos);
             let distance = closest_point.distance(projected_point);
 
@@ -129,7 +132,8 @@ pub fn collide_with_stage_grounded(
 
         if let Some((bp, new_segment_idx, normal)) = grounded_ecb_bottom_pos {
             translation.0 = bp - ecb.get_bottom_point();
-            state_context.velocity.0 = state_context.velocity.0 - state_context.velocity.0.project_onto_normalized(normal);
+            state_context.velocity.0 =
+                state_context.velocity.0 - state_context.velocity.0.project_onto_normalized(normal);
             ground_common.current_line_id.segment = new_segment_idx;
             GroundedMotionResult::InGround
         } else {
@@ -138,4 +142,11 @@ pub fn collide_with_stage_grounded(
     } else {
         GroundedMotionResult::InAir
     }
+}
+
+pub fn grounded_movement_common_interrupts(
+    state_context: &FighterStateContext,
+    ground_common: &GroundedStateCommon
+) -> Option<FighterState> {
+    super::jump::check_input(state_context, ground_common)
 }

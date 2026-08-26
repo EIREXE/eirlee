@@ -3,12 +3,14 @@
 //! decides how to read it.
 
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Default)]
 pub enum InputActionState {
     JustPressed,
     Pressed,
     JustReleased,
+    #[default]
     Released,
 }
 
