@@ -14,7 +14,7 @@ use crate::input::FighterInputFrame;
 use crate::netcode::GGRSCfg;
 use crate::player::Player;
 
-#[derive(Clone, Copy, EnumIter)]
+#[derive(Clone, Copy, EnumIter, Debug)]
 pub enum FighterCommands {
     SmashMoveLeft,
     SmashMoveRight,
@@ -153,9 +153,8 @@ pub fn postprocess_input(
             } else {
                 FighterCommands::SmashMoveLeft
             };
-            input.set_lifetime(command_to_set, game_settings.input_common.input_buffer_size);
 
-            if input.current_frame.movement.x > 0.0 {}
+            input.set_lifetime(command_to_set, game_settings.input_common.input_buffer_size);
         }
     }
 }

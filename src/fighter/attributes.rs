@@ -51,8 +51,6 @@ impl FighterAttributes {
         let accel = accel + direction * self.base_dash_accel;
         let target_vel = input.movement.x * self.max_dash_vel;
 
-        info!("ACCEL {}", accel);
-
         (accel, target_vel)
     }
 

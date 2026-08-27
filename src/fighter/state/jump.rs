@@ -93,6 +93,7 @@ impl FighterStateImpl for JumpSquatState {
             state_context.animations.clips[&AnimKind::JumpSquat],
             Duration::ZERO,
         );
+        state_context.input.clear_buffer();
     }
 }
 

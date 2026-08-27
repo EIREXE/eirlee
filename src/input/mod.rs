@@ -1,23 +1,28 @@
 //! Input, from physical device to the buffered per-fighter state that the
 //! state machine reads.
-//!
-//! The pipeline is: [`keyboard`] samples devices into [`FighterInputFrame`]s
-//! that GGRS ships over the wire, then [`buffer::postprocess_input`] turns the
-//! rolled-back frames into [`FighterInput`].
 
+use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 use bevy_ggrs::prelude::*;
+use bevy_ggrs::{LocalInputs, LocalPlayers};
 
 pub mod buffer;
 pub mod control;
 pub mod frame;
+pub mod gamecube;
+pub mod gamepad;
 pub mod keyboard;
 pub mod map;
 
 pub use buffer::{FighterCommands, FighterInput};
 pub use frame::FighterInputFrame;
-pub use map::{BaseInputMap, InputActionState, InputMapAction, KeyboardInputMapElement};
+pub use map::{
+    BaseInputMap, GamepadBinding, GamepadInputMapElement, InputActionState, InputMapAction,
+    KeyboardInputMapElement,
+};
 
+use crate::game_settings::GameSettings;
+use crate::netcode::GGRSCfg;
 use crate::schedule::GameplaySet;
 
 /// Owns the input map, the local-input collection that feeds GGRS, and the
@@ -60,12 +65,67 @@ impl Plugin for FighterInputPlugin {
                     action: InputMapAction::Shield,
                 },
             ],
+            gamepad: vec![
+                // left stick
+                GamepadInputMapElement {
+                    binding: GamepadBinding::Axis(GamepadAxis::LeftStickX, 1),
+                    action: InputMapAction::MovementXDir(1),
+                },
+                GamepadInputMapElement {
+                    binding: GamepadBinding::Axis(GamepadAxis::LeftStickY, 1),
+                    action: InputMapAction::MovementYDir(1),
+                },
+                // jump
+                GamepadInputMapElement {
+                    binding: GamepadBinding::Button(GamepadButton::North),
+                    action: InputMapAction::Jump,
+                },
+                // shield/airdodge -- both shoulder buttons, Melee-style
+                GamepadInputMapElement {
+                    binding: GamepadBinding::Button(GamepadButton::LeftTrigger),
+                    action: InputMapAction::Shield,
+                },
+                GamepadInputMapElement {
+                    binding: GamepadBinding::Button(GamepadButton::RightTrigger),
+                    action: InputMapAction::Shield,
+                },
+            ],
         })
-        .add_systems(ReadInputs, keyboard::preprocess_keyboard_input)
+        .add_plugins(gamecube::GamecubeAdapterPlugin)
+        .add_systems(ReadInputs, read_local_inputs)
         .add_systems(
             GgrsSchedule,
             buffer::postprocess_input.in_set(GameplaySet::Input),
         )
         .rollback_component_with_clone::<FighterInput>();
     }
+}
+
+fn read_local_inputs(
+    mut commands: Commands,
+    key: Res<ButtonInput<KeyCode>>,
+    input_map: Res<BaseInputMap>,
+    gc_ports: Res<gamecube::GcPorts>,
+    gamepads: Query<&Gamepad>,
+    local_players: Res<LocalPlayers>,
+    game_settings: Res<GameSettings>
+) {
+    let mut local_inputs = HashMap::new();
+
+    for handle in &local_players.0 {
+        let gamepad = gc_ports
+            .entities
+            .get(*handle)
+            .copied()
+            .flatten()
+            .and_then(|entity| gamepads.get(entity).ok());
+
+        let input_frame = match gamepad {
+            Some(pad) => gamepad::sample_gamepad(pad, &input_map, &game_settings),
+            None => keyboard::sample_keyboard(&key, &input_map),
+        };
+
+        local_inputs.insert(*handle, input_frame);
+    }
+    commands.insert_resource(LocalInputs::<GGRSCfg>(local_inputs));
 }

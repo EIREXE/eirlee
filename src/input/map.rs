@@ -1,7 +1,3 @@
-//! What a physical button means. Device-agnostic: a binding names an
-//! [`InputMapAction`], and each device backend (see [`super::keyboard`])
-//! decides how to read it.
-
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -28,7 +24,20 @@ pub struct KeyboardInputMapElement {
     pub action: InputMapAction,
 }
 
+#[derive(Debug)]
+pub enum GamepadBinding {
+    Button(GamepadButton),
+    Axis(GamepadAxis, i32),
+}
+
+#[derive(Debug)]
+pub struct GamepadInputMapElement {
+    pub binding: GamepadBinding,
+    pub action: InputMapAction,
+}
+
 #[derive(Resource)]
 pub struct BaseInputMap {
     pub keyboard: Vec<KeyboardInputMapElement>,
+    pub gamepad: Vec<GamepadInputMapElement>,
 }

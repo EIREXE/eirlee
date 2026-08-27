@@ -34,6 +34,7 @@ strum = "0.28.0"
 strum_macros = "0.28.0"
 bevy_common_assets = { version = "0.17.0", features = ["ron"] }
 bevy_asset_loader = "0.27.0"
+gc-adapter-neo = { version = "1.0.0", features = ["libusb"] }
 
 # Enable a large amount of optimization in the dev profile for dependencies.
 [profile.dev.package."*"]

@@ -57,13 +57,6 @@ pub enum AppState {
     MatchLoadFailed,
 }
 
-pub fn show_gamepads(q: Query<(&Name, &Gamepad)>) {
-    info!("GP:");
-    for (name, gp) in q {
-        info!("Gamepad detected: {}", name);
-    }
-}
-
 /// Your game's Bevy plugin. The editor finds it by this name (override
 /// with `plugin = "..."` in jackdaw.toml) and runs it on Play; the
 /// standalone binary adds it in `main.rs`.
@@ -106,7 +99,6 @@ impl Plugin for GamePlugin {
                     .on_failure_continue_to_state(AppState::CommonAssetLoadFailed)
                     .load_collection::<fighter::manifest::FighterManifestAssets>(),
             )
-            .add_systems(Startup, show_gamepads)
             .add_systems(
                 OnEnter(AppState::PrepareFighterManifests),
                 fighter::manifest::prepare_fighter_manifests,

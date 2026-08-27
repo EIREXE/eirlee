@@ -25,6 +25,10 @@
         air_acceleration_base: "0.19",
         air_acceleration_stick: "0.09",
         air_friction: "0.05",
+
+        air_dodge_duration: 49,
+        air_dodge_velocity: "2.790",
+        air_dodge_decay: "0.9"
     ),
     animations: {
         Wait: "PlyPurin5K_Share_ACTION_Wait",
@@ -35,5 +39,6 @@
         JumpForward: "PlyPurin5K_Share_ACTION_JumpF",
         JumpBack: "PlyPurin5K_Share_ACTION_JumpB",
         Landing: "PlyPurin5K_Share_ACTION_Landing",
+        AirDodge: "PlyPurin5K_Share_ACTION_EscapeAir",
     }
 )
