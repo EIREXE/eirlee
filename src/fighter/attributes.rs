@@ -24,6 +24,8 @@ pub struct FighterAttributes {
     pub short_hop_vertical_velocity: FGi32,
     pub full_jump_vertical_velocity: FGi32,
     pub jump_horizontal_velocity: FGi32,
+    pub air_jump_multiplier: FGi32,
+    pub air_jump_horizontal_velocity: FGi32,
     pub landing_iasa: u32,
     pub landing_duration: u32,
 

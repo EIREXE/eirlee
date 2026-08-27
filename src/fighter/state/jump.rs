@@ -4,10 +4,18 @@ use bevy::prelude::*;
 
 use crate::{
     fighter::{
-        animation::AnimKind, collision, state::{
-            FighterState, FighterStateContext, FighterStateImpl, air, air_dodge, fall::FallState, ground::{self, GroundedMotionResult, GroundedStateCommon}, land::LandingState,
+        animation::AnimKind,
+        collision,
+        state::{
+            FighterState, FighterStateContext, FighterStateImpl, air,
+            air_dodge::{self, AirDodgeState},
+            fall::FallState,
+            ground::{self, GroundedMotionResult, GroundedStateCommon},
+            land::LandingState,
         },
-    }, input::FighterCommands,
+    },
+    input::FighterCommands,
+    math::{int::FGi32, vec::FGVec2},
 };
 #[derive(Debug, Hash, Clone, Copy)]
 pub enum JumpType {
@@ -18,7 +26,7 @@ pub enum JumpType {
 
 #[derive(Debug, Clone, Hash)]
 pub struct JumpState {
-    jump_type: JumpType
+    jump_type: JumpType,
 }
 
 #[derive(Debug, Clone, Hash)]
@@ -40,10 +48,37 @@ impl FighterStateImpl for JumpSquatState {
     const NAME: &'static str = "JumpSquat";
 
     fn check_interrupt(&self, state_context: &FighterStateContext) -> Option<FighterState> {
-        if self.duration_counter >= state_context.fighter_attribs.jumpsquat_duration {
+        // Special handling for wavedash from jump squat
+        if state_context.input.has_command(FighterCommands::Shield) {
+            // If aiming sideways and in the deadzone, do a perfect wavedash
+            let mut wavedash_dir = state_context
+                .input
+                .get_last_frame()
+                .movement
+                .normalize_or_zero();
+            let movement = state_context.input.get_last_frame().movement;
+            if movement.y.is_zero() && !movement.x.is_zero() {
+                wavedash_dir.y =
+                    -state_context.game_settings.input_common.stick_deadzone - FGi32::lit("-0.01");
+                wavedash_dir.x = movement.x.signum();
+            }
+
+            if wavedash_dir == FGVec2::ZERO {
+                wavedash_dir = FGVec2::lit("0.0", "-1.0");
+            }
+
+            Some(FighterState::AirDodge(AirDodgeState {
+                duration_counter: 0,
+                direction: wavedash_dir.normalize_or_zero(),
+            }))
+        } else if self.duration_counter >= state_context.fighter_attribs.jumpsquat_duration {
             info!("Jump {}", state_context.input.get_last_frame().jump);
-            let jump_type = if state_context.input.get_last_frame().jump {JumpType::LongJump} else {JumpType::ShortHop};
-            Some(FighterState::Jump(JumpState { jump_type}))
+            let jump_type = if state_context.input.get_last_frame().jump {
+                JumpType::LongJump
+            } else {
+                JumpType::ShortHop
+            };
+            Some(FighterState::Jump(JumpState { jump_type }))
         } else {
             None
         }
@@ -93,54 +128,91 @@ impl FighterStateImpl for JumpSquatState {
             state_context.animations.clips[&AnimKind::JumpSquat],
             Duration::ZERO,
         );
-        state_context.input.clear_buffer();
+        state_context.input.clear_command(FighterCommands::Jump);
     }
 }
 
 impl FighterStateImpl for JumpState {
     const NAME: &'static str = "Jump";
     fn check_interrupt(&self, state_context: &FighterStateContext) -> Option<FighterState> {
-        air_dodge::check_input(state_context)
+        if state_context.input.has_command(FighterCommands::Jump) {
+            Some(FighterState::Jump(JumpState {
+                jump_type: JumpType::DoubleJump,
+            }))
+        } else {
+            air_dodge::check_input(state_context)
+        }
     }
 
     fn update(&mut self, state_context: &mut FighterStateContext) {
-        info!("TRF1 {}", state_context.translation.0);
         air::integrate_gravity(state_context.velocity, state_context.fighter_attribs);
-        air::apply_air_drift(state_context.velocity, state_context.fighter_attribs, state_context.input);
+        air::apply_air_drift(
+            state_context.velocity,
+            state_context.fighter_attribs,
+            state_context.input,
+        );
         air::apply_air_motion(
             state_context.velocity,
             state_context.translation,
             state_context.prev_translation,
         );
-        info!("TRF12 {}", state_context.translation.0);
     }
 
     fn on_enter(&mut self, state_context: &mut FighterStateContext) {
-        
+        if let JumpType::DoubleJump = self.jump_type {
+            state_context.input.clear_command(FighterCommands::Jump);
+        }
         let movement_stick_x = state_context.input.get_last_frame().movement.x;
-        if movement_stick_x.is_zero() || movement_stick_x.signum() == state_context.facing_direction.to_sign() {
-            state_context.animation_transitions.play(
-                state_context.animation_player,
-                state_context.animations.clips[&AnimKind::JumpForward],
-                Duration::ZERO,
-            );
-        } else {
-            state_context.animation_transitions.play(
-                state_context.animation_player,
-                state_context.animations.clips[&AnimKind::JumpBack],
-                Duration::ZERO,
-            );
+        match self.jump_type {
+            JumpType::ShortHop | JumpType::LongJump => {
+                if movement_stick_x.is_zero()
+                    || movement_stick_x.signum() == state_context.facing_direction.to_sign()
+                {
+                    state_context.animation_transitions.play(
+                        state_context.animation_player,
+                        state_context.animations.clips[&AnimKind::JumpForward],
+                        Duration::ZERO,
+                    );
+                } else {
+                    state_context.animation_transitions.play(
+                        state_context.animation_player,
+                        state_context.animations.clips[&AnimKind::JumpBack],
+                        Duration::ZERO,
+                    );
+                }
+            }
+            JumpType::DoubleJump => {
+                state_context.animation_transitions.play(
+                    state_context.animation_player,
+                    state_context.animations.clips[&AnimKind::DoubleJump],
+                    Duration::ZERO,
+                );
+            }
         }
 
         let vertical_vel = match self.jump_type {
             JumpType::ShortHop => state_context.fighter_attribs.short_hop_vertical_velocity,
             JumpType::LongJump => state_context.fighter_attribs.full_jump_vertical_velocity,
-            JumpType::DoubleJump => todo!(),
+            JumpType::DoubleJump => {
+                state_context.fighter_attribs.full_jump_vertical_velocity
+                    * state_context.fighter_attribs.air_jump_multiplier
+            }
+        };
+
+        match self.jump_type {
+            JumpType::ShortHop | JumpType::LongJump => {
+                state_context.velocity.x +=
+                    state_context.fighter_attribs.jump_horizontal_velocity * movement_stick_x;
+            }
+            JumpType::DoubleJump => {
+                state_context.velocity.x =
+                    state_context.fighter_attribs.air_jump_horizontal_velocity * movement_stick_x;
+            }
         };
 
         state_context.velocity.y = vertical_vel;
-        state_context.velocity.x += state_context.fighter_attribs.jump_horizontal_velocity * movement_stick_x;
-        state_context.input.clear_buffer();
+        state_context.velocity.x +=
+            state_context.fighter_attribs.jump_horizontal_velocity * movement_stick_x;
     }
 
     fn check_collision_interrupt(
@@ -153,7 +225,10 @@ impl FighterStateImpl for JumpState {
             let grounded_common = GroundedStateCommon {
                 current_line_id: res.line_id,
             };
-            Some(FighterState::Land(LandingState { grounded_common, duration_counter: 0 }))
+            Some(FighterState::Land(LandingState {
+                grounded_common,
+                duration_counter: 0,
+            }))
         } else {
             None
         }
@@ -168,4 +243,15 @@ pub fn check_input(
         .input
         .has_command(FighterCommands::Jump)
         .then(|| FighterState::JumpSquat(JumpSquatState::create(ground_common.clone())))
+}
+
+pub fn check_input_double_jump(
+    state_context: &FighterStateContext
+) -> Option<FighterState> {
+    state_context
+        .input
+        .has_command(FighterCommands::Jump)
+        .then(|| FighterState::Jump(JumpState{
+            jump_type: JumpType::DoubleJump
+        }))
 }

@@ -5,7 +5,7 @@
         base_walk_accel: "0.1",
         stick_walk_accel: "0.16",
         max_walk_vel: "0.7",
-        ground_friction: "0.09",
+        ground_friction: "0.02",
         dash_acceleration_duration: 13,
         dash_duration: 24,
         base_dash_accel: "0.02",
@@ -14,10 +14,12 @@
         short_hop_vertical_velocity: "1.05",
         full_jump_vertical_velocity: "1.6",
         jump_horizontal_velocity: "0.7",
+        air_jump_horizontal_velocity: "0.5",
+        air_jump_multiplier: "1.0",
         dash_initial_velocity: "1.4",
         terminal_velocity: "1.3",
         gravity: "0.064",
-        jumpsquat_duration: 4,
+        jumpsquat_duration: 5,
         landing_iasa: 4,
         landing_duration: 30,
 
@@ -40,5 +42,6 @@
         JumpBack: "PlyPurin5K_Share_ACTION_JumpB",
         Landing: "PlyPurin5K_Share_ACTION_Landing",
         AirDodge: "PlyPurin5K_Share_ACTION_EscapeAir",
+        DoubleJump: "PlyPurin5K_Share_ACTION_JumpAerialF1",
     }
 )

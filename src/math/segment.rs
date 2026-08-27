@@ -128,7 +128,6 @@ impl FGSegment2d {
         if denom == FGWide::ZERO {
             return None; // Parallel or collinear
         }
-        info!("{p0}, {p1}, {p2}, {p3}");
         let s = (-s1_y * (p0_x - p2_x) + s1_x * (p0_y - p2_y)) / denom;
         let t = (s2_x * (p0_y - p2_y) - s2_y * (p0_x - p2_x)) / denom;
 

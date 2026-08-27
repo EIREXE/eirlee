@@ -2,15 +2,25 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 
-use crate::{fighter::{
-        animation::AnimKind, collision, state::{
-            FighterState, FighterStateContext, FighterStateImpl, air, dash, fall::FallState, ground::{self, GroundedMotionResult, GroundedStateCommon}, land::LandingState, wait::WaitState, walk,
+use crate::{
+    fighter::{
+        animation::AnimKind,
+        collision,
+        state::{
+            FighterState, FighterStateContext, FighterStateImpl, air, dash,
+            fall::FallState,
+            ground::{self, GroundedMotionResult, GroundedStateCommon},
+            land::LandingState,
+            wait::WaitState,
+            walk,
         },
-    }, input};
+    }, input, math::vec::FGVec2,
+};
 
 #[derive(Debug, Clone, Hash)]
 pub struct AirDodgeState {
     pub duration_counter: u32,
+    pub direction: FGVec2,
 }
 
 impl FighterStateImpl for AirDodgeState {
@@ -46,7 +56,10 @@ impl FighterStateImpl for AirDodgeState {
             let grounded_common = GroundedStateCommon {
                 current_line_id: res.line_id,
             };
-            Some(FighterState::Land(LandingState { grounded_common, duration_counter: 0 }))
+            Some(FighterState::Land(LandingState {
+                grounded_common,
+                duration_counter: 0,
+            }))
         } else {
             None
         }
@@ -59,12 +72,22 @@ impl FighterStateImpl for AirDodgeState {
             Duration::ZERO,
         );
 
-        state_context.velocity.0 = state_context.input.get_last_frame().movement.normalize_or_zero() * state_context.fighter_attribs.air_dodge_velocity;
+        state_context.velocity.0 = self.direction * state_context.fighter_attribs.air_dodge_velocity;
     }
 }
 
 pub fn check_input(state_context: &FighterStateContext) -> Option<FighterState> {
-    state_context.input.has_command(input::FighterCommands::Shield).then(||
-        FighterState::AirDodge(AirDodgeState { duration_counter: 0 })
-    )
+    state_context
+        .input
+        .has_command(input::FighterCommands::Shield)
+        .then(|| {
+            FighterState::AirDodge(AirDodgeState {
+                duration_counter: 0,
+                direction: state_context
+                    .input
+                    .get_last_frame()
+                    .movement
+                    .normalize_or_zero(),
+            })
+        })
 }

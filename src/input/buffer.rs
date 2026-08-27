@@ -154,6 +154,9 @@ pub fn postprocess_input(
                 FighterCommands::SmashMoveLeft
             };
 
+            if !input.has_command(command_to_set) {
+                dbg!(command_to_set);
+            }
             input.set_lifetime(command_to_set, game_settings.input_common.input_buffer_size);
         }
     }

@@ -6,7 +6,7 @@ use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Sub};
 
 use super::int::{FGWide, FGi32};
 
-#[derive(Clone, Copy, PartialEq, Default, Debug, Reflect, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Default, Debug, Reflect, Serialize, Deserialize, Hash)]
 #[reflect(opaque)]
 pub struct FGVec2 {
     pub x: FGi32,

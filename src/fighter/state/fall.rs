@@ -2,7 +2,7 @@
 use super::{FighterStateContext, FighterStateImpl};
 use crate::fighter::state::ground::GroundedStateCommon;
 use crate::fighter::state::land::LandingState;
-use crate::fighter::state::{FighterState, air};
+use crate::fighter::state::{FighterState, air, jump};
 use crate::fighter::collision;
 
 #[derive(Debug, Clone, Copy, Hash)]
@@ -10,14 +10,19 @@ pub struct FallState;
 
 impl FighterStateImpl for FallState {
     const NAME: &'static str = "Fall";
-    fn check_interrupt(&self, _state_context: &FighterStateContext) -> Option<FighterState> {
-        None
+    fn check_interrupt(&self, state_context: &FighterStateContext) -> Option<FighterState> {
+        jump::check_input_double_jump(state_context)
     }
 
     fn on_enter(&mut self, _state_context: &mut super::FighterStateContext) {}
 
     fn update(&mut self, state_context: &mut super::FighterStateContext) {
         air::integrate_gravity(state_context.velocity, state_context.fighter_attribs);
+        air::apply_air_drift(
+            state_context.velocity,
+            state_context.fighter_attribs,
+            state_context.input,
+        );
         air::apply_air_motion(
             state_context.velocity,
             state_context.translation,
