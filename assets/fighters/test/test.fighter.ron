@@ -43,5 +43,6 @@
         Landing: "PlyPurin5K_Share_ACTION_Landing",
         AirDodge: "PlyPurin5K_Share_ACTION_EscapeAir",
         DoubleJump: "PlyPurin5K_Share_ACTION_JumpAerialF1",
+        Fall: "PlyPurin5K_Share_ACTION_Fall"
     }
 )

@@ -1,9 +1,9 @@
-
 use super::{FighterStateContext, FighterStateImpl};
+use crate::fighter::animation::AnimKind;
+use crate::fighter::collision;
 use crate::fighter::state::ground::GroundedStateCommon;
 use crate::fighter::state::land::LandingState;
 use crate::fighter::state::{FighterState, air, jump};
-use crate::fighter::collision;
 
 #[derive(Debug, Clone, Copy, Hash)]
 pub struct FallState;
@@ -14,7 +14,13 @@ impl FighterStateImpl for FallState {
         jump::check_input_double_jump(state_context)
     }
 
-    fn on_enter(&mut self, _state_context: &mut super::FighterStateContext) {}
+    fn on_enter(&mut self, state_context: &mut super::FighterStateContext) {
+        state_context.animation_transitions.play(
+            &mut state_context.animation_player,
+            state_context.animations.clips[&AnimKind::Fall],
+            std::time::Duration::ZERO,
+        ).repeat();
+    }
 
     fn update(&mut self, state_context: &mut super::FighterStateContext) {
         air::integrate_gravity(state_context.velocity, state_context.fighter_attribs);
@@ -40,7 +46,10 @@ impl FighterStateImpl for FallState {
             let grounded_common = GroundedStateCommon {
                 current_line_id: res.line_id,
             };
-            Some(FighterState::Land(LandingState { grounded_common, duration_counter: 0 }))
+            Some(FighterState::Land(LandingState {
+                grounded_common,
+                duration_counter: 0,
+            }))
         } else {
             None
         }

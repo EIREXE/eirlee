@@ -91,4 +91,5 @@ pub enum AnimKind {
     DoubleJump,
     Landing,
     AirDodge,
+    Fall,
 }
