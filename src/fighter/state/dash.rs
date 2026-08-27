@@ -70,7 +70,6 @@ impl FighterStateImpl for DashState {
 
     fn on_enter(&mut self, state_context: &mut FighterStateContext) {
         *state_context.facing_direction = self.direction;
-        state_context.input.clear_buffer();
         state_context.velocity.x =
             state_context.fighter_attribs.dash_initial_velocity * self.direction.to_sign();
 
@@ -80,7 +79,15 @@ impl FighterStateImpl for DashState {
             Duration::ZERO,
         );
 
-        state_context.input.clear_buffer();
+        match state_context.facing_direction {
+            FighterFacingDirection::Left => {
+                state_context.input.clear_command(crate::input::FighterCommands::SmashMoveLeft);
+            },
+            FighterFacingDirection::Right => {
+                state_context.input.clear_command(crate::input::FighterCommands::SmashMoveRight);
+            },
+        }
+
     }
 
     fn update(&mut self, state_context: &mut FighterStateContext) {
