@@ -24,6 +24,7 @@ pub use map::{
 };
 
 use crate::game_settings::GameSettings;
+use crate::math::int::FGi32;
 use crate::netcode::GGRSCfg;
 use crate::schedule::GameplaySet;
 
@@ -95,11 +96,21 @@ impl Plugin for FighterInputPlugin {
         })
         .add_plugins(gamecube::GamecubeAdapterPlugin)
         .add_systems(ReadInputs, read_local_inputs)
+        .add_systems(EguiPrimaryContextPass, debug::input_debug)
         .add_systems(
             GgrsSchedule,
             buffer::postprocess_input.in_set(GameplaySet::Input),
         )
         .rollback_component_with_clone::<FighterInput>();
+    }
+}
+
+fn preprocess_input_frame(frame: &mut FighterInputFrame, game_settings: &GameSettings) {
+    if frame.movement.x.abs() < game_settings.input_common.stick_deadzone {
+        frame.movement.x = FGi32::ZERO;
+    }
+    if frame.movement.y.abs() < game_settings.input_common.stick_deadzone {
+        frame.movement.y = FGi32::ZERO;
     }
 }
 
@@ -122,10 +133,13 @@ fn read_local_inputs(
             .flatten()
             .and_then(|entity| gamepads.get(entity).ok());
 
-        let input_frame = match gamepad {
+        let mut input_frame = match gamepad {
             Some(pad) => gamepad::sample_gamepad(pad, &input_map, &game_settings),
             None => keyboard::sample_keyboard(&key, &input_map),
         };
+
+        // preprocess frame
+        preprocess_input_frame(&mut input_frame, &game_settings);
 
         local_inputs.insert(*handle, input_frame);
     }

@@ -1,5 +1,6 @@
 use bevy::math::Vec2;
 use bevy::prelude::*;
+use fixed::traits::Fixed;
 
 use crate::game_settings::GameSettings;
 use crate::input::map::GamepadBinding;
@@ -38,16 +39,6 @@ pub fn sample_gamepad(pad: &Gamepad, input_map: &BaseInputMap, game_settings: &G
         }
     }
 
-    if movement.x.abs() < game_settings.input_common.stick_deadzone {
-        movement.x = 0.0;
-    }
-    if movement.y.abs() < game_settings.input_common.stick_deadzone {
-        movement.y = 0.0;
-    }
-
-    if movement.length_squared() > 1.0 {
-        movement = movement.normalize();
-    }
     input_frame.movement = FGVec2::new(FGi32::from_num(movement.x), FGi32::from_num(movement.y));
 
     input_frame
