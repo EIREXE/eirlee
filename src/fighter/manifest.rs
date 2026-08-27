@@ -113,7 +113,7 @@ pub fn prepare_fighter_manifests(
     }
 
     commands.insert_resource(FighterManifestRegistry(registry));
-    next_state.set(AppState::Idle);
+    next_state.set(AppState::LoadStageManifests);
 }
 
 fn fail(next_state: &mut NextState<AppState>, message: &str) {

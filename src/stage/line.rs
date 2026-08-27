@@ -2,10 +2,11 @@
 
 
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::math::{segment::FGSegment2d, vec::FGVec2};
 
-#[derive(Reflect, Clone, Copy, PartialEq)]
+#[derive(Reflect, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum StagePolyLineSegmentType {
     Floor,
     Wall,
@@ -19,7 +20,7 @@ pub struct StagePolyLineSegment {
     pub segment_type: StagePolyLineSegmentType,
 }
 
-#[derive(Reflect, Clone, Default)]
+#[derive(Reflect, Clone, Default, Serialize, Deserialize, Copy)]
 pub enum StagePolyType {
     #[default]
     Closed,
@@ -32,8 +33,7 @@ pub struct StageLineID {
     pub segment: usize,
 }
 
-#[derive(Component, Reflect, Clone, Default)]
-#[reflect(Component)]
+#[derive(Reflect, Clone, Default)]
 pub struct StagePoly {
     poly_type: StagePolyType,
     pub segments: Vec<StagePolyLineSegment>,

@@ -6,8 +6,11 @@ use bevy::prelude::*;
 pub mod debug;
 pub mod line;
 pub mod scene;
+pub mod manifest;
 
 pub use line::{StagePlaneIntersectResult, StagePoly};
+
+use crate::stage::line::StageCollision;
 
 /// Owns the stage geometry: which scene gets spawned and how it is drawn.
 #[derive(Default)]
@@ -22,7 +25,7 @@ impl Plugin for StagePlugin {
     }
 }
 
-pub fn spawn_stage(commands: &mut Commands, match_root: Entity, visual: Handle<WorldAsset>) {
+pub fn spawn_stage(commands: &mut Commands, match_root: Entity, visual: Handle<WorldAsset>, collision: StageCollision) {
     commands.entity(match_root).insert(WorldAssetRoot(visual));
-    scene::spawn_stage_support(commands, match_root);
+    scene::spawn_stage_support(commands, match_root, collision);
 }

@@ -28,8 +28,7 @@ use clap::Parser;
 use jackdaw_runtime::EditorCategory;
 
 use crate::{
-    fighter::manifest::FighterManifest, game_settings::GameSettings,
-    schedule::GameplaySchedulePlugin,
+    fighter::manifest::FighterManifest, game_settings::GameSettings, schedule::GameplaySchedulePlugin, stage::manifest::{StageManifest, StageManifestAssets},
 };
 
 mod args;
@@ -49,6 +48,8 @@ pub enum AppState {
     LoadCommonAssets,
     LoadFighterManifests,
     PrepareFighterManifests,
+    LoadStageManifests,
+    PrepareStageManifests,
     CommonAssetLoadFailed,
     Idle,
     LoadingMatch,
@@ -78,6 +79,7 @@ impl Plugin for GamePlugin {
                 fighter::FighterPlugin,
                 stage::StagePlugin,
                 bevy_common_assets::ron::RonAssetPlugin::<FighterManifest>::new(&["fighter.ron"]),
+                bevy_common_assets::ron::RonAssetPlugin::<StageManifest>::new(&["stage.ron"]),
                 bevy_common_assets::ron::RonAssetPlugin::<GameSettings>::new(&["ron"]),
             ))
             .add_loading_state(
@@ -99,9 +101,19 @@ impl Plugin for GamePlugin {
                     .on_failure_continue_to_state(AppState::CommonAssetLoadFailed)
                     .load_collection::<fighter::manifest::FighterManifestAssets>(),
             )
+            .add_loading_state(
+                LoadingState::new(AppState::LoadStageManifests)
+                    .continue_to_state(AppState::PrepareStageManifests)
+                    .on_failure_continue_to_state(AppState::CommonAssetLoadFailed)
+                    .load_collection::<stage::manifest::StageManifestAssets>(),
+            )
             .add_systems(
                 OnEnter(AppState::PrepareFighterManifests),
                 fighter::manifest::prepare_fighter_manifests,
+            )
+            .add_systems(
+                OnEnter(AppState::PrepareStageManifests),
+                stage::manifest::prepare_stage_manifests,
             )
             .add_systems(
                 OnEnter(AppState::Idle),

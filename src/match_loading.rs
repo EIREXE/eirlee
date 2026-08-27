@@ -18,21 +18,11 @@ use crate::{
     },
     math::{int::FGi32, vec::FGVec2},
     netcode::{GGRSCfg, session::create_session},
-    stage,
+    stage::{
+        self,
+        manifest::{StageId, StageManifest, StageManifestRegistry},
+    },
 };
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum StageId {
-    Battlefield,
-}
-
-impl StageId {
-    fn scene_path(self) -> &'static str {
-        match self {
-            Self::Battlefield => "stages/battlefield.glb#Scene0",
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MatchPlayer {
@@ -62,10 +52,19 @@ impl MatchAssets {
         let request = world.resource::<PendingMatch>();
         let asset_server = world.resource::<AssetServer>();
         let registry = world.resource::<FighterManifestRegistry>();
+        let stage_registry = world.resource::<StageManifestRegistry>();
         let manifests = world.resource::<Assets<FighterManifest>>();
+        let stage_manifests = world.resource::<Assets<StageManifest>>();
+
+        let stage_handle = stage_registry
+            .get(request.stage)
+            .expect("Startup validation guarantees every stage has a manifest");
+        let stage_manifest = stage_manifests
+            .get(&stage_handle)
+            .expect("startup-loaded stage manifest should remain available");
 
         Self {
-            stage: asset_server.load(request.stage.scene_path()),
+            stage: asset_server.load(stage_manifest.model_path.clone()),
             fighters: request
                 .players
                 .iter()
@@ -131,7 +130,7 @@ pub fn initiate_default_match(
         &mut commands,
         &mut next_state,
         PendingMatch {
-            stage: StageId::Battlefield,
+            stage: StageId::TestStage,
             players,
         },
     );
@@ -143,7 +142,9 @@ pub fn prepare_match(
     assets: Res<MatchAssets>,
     gltfs: Res<Assets<Gltf>>,
     registry: Res<FighterManifestRegistry>,
+    stage_registry: Res<StageManifestRegistry>,
     manifests: Res<Assets<FighterManifest>>,
+    stage_manifests: Res<Assets<StageManifest>>,
     mut graphs: ResMut<Assets<AnimationGraph>>,
     args: Res<Args>,
     mut next_state: ResMut<NextState<AppState>>,
@@ -231,7 +232,10 @@ pub fn prepare_match(
     };
 
     let root = commands.spawn((Name::new("Match"), MatchRoot)).id();
-    stage::spawn_stage(&mut commands, root, assets.stage.clone());
+
+    let stage_handle = stage_registry.get(request.stage).expect("Initialization check should ensure all stages exist");
+    let stage_manifest = stage_manifests.get(&stage_handle).expect("Initialization check should ensure stage manifests are kept alive");
+    stage::spawn_stage(&mut commands, root, assets.stage.clone(), stage_manifest.to_collision());
 
     for (index, (player, (scene, animations, attributes))) in
         request.players.iter().zip(prepared).enumerate()
@@ -289,7 +293,7 @@ mod tests {
     #[test]
     fn match_request_keeps_duplicate_fighter_slots() {
         let request = PendingMatch {
-            stage: StageId::Battlefield,
+            stage: StageId::TestStage,
             players: vec![
                 MatchPlayer {
                     handle: 0,

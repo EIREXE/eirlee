@@ -3,43 +3,17 @@
 use std::f32::consts::PI;
 
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::{
-    math::vec::FGVec2,
-    stage::{
+    math::{int::FGi32, vec::FGVec2}, stage::{
         StagePoly,
         line::{StageCollision, StagePolyLineSegmentType, StagePolyType},
     },
 };
 
-pub fn spawn_stage_support(commands: &mut Commands, match_root: Entity) {
-    let stage_poly = StagePoly::build(
-        StagePolyType::Closed,
-        &[
-            (
-                FGVec2::lit("-56.0", "-3.5"),
-                StagePolyLineSegmentType::Floor,
-            ),
-            (FGVec2::lit("-39.2", "0.0"), StagePolyLineSegmentType::Floor),
-            (FGVec2::lit("0.0", "0.0"), StagePolyLineSegmentType::Floor),
-            (FGVec2::lit("39.2", "0.0"), StagePolyLineSegmentType::Floor),
-            (FGVec2::lit("56.0", "-3.5"), StagePolyLineSegmentType::Wall),
-            (
-                FGVec2::lit("56.0", "-200.0"),
-                StagePolyLineSegmentType::Ceiling,
-            ),
-            (FGVec2::lit("-56", "-200.0"), StagePolyLineSegmentType::Wall),
-        ],
-    );
-
-    commands.insert_resource(StageCollision {
-        stage_polys: vec![stage_poly.clone()],
-    });
-    commands.spawn((
-        Name::new("Stage Collision"),
-        stage_poly,
-        ChildOf(match_root),
-    ));
+pub fn spawn_stage_support(commands: &mut Commands, match_root: Entity, collision: StageCollision) {
+    commands.insert_resource(collision);
     commands.spawn((
         DirectionalLight {
             shadow_maps_enabled: true,

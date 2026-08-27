@@ -28,6 +28,7 @@ pub struct GameSettings {
     pub fighter_common: FighterSettingsCommon,
     pub input_common: InputSettingsCommon,
     pub fighter_manifest_paths: Vec<String>,
+    pub stage_manifest_paths: Vec<String>,
 }
 
 #[derive(AssetCollection, Resource)]

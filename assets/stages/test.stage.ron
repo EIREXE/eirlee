@@ -1,0 +1,65 @@
+(
+    id: TestStage,
+    model_path: "stages/battlefield.glb#Scene0",
+    polygons: [
+        (
+            poly_type: Platform,
+            lines: [
+                (
+                    (x: "-59.5", y: "23.45"),
+                    Floor
+                ),
+                (
+                    (x: "-28.0", y: "23.45"),
+                    Floor
+                )
+            ]
+        ),
+        (
+            poly_type: Platform,
+            lines: [
+                (
+                    (x: "28.0", y: "23.45"),
+                    Floor
+                ),
+                (
+                    (x: "59.5", y: "23.45"),
+                    Floor
+                )
+            ]
+        ),
+        (
+            poly_type: Closed,
+            lines: [
+                (
+                    (x: "-56", y: "-200.0"),
+                    Wall
+                ),
+                (
+                    (x: "-56.0", y: "-3.5"),
+                    Floor,
+                ),
+                (
+                    (x: "-39.2", y: "0.0"),
+                    Floor,
+                ),
+                (
+                    (x: "0.0", y: "0.0"),
+                    Floor
+                ),
+                (
+                    (x: "39.2", y: "0.0"),
+                    Floor
+                ),
+                (
+                    (x: "56.0", y: "-3.5"),
+                    Wall
+                ),
+                (
+                    (x: "56", y: "-200.0"),
+                    Wall
+                ),
+            ]
+        )
+    ]
+)
