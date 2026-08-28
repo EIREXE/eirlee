@@ -5,26 +5,30 @@
 use bevy::ecs::query::QueryData;
 use bevy::prelude::*;
 
-use crate::fighter::animation::FighterAnimationPlayerLink;
+use crate::fighter::animation::{AnimKind, FighterAnimationFrame, FighterAnimationPlayerLink};
+use crate::fighter::baked_animation::{BakedFighterAnimations, FixedMat4};
 use crate::fighter::ecb::FighterPreviousECB;
+use crate::fighter::manifest::FighterManifest;
 use crate::fighter::visual::FighterAnimations;
 use crate::fighter::{
-    FighterAttributes, FighterECB, FighterFacingDirection, FighterPreviousTranslation, FighterTranslation, FighterVelocity,
+    Fighter, FighterAttributes, FighterECB, FighterFacingDirection, FighterPreviousTranslation,
+    FighterTranslation, FighterVelocity,
 };
 use crate::game_settings::GameSettings;
 use crate::input::FighterInput;
 use crate::stage::line::StageCollision;
 
 pub mod air;
+pub mod air_dodge;
 pub mod dash;
 pub mod fall;
 pub mod ground;
 pub mod jump;
+pub mod land;
 pub mod run;
+pub mod turn;
 pub mod wait;
 pub mod walk;
-pub mod land;
-pub mod air_dodge;
 
 macro_rules! fighter_states {
     ($($variant:ident => $ty:ty),* $(,)?) => {
@@ -35,7 +39,7 @@ macro_rules! fighter_states {
             pub fn name(&self) -> &'static str {
                 match self { $(Self::$variant(_) => <$ty>::NAME),* }
             }
-            pub fn check_interrupt(&self, ctx: &FighterStateContext) -> Option<FighterState> {
+            pub fn check_interrupt(&self, ctx: &mut FighterStateContext) -> Option<FighterState> {
                 match self { $(Self::$variant(s) => s.check_interrupt(ctx)),* }
             }
 
@@ -59,7 +63,7 @@ macro_rules! fighter_states {
 
 pub trait FighterStateImpl: Sized {
     const NAME: &'static str;
-    fn check_interrupt(&self, state_context: &FighterStateContext) -> Option<FighterState>;
+    fn check_interrupt(&self, state_context: &mut FighterStateContext) -> Option<FighterState>;
 
     fn on_enter(&mut self, _state_context: &mut FighterStateContext) {}
     fn update(&mut self, _state_context: &mut FighterStateContext);
@@ -79,13 +83,49 @@ pub struct FighterStateContext<'a> {
     pub velocity: &'a mut FighterVelocity,
     pub ecb: &'a mut FighterECB,
     pub prev_ecb: &'a mut FighterPreviousECB,
-    pub fighter_attribs: &'a FighterAttributes,
     pub facing_direction: &'a mut FighterFacingDirection,
     pub game_settings: &'a GameSettings,
     pub stage_collision: &'a StageCollision,
     pub animations: &'a FighterAnimations,
     pub animation_player: &'a mut AnimationPlayer,
     pub animation_transitions: &'a mut AnimationTransitions,
+    pub animation_frame: &'a mut FighterAnimationFrame,
+    pub baked_animations: &'a Assets<BakedFighterAnimations>,
+    pub fighter_manifest: &'a FighterManifest,
+}
+
+impl FighterStateContext<'_> {
+    pub fn play_animation(&mut self, kind: AnimKind, repeat: bool) {
+        let active = self.animation_transitions.play(
+            self.animation_player,
+            self.animations.clips[&kind],
+            std::time::Duration::ZERO,
+        );
+        if repeat {
+            active.repeat();
+        }
+        self.animation_frame.reset(kind, repeat);
+    }
+
+    pub fn get_current_animation_frame(&self) -> u32 {
+        self.animation_frame.frame
+    }
+
+    pub fn is_current_animation_finished(&self) -> bool {
+        let anims_data = self
+            .baked_animations
+            .get(&self.animations.baked)
+            .expect("Animation should exist");
+        anims_data
+            .frame_count(self.animation_frame.kind)
+            .expect("Current animation should have baked frames")
+            < self.animation_frame.frame
+    }
+
+    pub fn sample_bone(&self, bone: &str) -> Option<FixedMat4> {
+        self.animations
+            .sample_bone(self.baked_animations, *self.animation_frame, bone)
+    }
 }
 
 fighter_states! {
@@ -97,7 +137,8 @@ fighter_states! {
     JumpSquat => jump::JumpSquatState,
     Jump => jump::JumpState,
     Land => land::LandingState,
-    AirDodge => air_dodge::AirDodgeState
+    AirDodge => air_dodge::AirDodgeState,
+    Turn => turn::TurnState
 }
 
 #[derive(QueryData)]
@@ -110,7 +151,8 @@ pub struct FighterFrameQuery {
     pub ecb: &'static mut FighterECB,
     pub prev_ecb: &'static mut FighterPreviousECB,
     pub facing_direction: &'static mut FighterFacingDirection,
-    pub attributes: &'static FighterAttributes,
+    pub animation_frame: &'static mut FighterAnimationFrame,
+    pub fighter: &'static Fighter,
 }
 
 impl<'w, 's> FighterFrameQueryItem<'w, 's> {
@@ -121,6 +163,8 @@ impl<'w, 's> FighterFrameQueryItem<'w, 's> {
         animations: &'a FighterAnimations,
         animation_player: &'a mut AnimationPlayer,
         animation_transitions: &'a mut AnimationTransitions,
+        baked_animations: &'a Assets<BakedFighterAnimations>,
+        manifest: &'a FighterManifest,
     ) -> FighterStateContext<'a> {
         FighterStateContext {
             translation: &mut self.translation,
@@ -130,12 +174,14 @@ impl<'w, 's> FighterFrameQueryItem<'w, 's> {
             ecb: &mut self.ecb,
             prev_ecb: &mut self.prev_ecb,
             facing_direction: &mut self.facing_direction,
-            fighter_attribs: self.attributes,
             game_settings,
             stage_collision,
             animations,
             animation_player,
             animation_transitions,
+            animation_frame: &mut self.animation_frame,
+            baked_animations,
+            fighter_manifest: manifest,
         }
     }
 }
@@ -148,6 +194,7 @@ pub struct StatefulFighterQuery {
     pub frame: FighterFrameQuery,
     pub animations: &'static FighterAnimations,
     pub animation_player_link: &'static FighterAnimationPlayerLink,
+    pub fighter: &'static Fighter,
 }
 
 #[derive(Component)]
@@ -164,6 +211,8 @@ pub fn state_update_system(
     mut animation_players: Query<(&mut AnimationPlayer, &mut AnimationTransitions)>,
     stage_collision: Res<StageCollision>,
     game_settings: Res<GameSettings>,
+    baked_animations: Res<Assets<BakedFighterAnimations>>,
+    manifests: Res<Assets<FighterManifest>>,
 ) {
     for fighter in &mut query {
         let StatefulFighterQueryItem {
@@ -178,12 +227,17 @@ pub fn state_update_system(
         else {
             continue;
         };
+
         let mut update_ctx = frame.context(
             &game_settings,
             &stage_collision,
             animations,
             &mut animation_player,
             &mut animation_transitions,
+            &baked_animations,
+            &manifests
+                .get(&(fighter.fighter.manifest))
+                .expect("Fighter manifest should be valid"),
         );
         state.update(&mut update_ctx);
     }
@@ -194,6 +248,8 @@ pub fn state_interrupt_system(
     mut animation_players: Query<(&mut AnimationPlayer, &mut AnimationTransitions)>,
     stage_collision: Res<StageCollision>,
     game_settings: Res<GameSettings>,
+    baked_animations: Res<Assets<BakedFighterAnimations>>,
+    fighter_manifests: Res<Assets<FighterManifest>>,
     mut commands: Commands,
 ) {
     for fighter in &mut query {
@@ -203,6 +259,7 @@ pub fn state_interrupt_system(
             mut frame,
             animations,
             animation_player_link,
+            fighter,
         } = fighter;
         let Ok((mut animation_player, mut animation_transitions)) =
             animation_players.get_mut(animation_player_link.player())
@@ -215,8 +272,12 @@ pub fn state_interrupt_system(
             animations,
             &mut animation_player,
             &mut animation_transitions,
+            &baked_animations,
+            fighter_manifests
+                .get(&fighter.manifest)
+                .expect("Fighter manifest should be valid"),
         );
-        if let Some(new_state) = state.check_interrupt(&state_context) {
+        if let Some(new_state) = state.check_interrupt(&mut state_context) {
             let mut new_state = new_state;
             let old_state_name = state.name();
             let new_state_name = new_state.name();
@@ -234,6 +295,8 @@ pub fn state_collision_interrupt_system(
     mut animation_players: Query<(&mut AnimationPlayer, &mut AnimationTransitions)>,
     stage_collision: Res<StageCollision>,
     game_settings: Res<GameSettings>,
+    baked_animations: Res<Assets<BakedFighterAnimations>>,
+    fighter_manifests: Res<Assets<FighterManifest>>,
     mut commands: Commands,
 ) {
     for fighter in &mut query {
@@ -243,6 +306,7 @@ pub fn state_collision_interrupt_system(
             mut frame,
             animations,
             animation_player_link,
+            fighter,
         } = fighter;
         let Ok((mut animation_player, mut animation_transitions)) =
             animation_players.get_mut(animation_player_link.player())
@@ -255,6 +319,10 @@ pub fn state_collision_interrupt_system(
             animations,
             &mut animation_player,
             &mut animation_transitions,
+            &baked_animations,
+            fighter_manifests
+                .get(&fighter.manifest)
+                .expect("Fighter manifest should be valid"),
         );
         if let Some(new_state) = state.check_collision_interrupt(&mut state_context) {
             let mut new_state = new_state;

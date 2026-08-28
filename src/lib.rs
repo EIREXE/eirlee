@@ -21,7 +21,7 @@
 //! save, click Rebuild in jackdaw (or run `jd build`) and it
 //! appears in `Add Component`. No registration code is needed.
 
-use bevy::prelude::*;
+use bevy::{asset::processor::{AssetProcessor, ProcessorState}, prelude::*, tasks::block_on};
 use bevy_asset_loader::prelude::*;
 use bevy_wind_waker_shader::prelude::*;
 use clap::Parser;
@@ -46,6 +46,7 @@ pub mod stage;
 #[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
 pub enum AppState {
     #[default]
+    WaitForAssetProcessing,
     LoadCommonAssets,
     LoadFighterManifests,
     PrepareFighterManifests,
@@ -78,6 +79,7 @@ impl Plugin for GamePlugin {
                 GameplaySchedulePlugin,
                 input::FighterInputPlugin,
                 fighter::FighterPlugin,
+                fighter::baked_animation::BakedAnimationPlugin,
                 stage::StagePlugin,
                 MatchCameraPlugin,
                 bevy_common_assets::ron::RonAssetPlugin::<FighterManifest>::new(&["fighter.ron"]),
@@ -110,6 +112,10 @@ impl Plugin for GamePlugin {
                     .load_collection::<stage::manifest::StageManifestAssets>(),
             )
             .add_systems(
+                Update,
+                wait_for_asset_processor.run_if(in_state(AppState::WaitForAssetProcessing)),
+            )
+            .add_systems(
                 OnEnter(AppState::PrepareFighterManifests),
                 fighter::manifest::prepare_fighter_manifests,
             )
@@ -128,6 +134,15 @@ impl Plugin for GamePlugin {
             .add_systems(OnExit(AppState::InMatch), match_loading::cleanup_match)
             .add_systems(Update, spin_cubes)
             .insert_resource(args::Args::parse());
+    }
+}
+
+fn wait_for_asset_processor(
+    processor: Option<Res<AssetProcessor>>,
+    mut next_state: ResMut<NextState<AppState>>,
+) {
+    if processor.is_none_or(|processor| block_on(processor.get_state()) == ProcessorState::Finished) {
+        next_state.set(AppState::LoadCommonAssets);
     }
 }
 

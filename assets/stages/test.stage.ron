@@ -1,6 +1,25 @@
 (
     id: TestStage,
     model_path: "stages/battlefield.glb#Scene0",
+    camera: (
+        left: -75.0,
+        right: 75.0,
+        bottom: -30.0,
+        top: 70.0,
+        origin: (0.0, 15.0),
+        vertical_fov_degrees: 30.0,
+        min_depth: 150.0,
+        max_depth: 400.0,
+        subject_scale: 1.0,
+        tracking_smoothness: 3.0,
+        vertical_tilt_degrees: 0.0,
+        horizontal_pan_coefficient: 0.0,
+        vertical_pan_coefficient: 0.0,
+        max_horizontal_pan_degrees: 17.5,
+        max_upward_pan_degrees: 5.0,
+        max_downward_pan_degrees: 7.0,
+        max_downward_expansion: 40.0,
+    ),
     polygons: [
         (
             poly_type: Platform,

@@ -16,8 +16,10 @@ pub struct RunState {
 
 impl FighterStateImpl for RunState {
     const NAME: &'static str = "Run";
-    fn check_interrupt(&self, state_context: &FighterStateContext) -> Option<FighterState> {
-        if let Some(state) = ground::grounded_movement_common_interrupts(state_context, &self.grounded_common) {
+    fn check_interrupt(&self, state_context: &mut FighterStateContext) -> Option<FighterState> {
+        if let Some(state) =
+            ground::grounded_movement_common_interrupts(state_context, &self.grounded_common)
+        {
             return Some(state);
         }
 
@@ -33,26 +35,20 @@ impl FighterStateImpl for RunState {
     }
 
     fn on_enter(&mut self, state_context: &mut super::FighterStateContext) {
-        state_context
-            .animation_transitions
-            .play(
-                &mut state_context.animation_player,
-                state_context.animations.clips[&AnimKind::Run],
-                Duration::ZERO,
-            )
-            .repeat();
+        state_context.play_animation(AnimKind::Run, true);
     }
 
     fn update(&mut self, state_context: &mut super::FighterStateContext) {
         let last_frame = state_context.input.get_last_frame();
         let (accel, target_vel) = state_context
-            .fighter_attribs
+            .fighter_manifest
+            .attributes
             .get_accel_and_target_dashrun(&last_frame, FGi32::ONE);
         let accel = ground::compute_ground_accel(
             accel,
             target_vel,
             state_context.velocity.x,
-            state_context.fighter_attribs,
+            &state_context.fighter_manifest.attributes,
             state_context.game_settings,
         );
         state_context.velocity.x += accel;

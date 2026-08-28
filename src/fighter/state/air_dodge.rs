@@ -14,7 +14,9 @@ use crate::{
             wait::WaitState,
             walk,
         },
-    }, input, math::vec::FGVec2,
+    },
+    input,
+    math::vec::FGVec2,
 };
 
 #[derive(Debug, Clone, Hash)]
@@ -26,8 +28,8 @@ pub struct AirDodgeState {
 impl FighterStateImpl for AirDodgeState {
     const NAME: &'static str = "AirDodge";
 
-    fn check_interrupt(&self, state_context: &FighterStateContext) -> Option<FighterState> {
-        if self.duration_counter >= state_context.fighter_attribs.air_dodge_duration {
+    fn check_interrupt(&self, state_context: &mut FighterStateContext) -> Option<FighterState> {
+        if self.duration_counter >= state_context.fighter_manifest.attributes.air_dodge_duration {
             Some(FighterState::Fall(FallState))
         } else {
             None
@@ -37,7 +39,7 @@ impl FighterStateImpl for AirDodgeState {
     fn update(&mut self, state_context: &mut FighterStateContext) {
         self.duration_counter += 1;
 
-        state_context.velocity.0 *= state_context.fighter_attribs.air_dodge_decay;
+        state_context.velocity.0 *= state_context.fighter_manifest.attributes.air_dodge_decay;
 
         air::apply_air_motion(
             state_context.velocity,
@@ -66,13 +68,10 @@ impl FighterStateImpl for AirDodgeState {
     }
 
     fn on_enter(&mut self, state_context: &mut FighterStateContext) {
-        state_context.animation_transitions.play(
-            state_context.animation_player,
-            state_context.animations.clips[&AnimKind::AirDodge],
-            Duration::ZERO,
-        );
+        state_context.play_animation(AnimKind::AirDodge, false);
 
-        state_context.velocity.0 = self.direction * state_context.fighter_attribs.air_dodge_velocity;
+        state_context.velocity.0 =
+            self.direction * state_context.fighter_manifest.attributes.air_dodge_velocity;
     }
 }
 

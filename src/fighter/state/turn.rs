@@ -1,44 +1,40 @@
-use std::time::Duration;
-
-use bevy::prelude::*;
-
-use super::{FighterStateContext, FighterStateImpl, ground, walk};
+use super::{FighterStateContext, FighterStateImpl};
 use crate::fighter::animation::AnimKind;
+use crate::fighter::collision;
 use crate::fighter::state::fall::FallState;
-use crate::fighter::state::ground::{
-    GroundedMotionResult, GroundedStateCommon, grounded_movement_common_interrupts,
-};
-use crate::fighter::state::{FighterState, dash, turn};
+use crate::fighter::state::ground::{self, GroundedMotionResult, GroundedStateCommon};
+use crate::fighter::state::land::LandingState;
+use crate::fighter::state::{FighterState, air, dash, jump, wait, walk};
 
 #[derive(Debug, Clone, Hash)]
-pub struct WaitState {
-    pub grounded_common: GroundedStateCommon,
+pub struct TurnState {
+    grounded_common: GroundedStateCommon,
 }
 
-impl FighterStateImpl for WaitState {
-    const NAME: &'static str = "Wait";
+impl FighterStateImpl for TurnState {
+    const NAME: &'static str = "Turn";
     fn check_interrupt(&self, state_context: &mut FighterStateContext) -> Option<FighterState> {
-        if let Some(state) = ground::grounded_movement_standstill_common_interrupts(
-            state_context,
-            &self.grounded_common,
-        ) {
-            // Prevent transitioning into myself
-            if let FighterState::Wait(_) = state {
-                None
-            } else {
-                Some(state)
-            }
-        } else if let Some(state) =
-            ground::grounded_movement_common_interrupts(state_context, &self.grounded_common)
-        {
+        // State chain that results in the turn completing
+        if let Some(state) = jump::check_input(state_context, &self.grounded_common) {
             Some(state)
+        } else if state_context.is_current_animation_finished() {
+            if let Some(state) = dash::check_input(state_context, &self.grounded_common) {
+                Some(state)
+            } else if let Some(state) = walk::check_input(state_context, &self.grounded_common) {
+                Some(state)
+            } else if let Some(state) = wait::check_input(state_context, &self.grounded_common) {
+                Some(state)
+            } else {
+                None
+            }
         } else {
             None
         }
     }
 
     fn on_enter(&mut self, state_context: &mut super::FighterStateContext) {
-        state_context.play_animation(AnimKind::Wait, true);
+        state_context.play_animation(AnimKind::Turn, false);
+        *state_context.facing_direction = state_context.facing_direction.reverse();
     }
 
     fn update(&mut self, state_context: &mut super::FighterStateContext) {
@@ -81,13 +77,15 @@ impl FighterStateImpl for WaitState {
 
 pub fn check_input(
     state_context: &FighterStateContext,
-    ground_state_common: &GroundedStateCommon,
+    grounded_common: &GroundedStateCommon,
 ) -> Option<FighterState> {
     let input_frame = state_context.input.get_last_frame();
 
-    if input_frame.movement.x.abs() < state_context.game_settings.input_common.stick_deadzone {
-        return Some(FighterState::Wait(WaitState {
-            grounded_common: ground_state_common.clone(),
+    if !input_frame.movement.x.is_zero()
+        && input_frame.movement.x.signum() != state_context.facing_direction.to_sign()
+    {
+        return Some(FighterState::Turn(TurnState {
+            grounded_common: grounded_common.clone(),
         }));
     }
     None

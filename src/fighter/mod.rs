@@ -7,6 +7,7 @@ use bevy_ggrs::prelude::*;
 use serde::{Deserialize, Serialize};
 
 pub mod animation;
+pub mod baked_animation;
 pub mod attributes;
 pub mod collision;
 pub mod debug;
@@ -27,15 +28,8 @@ pub use motion::{FighterPreviousTranslation, FighterTranslation, FighterVelocity
 
 use crate::{
     fighter::{
-        animation::animation_init,
-        state::{FighterState, fall::FallState},
-        visual::FighterAnimations,
-    },
-    input::FighterInput,
-    math::{int::FGi32, vec::FGVec2},
-    player::Player,
-    schedule::GameplaySet,
-    stage::line::StageCollision,
+        animation::animation_init, manifest::FighterManifest, state::{FighterState, fall::FallState}, visual::FighterAnimations,
+    }, input::FighterInput, math::{int::FGi32, vec::FGVec2}, player::Player, schedule::GameplaySet, stage::line::StageCollision,
 };
 use state::state_interrupt_system;
 
@@ -49,7 +43,17 @@ pub enum FighterFacingDirection {
     Left,
     Right,
 }
-#[derive(Component, Copy, Clone, Debug, Reflect, Serialize, Deserialize)]
+
+impl FighterFacingDirection {
+    fn reverse(&self) -> Self {
+        match self {
+            FighterFacingDirection::Left => FighterFacingDirection::Right,
+            FighterFacingDirection::Right => FighterFacingDirection::Left,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Reflect, Serialize, Deserialize)]
 #[reflect(opaque)]
 pub struct FighterCameraProfile {
     pub vertical_origin_offset: FGi32,
@@ -84,6 +88,12 @@ impl FighterFacingDirection {
 #[require(Transform)]
 pub struct FighterVisual;
 
+#[derive(Component)]
+pub struct Fighter {
+    id: FighterId,
+    pub manifest: Handle<FighterManifest>
+}
+
 impl Plugin for FighterPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
@@ -95,6 +105,7 @@ impl Plugin for FighterPlugin {
             GgrsSchedule,
             (
                 ecb::snapshot_fighter_ecb.before(state_interrupt_system),
+                animation::advance_fighter_animation_frames.before(state_interrupt_system),
                 state::state_interrupt_system,
             )
                 .in_set(GameplaySet::Interrupt),
@@ -130,15 +141,19 @@ impl Plugin for FighterPlugin {
         .rollback_component_with_copy::<FighterVelocity>()
         .rollback_component_with_copy::<FighterTranslation>()
         .rollback_component_with_copy::<FighterPreviousTranslation>()
-        .rollback_component_with_copy::<FighterAttributes>()
+        .rollback_component_with_copy::<animation::FighterAnimationFrame>()
+        .checksum_component_with_hash::<animation::FighterAnimationFrame>()
         .rollback_component_with_copy::<Grounded>()
+        .rollback_component_with_copy::<FighterFacingDirection>()
         .rollback_resource_with_reflect::<StageCollision>()
         // Debug views.
         .add_systems(FixedPostUpdate, debug::debug_draw_ecb)
         .add_systems(EguiPrimaryContextPass, debug::fighter_debug)
+        .add_systems(FixedPostUpdate, debug::animation_debug)
         .add_systems(EguiPrimaryContextPass, debug::update_config)
         .rollback_component_with_clone::<FighterState>()
         .checksum_component_with_hash::<FighterState>()
+        .checksum_component_with_hash::<FighterFacingDirection>()
         .register_type::<FighterFacingDirection>();
     }
 }
@@ -147,8 +162,8 @@ pub fn spawn_fighter(
     commands: &mut Commands,
     player_handle: usize,
     spawn_position: FGVec2,
+    manifest: (Handle<FighterManifest>, &FighterManifest),
     attributes: FighterAttributes,
-    camera_profile: FighterCameraProfile,
     animations: FighterAnimations,
     visual_root: WorldAssetRoot,
 ) {
@@ -157,6 +172,10 @@ pub fn spawn_fighter(
         Player {
             handle: player_handle,
         },
+        Fighter {
+            id: manifest.1.id,
+            manifest: manifest.0
+        },
         FighterFacingDirection::Right,
         FighterECB {
             vertical_half: FGi32::lit("5.0"),
@@ -164,11 +183,10 @@ pub fn spawn_fighter(
         },
         FighterVelocity::default(),
         FighterTranslation(spawn_position),
-        attributes,
-        camera_profile,
         visual_root,
         animations,
         FighterState::Fall(FallState),
+        animation::FighterAnimationFrame::new(animation::AnimKind::Wait, true),
         FighterVisual,
         FighterInput::default(),
     ));

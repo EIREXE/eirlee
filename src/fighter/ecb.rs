@@ -36,29 +36,29 @@ pub fn snapshot_fighter_ecb(fighters: Query<(&FighterECB, &mut FighterPreviousEC
 
 impl FighterECB {
     pub fn to_3d_lineloop(&self, trf: Transform) -> [Vec3; 4] {
-        let rel_up = trf.transform_point(Vec3::new(0.0, self.vertical_half.to_num(), 0.0));
-        let rel_down = trf.transform_point(Vec3::new(0.0, (-self.vertical_half).to_num(), 0.0));
-        let rel_left = trf.transform_point(Vec3::new((-self.horizontal_half).to_num(), 0.0, 0.0));
-        let rel_right = trf.transform_point(Vec3::new(self.horizontal_half.to_num(), 0.0, 0.0));
+        let rel_up = trf.transform_point(Vec3::new(0.0, (self.vertical_half + self.vertical_half).to_num(), 0.0));
+        let rel_down = trf.transform_point(Vec3::new(0.0, 0.0, 0.0));
+        let rel_left = trf.transform_point(Vec3::new((-self.horizontal_half).to_num(), self.vertical_half.to_num(), 0.0));
+        let rel_right = trf.transform_point(Vec3::new(self.horizontal_half.to_num(), self.vertical_half.to_num(), 0.0));
         [rel_up, rel_right, rel_down, rel_left]
     }
 
     pub fn get_bottom_point(&self) -> FGVec2 {
-        FGVec2::new(FGi32::ZERO, -self.vertical_half)
+        FGVec2::new(FGi32::ZERO, FGi32::ZERO)
     }
 }
 
 impl FighterPreviousECB {
     pub fn to_3d_lineloop(&self, trf: Transform) -> [Vec3; 4] {
-        let rel_up = trf.transform_point(Vec3::new(0.0, self.vertical_half.to_num(), 0.0));
-        let rel_down = trf.transform_point(Vec3::new(0.0, (-self.vertical_half).to_num(), 0.0));
-        let rel_left = trf.transform_point(Vec3::new((-self.horizontal_half).to_num(), 0.0, 0.0));
-        let rel_right = trf.transform_point(Vec3::new(self.horizontal_half.to_num(), 0.0, 0.0));
+        let rel_up = trf.transform_point(Vec3::new(0.0, (self.vertical_half + self.vertical_half).to_num(), 0.0));
+        let rel_down = trf.transform_point(Vec3::new(0.0, 0.0, 0.0));
+        let rel_left = trf.transform_point(Vec3::new((-self.horizontal_half).to_num(), self.vertical_half.to_num(), 0.0));
+        let rel_right = trf.transform_point(Vec3::new(self.horizontal_half.to_num(), self.vertical_half.to_num(), 0.0));
         [rel_up, rel_right, rel_down, rel_left]
     }
 
     pub fn get_bottom_point(&self) -> FGVec2 {
-        FGVec2::new(FGi32::ZERO, -self.vertical_half)
+        FGVec2::new(FGi32::ZERO, FGi32::ZERO)
     }
 }
 

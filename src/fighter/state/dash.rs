@@ -4,11 +4,11 @@ use std::time::Duration;
 use bevy::prelude::*;
 
 use super::{FighterStateContext, FighterStateImpl, ground, run, wait, walk};
+use crate::fighter::FighterFacingDirection;
 use crate::fighter::animation::AnimKind;
 use crate::fighter::state::FighterState;
 use crate::fighter::state::fall::FallState;
 use crate::fighter::state::ground::{GroundedMotionResult, GroundedStateCommon};
-use crate::fighter::FighterFacingDirection;
 use crate::input::FighterCommands::{SmashMoveLeft, SmashMoveRight};
 
 #[derive(Debug, Clone)]
@@ -37,9 +37,9 @@ impl DashState {
 
 impl FighterStateImpl for DashState {
     const NAME: &'static str = "Dash";
-    fn check_interrupt(&self, ctx: &FighterStateContext) -> Option<FighterState> {
+    fn check_interrupt(&self, ctx: &mut FighterStateContext) -> Option<FighterState> {
         let ground = &self.ground_common;
-        let attributes = ctx.fighter_attribs;
+        let attributes = ctx.fighter_manifest.attributes;
 
         // A reverse dash can interrupt before IASA
         if let Some(direction) =
@@ -70,42 +70,48 @@ impl FighterStateImpl for DashState {
 
     fn on_enter(&mut self, state_context: &mut FighterStateContext) {
         *state_context.facing_direction = self.direction;
-        state_context.velocity.x =
-            state_context.fighter_attribs.dash_initial_velocity * self.direction.to_sign();
+        state_context.velocity.x = state_context
+            .fighter_manifest
+            .attributes
+            .dash_initial_velocity
+            * self.direction.to_sign();
 
-        state_context.animation_transitions.play(
-            &mut state_context.animation_player,
-            state_context.animations.clips[&AnimKind::Dash],
-            Duration::ZERO,
-        );
+        state_context.play_animation(AnimKind::Dash, false);
 
         match state_context.facing_direction {
             FighterFacingDirection::Left => {
-                state_context.input.clear_command(crate::input::FighterCommands::SmashMoveLeft);
-            },
+                state_context
+                    .input
+                    .clear_command(crate::input::FighterCommands::SmashMoveLeft);
+            }
             FighterFacingDirection::Right => {
-                state_context.input.clear_command(crate::input::FighterCommands::SmashMoveRight);
-            },
+                state_context
+                    .input
+                    .clear_command(crate::input::FighterCommands::SmashMoveRight);
+            }
         }
-
     }
 
     fn update(&mut self, state_context: &mut FighterStateContext) {
         self.frames_in_dash += 1;
 
-        if  self.frames_in_dash < state_context.fighter_attribs.dash_acceleration_duration {
-
-        }
+        if self.frames_in_dash
+            < state_context
+                .fighter_manifest
+                .attributes
+                .dash_acceleration_duration
+        {}
 
         let last_frame = state_context.input.get_last_frame();
         let (accel, target_vel) = state_context
-            .fighter_attribs
+            .fighter_manifest
+            .attributes
             .get_accel_and_target_dashrun(&last_frame, self.direction.to_sign());
         let accel = ground::compute_ground_accel(
             accel,
             target_vel,
             state_context.velocity.x,
-            state_context.fighter_attribs,
+            &state_context.fighter_manifest.attributes,
             state_context.game_settings,
         );
         state_context.velocity.x += accel;
@@ -131,7 +137,9 @@ impl FighterStateImpl for DashState {
     }
 }
 
-fn check_smash_input_with_dir(state_context: &FighterStateContext) -> Option<FighterFacingDirection> {
+fn check_smash_input_with_dir(
+    state_context: &FighterStateContext,
+) -> Option<FighterFacingDirection> {
     if state_context.input.has_command(SmashMoveLeft) {
         return Some(FighterFacingDirection::Left);
     } else if state_context.input.has_command(SmashMoveRight) {

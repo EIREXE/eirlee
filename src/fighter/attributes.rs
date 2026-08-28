@@ -6,7 +6,7 @@ use crate::{input::FighterInputFrame, math::int::FGi32};
 /// Per-fighter tuning values. These are character data, not global rules —
 /// anything that applies to every fighter belongs in
 /// [`crate::game_settings::FighterSettingsCommon`] instead.
-#[derive(Asset, Component, Clone, Copy, Reflect, Serialize, Deserialize)]
+#[derive(Asset, Clone, Copy, Reflect, Serialize, Deserialize)]
 #[reflect(opaque)]
 pub struct FighterAttributes {
     pub base_walk_accel: FGi32,

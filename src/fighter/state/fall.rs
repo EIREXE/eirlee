@@ -10,23 +10,22 @@ pub struct FallState;
 
 impl FighterStateImpl for FallState {
     const NAME: &'static str = "Fall";
-    fn check_interrupt(&self, state_context: &FighterStateContext) -> Option<FighterState> {
+    fn check_interrupt(&self, state_context: &mut FighterStateContext) -> Option<FighterState> {
         jump::check_input_double_jump(state_context)
     }
 
     fn on_enter(&mut self, state_context: &mut super::FighterStateContext) {
-        state_context.animation_transitions.play(
-            &mut state_context.animation_player,
-            state_context.animations.clips[&AnimKind::Fall],
-            std::time::Duration::ZERO,
-        ).repeat();
+        state_context.play_animation(AnimKind::Fall, true);
     }
 
     fn update(&mut self, state_context: &mut super::FighterStateContext) {
-        air::integrate_gravity(state_context.velocity, state_context.fighter_attribs);
+        air::integrate_gravity(
+            state_context.velocity,
+            &state_context.fighter_manifest.attributes,
+        );
         air::apply_air_drift(
             state_context.velocity,
-            state_context.fighter_attribs,
+            &state_context.fighter_manifest.attributes,
             state_context.input,
         );
         air::apply_air_motion(

@@ -2,6 +2,7 @@
 //! without the editor. The editor's Play button runs the same
 //! [`game_test::GamePlugin`] through its own game runner instead.
 
+use bevy::asset::AssetMode::Processed;
 use bevy::camera_controller::free_camera::FreeCameraPlugin;
 use bevy::image::{ImageAddressMode, ImagePlugin, ImageSamplerDescriptor};
 use bevy::prelude::*;
@@ -21,6 +22,9 @@ fn main() -> AppExit {
             address_mode_w: ImageAddressMode::Repeat,
             ..ImageSamplerDescriptor::linear()
         },
+    }).set(AssetPlugin {
+        mode: Processed,
+        ..default()
     });
 
     App::new()

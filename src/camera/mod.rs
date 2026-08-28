@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use crate::stage::manifest::StageCameraProfile;
+use crate::{fighter::manifest::FighterManifest, stage::manifest::StageCameraProfile};
 
 const EMPTY_FRAME_HALF_SIZE: f32 = 40.0;
 const SUBJECT_COUNT_SCALES: [f32; 4] = [1.5, 1.32, 1.16, 1.0];
@@ -208,7 +208,7 @@ fn update_match_camera(
     fighters: Query<
         (
             &crate::fighter::motion::FighterTranslation,
-            &crate::fighter::FighterCameraProfile,
+            &crate::fighter::Fighter,
             &crate::fighter::FighterFacingDirection,
         ),
         With<crate::player::Player>,
@@ -219,11 +219,13 @@ fn update_match_camera(
         &mut MatchCamera,
         &StageCameraProfile,
     )>,
+    manifests: Res<Assets<FighterManifest>>
 ) {
-    let subjects = fighters.iter().map(|(translation, profile, facing)| {
+    let subjects = fighters.iter().map(|(translation, fighter, facing)| {
+        let manifest = manifests.get(&fighter.manifest).expect("Fighter manifest should be valid");
         fighter_subject_bounds(
             Vec2::new(translation.x.to_num(), translation.y.to_num()),
-            *profile,
+            manifest.camera,
             *facing,
         )
     });
@@ -296,12 +298,13 @@ fn debug_draw_camera(
     fighters: Query<
         (
             &crate::fighter::motion::FighterTranslation,
-            &crate::fighter::FighterCameraProfile,
+            &crate::fighter::Fighter,
             &crate::fighter::FighterFacingDirection,
         ),
         With<crate::player::Player>,
     >,
     cameras: Query<(&MatchCamera, &StageCameraProfile)>,
+    manifests: Res<Assets<FighterManifest>>,
 ) {
     for (camera, profile) in &cameras {
         draw_rectangle(
@@ -315,10 +318,11 @@ fn debug_draw_camera(
             Color::srgb(1.0, 0.5, 0.0),
         );
         draw_rectangle(&mut gizmos, camera.frame, Color::srgb(1.0, 1.0, 0.0));
-        for (translation, fighter_profile, facing) in &fighters {
+        for (translation, fighter, facing) in &fighters {
+            let manifest = manifests.get(&fighter.manifest).expect("Fighter manifest should be valid");
             let subject = fighter_subject_bounds(
                 Vec2::new(translation.x.to_num(), translation.y.to_num()),
-                *fighter_profile,
+                manifest.camera,
                 *facing,
             );
             draw_rectangle(

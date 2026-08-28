@@ -15,7 +15,7 @@ authors = [""]
 [workspace]
 
 [dependencies]
-bevy = { version = "0.19", features = ["dynamic_linking", "free_camera"] }
+bevy = { version = "0.19", features = ["asset_processor", "dynamic_linking", "free_camera"] }
 # Loads the scenes you author in the editor (assets/*.bsn) and builds
 # physics colliders from them. An ordinary dependency; remove it if you
 # stop using authored scenes.
@@ -26,6 +26,9 @@ bevy-inspector-egui = "0.37.0"
 bevy_egui = "0.40.0"
 bevy_ggrs = { git = "https://github.com/gschup/bevy_ggrs" }
 serde = "1.0.229"
+bincode = "1.3.3"
+gltf = "1.4.1"
+ron = "0.12.0"
 bitfields = "3.0.0"
 clap = { version = "4.6.6", features = ["derive"] }
 bevy_wind_waker_shader = { git = "https://github.com/lavaeater/bevy_wind_waker_shader.git" }

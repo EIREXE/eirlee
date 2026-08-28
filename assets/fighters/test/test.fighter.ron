@@ -1,11 +1,12 @@
 (
     id: TestFighter,
     model_path: "fighters/test/test-fighter-normal.glb",
+    baked_animation_path: "fighters/test/test.fighterbake",
     attributes: (
         base_walk_accel: "0.1",
         stick_walk_accel: "0.16",
         max_walk_vel: "0.7",
-        ground_friction: "0.02",
+        ground_friction: "0.09",
         dash_acceleration_duration: 13,
         dash_duration: 24,
         base_dash_accel: "0.02",
@@ -32,6 +33,14 @@
         air_dodge_velocity: "2.790",
         air_dodge_decay: "0.9"
     ),
+    camera: (
+        vertical_origin_offset: "10.0",
+        forward_extent: "25.5",
+        backward_extent: "2.5",
+        upward_extent: "15.0",
+        downward_extent: "5.0",
+        visibility_radius: "5.0",
+    ),
     animations: {
         Wait: "PlyPurin5K_Share_ACTION_Wait",
         Walk: "PlyPurin5K_Share_ACTION_WalkFast",
@@ -43,6 +52,7 @@
         Landing: "PlyPurin5K_Share_ACTION_Landing",
         AirDodge: "PlyPurin5K_Share_ACTION_EscapeAir",
         DoubleJump: "PlyPurin5K_Share_ACTION_JumpAerialF1",
-        Fall: "PlyPurin5K_Share_ACTION_Fall"
+        Fall: "PlyPurin5K_Share_ACTION_Fall",
+        Turn: "PlyPurin5K_Share_ACTION_Turn",
     }
 )

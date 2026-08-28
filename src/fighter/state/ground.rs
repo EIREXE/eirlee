@@ -2,16 +2,14 @@
 //! ECS types so it stays cheap to reason about and to unit-test — it has to be
 //! bit-for-bit deterministic for rollback.
 
-use crate::fighter::state::{FighterState, FighterStateContext};
+use crate::fighter::state::{FighterState, FighterStateContext, dash, turn, wait, walk};
 use crate::fighter::{
     FighterAttributes, FighterPreviousTranslation, FighterTranslation, FighterVelocity,
 };
 use crate::game_settings::GameSettings;
 use crate::math::int::FGi32;
 use crate::math::vec::FGVec2;
-use crate::stage::line::{
-    StageLineID, StagePolyLineSegmentType,
-};
+use crate::stage::line::{StageLineID, StagePolyLineSegmentType};
 
 use bevy::prelude::*;
 use fixed::traits::Fixed;
@@ -148,4 +146,21 @@ pub fn grounded_movement_common_interrupts(
     ground_common: &GroundedStateCommon,
 ) -> Option<FighterState> {
     super::jump::check_input(state_context, ground_common)
+}
+
+pub fn grounded_movement_standstill_common_interrupts(
+    state_context: &FighterStateContext,
+    ground_common: &GroundedStateCommon,
+) -> Option<FighterState> {
+    if let Some(state) = dash::check_input(state_context, &ground_common) {
+        Some(state)
+    } else if let Some(state) = turn::check_input(state_context, &ground_common) {
+        Some(state)
+    } else if let Some(state) = walk::check_input(state_context, &ground_common) {
+        Some(state)
+    } else if let Some(state) = wait::check_input(state_context, &ground_common) {
+        Some(state)
+    } else {
+        None
+    }
 }

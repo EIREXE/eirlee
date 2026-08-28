@@ -21,6 +21,7 @@ pub enum FighterId {
 pub struct FighterManifest {
     pub id: FighterId,
     pub model_path: String,
+    pub baked_animation_path: String,
     pub attributes: FighterAttributes,
     pub camera: FighterCameraProfile,
     pub animations: HashMap<AnimKind, String>,
@@ -84,6 +85,13 @@ pub fn prepare_fighter_manifests(
             fail(
                 &mut next_state,
                 &format!("{:?} has an empty model path", manifest.id),
+            );
+            return;
+        }
+        if manifest.baked_animation_path.is_empty() {
+            fail(
+                &mut next_state,
+                &format!("{:?} has an empty baked animation path", manifest.id),
             );
             return;
         }

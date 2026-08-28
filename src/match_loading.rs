@@ -12,6 +12,7 @@ use crate::{
     fighter::{
         FighterId,
         animation::AnimKind,
+        baked_animation::BakedFighterAnimations,
         manifest::{FighterManifest, FighterManifestRegistry},
         spawn_fighter,
         visual::FighterAnimations,
@@ -39,6 +40,7 @@ pub struct PendingMatch {
 pub struct SelectedFighterAssets {
     pub fighter: FighterId,
     pub model: Handle<Gltf>,
+    pub baked_animations: Handle<BakedFighterAnimations>,
 }
 
 #[derive(Resource)]
@@ -79,6 +81,7 @@ impl MatchAssets {
                     SelectedFighterAssets {
                         fighter: player.fighter,
                         model: asset_server.load(manifest.model_path.clone()),
+                        baked_animations: asset_server.load(manifest.baked_animation_path.clone()),
                     }
                 })
                 .collect(),
@@ -97,6 +100,7 @@ impl AssetCollection for MatchAssets {
         handles.push(assets.stage.clone().untyped());
         for character in assets.fighters {
             handles.push(character.model.untyped());
+            handles.push(character.baked_animations.untyped());
         }
         handles
     }
@@ -141,6 +145,7 @@ pub fn prepare_match(
     request: Res<PendingMatch>,
     assets: Res<MatchAssets>,
     gltfs: Res<Assets<Gltf>>,
+    baked_animations: Res<Assets<BakedFighterAnimations>>,
     registry: Res<FighterManifestRegistry>,
     stage_registry: Res<StageManifestRegistry>,
     manifests: Res<Assets<FighterManifest>>,
@@ -180,6 +185,13 @@ pub fn prepare_match(
             fail_match(&mut next_state, "a loaded character GLTF is unavailable");
             return;
         };
+        let Some(baked) = baked_animations.get(&character.baked_animations) else {
+            fail_match(
+                &mut next_state,
+                "a fighter baked animation asset is unavailable",
+            );
+            return;
+        };
         let Some(scene) = gltf.scenes.first().cloned() else {
             fail_match(&mut next_state, "a character GLTF contains no scene");
             return;
@@ -191,6 +203,8 @@ pub fn prepare_match(
                 animations.clone(),
                 manifest.attributes,
                 manifest.camera,
+                manifest,
+                manifest_handle,
             ));
             continue;
         }
@@ -210,6 +224,16 @@ pub fn prepare_match(
                 return;
             };
             clips.insert(*kind, graph.add_clip(clip.clone(), 1.0, graph.root));
+            if baked.frame_count(*kind).is_none() {
+                fail_match(
+                    &mut next_state,
+                    &format!(
+                        "{:?} baked data has no {kind:?} animation",
+                        character.fighter
+                    ),
+                );
+                return;
+            }
         }
 
         if !clips.contains_key(&AnimKind::Wait) {
@@ -220,9 +244,17 @@ pub fn prepare_match(
         let animations = FighterAnimations {
             graph: graphs.add(graph),
             clips,
+            baked: character.baked_animations.clone(),
         };
         shared_animations.insert(character.fighter, animations.clone());
-        prepared.push((scene, animations, manifest.attributes, manifest.camera));
+        prepared.push((
+            scene,
+            animations,
+            manifest.attributes,
+            manifest.camera,
+            manifest,
+            manifest_handle,
+        ));
     }
 
     let session = match create_session(&args, request.players.len()) {
@@ -238,8 +270,12 @@ pub fn prepare_match(
 
     let root = commands.spawn((Name::new("Match"), MatchRoot)).id();
 
-    let stage_handle = stage_registry.get(request.stage).expect("Initialization check should ensure all stages exist");
-    let stage_manifest = stage_manifests.get(&stage_handle).expect("Initialization check should ensure stage manifests are kept alive");
+    let stage_handle = stage_registry
+        .get(request.stage)
+        .expect("Initialization check should ensure all stages exist");
+    let stage_manifest = stage_manifests
+        .get(&stage_handle)
+        .expect("Initialization check should ensure stage manifests are kept alive");
     stage::spawn_stage(
         &mut commands,
         root,
@@ -248,16 +284,18 @@ pub fn prepare_match(
         stage_manifest.camera.clone(),
     );
 
-    for (index, (player, (scene, animations, attributes, camera_profile))) in
-        request.players.iter().zip(prepared).enumerate()
+    for (
+        index,
+        (player, (scene, animations, attributes, camera_profile, manifest, manifest_handle)),
+    ) in request.players.iter().zip(prepared).enumerate()
     {
         let spawn_x = (index as i32 * 2 + 1 - request.players.len() as i32) * 5;
         spawn_fighter(
             &mut commands,
             player.handle,
             FGVec2::new(FGi32::from_num(spawn_x), FGi32::lit("12.5")),
+            (manifest_handle.clone(), manifest),
             attributes,
-            camera_profile,
             animations,
             WorldAssetRoot(scene),
         );
