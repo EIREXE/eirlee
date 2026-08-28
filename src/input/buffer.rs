@@ -126,7 +126,7 @@ pub fn postprocess_input(
             {
                 input.frames_in_smash_move_deadzone = 0;
             } else {
-                input.frames_in_smash_move_deadzone += 1;
+                input.frames_in_smash_move_deadzone = input.frames_in_smash_move_deadzone.saturating_add(1);
             }
         }
 
