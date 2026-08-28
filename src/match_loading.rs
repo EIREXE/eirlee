@@ -186,7 +186,12 @@ pub fn prepare_match(
         };
 
         if let Some(animations) = shared_animations.get(&character.fighter) {
-            prepared.push((scene, animations.clone(), manifest.attributes));
+            prepared.push((
+                scene,
+                animations.clone(),
+                manifest.attributes,
+                manifest.camera,
+            ));
             continue;
         }
 
@@ -217,7 +222,7 @@ pub fn prepare_match(
             clips,
         };
         shared_animations.insert(character.fighter, animations.clone());
-        prepared.push((scene, animations, manifest.attributes));
+        prepared.push((scene, animations, manifest.attributes, manifest.camera));
     }
 
     let session = match create_session(&args, request.players.len()) {
@@ -235,9 +240,15 @@ pub fn prepare_match(
 
     let stage_handle = stage_registry.get(request.stage).expect("Initialization check should ensure all stages exist");
     let stage_manifest = stage_manifests.get(&stage_handle).expect("Initialization check should ensure stage manifests are kept alive");
-    stage::spawn_stage(&mut commands, root, assets.stage.clone(), stage_manifest.to_collision());
+    stage::spawn_stage(
+        &mut commands,
+        root,
+        assets.stage.clone(),
+        stage_manifest.to_collision(),
+        stage_manifest.camera.clone(),
+    );
 
-    for (index, (player, (scene, animations, attributes))) in
+    for (index, (player, (scene, animations, attributes, camera_profile))) in
         request.players.iter().zip(prepared).enumerate()
     {
         let spawn_x = (index as i32 * 2 + 1 - request.players.len() as i32) * 5;
@@ -246,6 +257,7 @@ pub fn prepare_match(
             player.handle,
             FGVec2::new(FGi32::from_num(spawn_x), FGi32::lit("12.5")),
             attributes,
+            camera_profile,
             animations,
             WorldAssetRoot(scene),
         );

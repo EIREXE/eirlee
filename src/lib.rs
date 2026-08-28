@@ -28,10 +28,11 @@ use clap::Parser;
 use jackdaw_runtime::EditorCategory;
 
 use crate::{
-    fighter::manifest::FighterManifest, game_settings::GameSettings, schedule::GameplaySchedulePlugin, stage::manifest::{StageManifest, StageManifestAssets},
+    camera::MatchCameraPlugin, fighter::manifest::FighterManifest, game_settings::GameSettings, schedule::GameplaySchedulePlugin, stage::manifest::{StageManifest, StageManifestAssets},
 };
 
 mod args;
+pub mod camera;
 pub mod fighter;
 pub mod game_settings;
 pub mod input;
@@ -78,6 +79,7 @@ impl Plugin for GamePlugin {
                 input::FighterInputPlugin,
                 fighter::FighterPlugin,
                 stage::StagePlugin,
+                MatchCameraPlugin,
                 bevy_common_assets::ron::RonAssetPlugin::<FighterManifest>::new(&["fighter.ron"]),
                 bevy_common_assets::ron::RonAssetPlugin::<StageManifest>::new(&["stage.ron"]),
                 bevy_common_assets::ron::RonAssetPlugin::<GameSettings>::new(&["ron"]),

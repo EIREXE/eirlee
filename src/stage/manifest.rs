@@ -10,6 +10,31 @@ use crate::{
 };
 use bevy::prelude::*;
 
+/// Per-stage presentation tuning for the standard match camera.
+///
+/// Values use gameplay world units on the XY plane
+#[derive(Component, Serialize, Deserialize, Clone, Reflect)]
+#[reflect(opaque)]
+pub struct StageCameraProfile {
+    pub left: f32,
+    pub right: f32,
+    pub bottom: f32,
+    pub top: f32,
+    pub origin: Vec2,
+    pub vertical_fov_degrees: f32,
+    pub min_depth: f32,
+    pub max_depth: f32,
+    pub subject_scale: f32,
+    pub tracking_smoothness: f32,
+    pub vertical_tilt_degrees: f32,
+    pub horizontal_pan_coefficient: f32,
+    pub vertical_pan_coefficient: f32,
+    pub max_horizontal_pan_degrees: f32,
+    pub max_upward_pan_degrees: f32,
+    pub max_downward_pan_degrees: f32,
+    pub max_downward_expansion: f32,
+}
+
 #[derive(Reflect, Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Hash, Debug, EnumIter)]
 pub enum StageId {
     TestStage,
@@ -26,6 +51,7 @@ pub struct StagePolyDefinition {
 pub struct StageManifest {
     pub id: StageId,
     pub model_path: String,
+    pub camera: StageCameraProfile,
     pub polygons: Vec<StagePolyDefinition>,
 }
 
@@ -96,6 +122,13 @@ pub fn prepare_stage_manifests(
             );
             return;
         }
+        if !manifest.camera.is_valid() {
+            fail(
+                &mut next_state,
+                &format!("{:?} has an invalid camera profile", manifest.id),
+            );
+            return;
+        }
         if registry.insert(manifest.id, handle.clone()).is_some() {
             fail(
                 &mut next_state,
@@ -128,5 +161,38 @@ impl StageManifest {
         StageCollision {
             stage_polys
         }
+    }
+}
+
+impl StageCameraProfile {
+    fn is_valid(&self) -> bool {
+        self.left.is_finite()
+            && self.right.is_finite()
+            && self.bottom.is_finite()
+            && self.top.is_finite()
+            && self.origin.is_finite()
+            && self.vertical_fov_degrees.is_finite()
+            && self.min_depth.is_finite()
+            && self.max_depth.is_finite()
+            && self.subject_scale.is_finite()
+            && self.tracking_smoothness.is_finite()
+            && self.vertical_tilt_degrees.is_finite()
+            && self.horizontal_pan_coefficient.is_finite()
+            && self.vertical_pan_coefficient.is_finite()
+            && self.max_horizontal_pan_degrees.is_finite()
+            && self.max_upward_pan_degrees.is_finite()
+            && self.max_downward_pan_degrees.is_finite()
+            && self.max_downward_expansion.is_finite()
+            && self.left < self.right
+            && self.bottom < self.top
+            && (0.0..180.0).contains(&self.vertical_fov_degrees)
+            && self.min_depth > 0.0
+            && self.min_depth <= self.max_depth
+            && self.subject_scale > 0.0
+            && self.tracking_smoothness >= 0.0
+            && self.max_horizontal_pan_degrees >= 0.0
+            && self.max_upward_pan_degrees >= 0.0
+            && self.max_downward_pan_degrees >= 0.0
+            && self.max_downward_expansion >= 0.0
     }
 }

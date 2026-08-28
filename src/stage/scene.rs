@@ -6,13 +6,19 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    camera::MatchCamera,
     math::{int::FGi32, vec::FGVec2}, stage::{
         StagePoly,
         line::{StageCollision, StagePolyLineSegmentType, StagePolyType},
     },
 };
 
-pub fn spawn_stage_support(commands: &mut Commands, match_root: Entity, collision: StageCollision) {
+pub fn spawn_stage_support(
+    commands: &mut Commands,
+    match_root: Entity,
+    collision: StageCollision,
+    camera_profile: crate::stage::manifest::StageCameraProfile,
+) {
     commands.insert_resource(collision);
     commands.spawn((
         DirectionalLight {
@@ -28,6 +34,12 @@ pub fn spawn_stage_support(commands: &mut Commands, match_root: Entity, collisio
     ));
     commands.spawn((
         Camera3d::default(),
+        Projection::Perspective(PerspectiveProjection {
+            fov: camera_profile.vertical_fov_degrees.to_radians(),
+            ..default()
+        }),
+        MatchCamera::default(),
+        camera_profile,
         Transform::from_xyz(0.0, 10.5, 150.0),
         /*FreeCamera {
             sensitivity: 0.2,

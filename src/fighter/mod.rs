@@ -4,6 +4,7 @@
 use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
 use bevy_ggrs::prelude::*;
+use serde::{Deserialize, Serialize};
 
 pub mod animation;
 pub mod attributes;
@@ -47,6 +48,27 @@ pub struct FighterPlugin;
 pub enum FighterFacingDirection {
     Left,
     Right,
+}
+#[derive(Component, Copy, Clone, Debug, Reflect, Serialize, Deserialize)]
+#[reflect(opaque)]
+pub struct FighterCameraProfile {
+    pub vertical_origin_offset: FGi32,
+    pub forward_extent: FGi32,
+    pub backward_extent: FGi32,
+    pub upward_extent: FGi32,
+    pub downward_extent: FGi32,
+    /// Reserved for future offscreen indicators and close-up camera modes.
+    pub visibility_radius: FGi32,
+}
+
+impl FighterCameraProfile {
+    pub fn is_valid(&self) -> bool {
+        self.forward_extent >= FGi32::ZERO
+            && self.backward_extent >= FGi32::ZERO
+            && self.upward_extent >= FGi32::ZERO
+            && self.downward_extent >= FGi32::ZERO
+            && self.visibility_radius >= FGi32::ZERO
+    }
 }
 
 impl FighterFacingDirection {
@@ -126,6 +148,7 @@ pub fn spawn_fighter(
     player_handle: usize,
     spawn_position: FGVec2,
     attributes: FighterAttributes,
+    camera_profile: FighterCameraProfile,
     animations: FighterAnimations,
     visual_root: WorldAssetRoot,
 ) {
@@ -142,6 +165,7 @@ pub fn spawn_fighter(
         FighterVelocity::default(),
         FighterTranslation(spawn_position),
         attributes,
+        camera_profile,
         visual_root,
         animations,
         FighterState::Fall(FallState),

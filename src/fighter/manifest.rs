@@ -8,7 +8,7 @@ use strum_macros::EnumIter;
 
 use crate::{
     AppState,
-    fighter::{FighterAttributes, animation::AnimKind},
+    fighter::{FighterAttributes, FighterCameraProfile, animation::AnimKind},
     game_settings::GameSettings,
 };
 
@@ -22,6 +22,7 @@ pub struct FighterManifest {
     pub id: FighterId,
     pub model_path: String,
     pub attributes: FighterAttributes,
+    pub camera: FighterCameraProfile,
     pub animations: HashMap<AnimKind, String>,
 }
 
@@ -90,6 +91,13 @@ pub fn prepare_fighter_manifests(
             fail(
                 &mut next_state,
                 &format!("{:?} has no Wait animation", manifest.id),
+            );
+            return;
+        }
+        if !manifest.camera.is_valid() {
+            fail(
+                &mut next_state,
+                &format!("{:?} has an invalid camera profile", manifest.id),
             );
             return;
         }
