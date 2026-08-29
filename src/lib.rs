@@ -28,7 +28,7 @@ use clap::Parser;
 use jackdaw_runtime::EditorCategory;
 
 use crate::{
-    camera::MatchCameraPlugin, fighter::manifest::FighterManifest, game_settings::GameSettings, schedule::GameplaySchedulePlugin, stage::manifest::{StageManifest, StageManifestAssets},
+    camera::MatchCameraPlugin, fighter::manifest::FighterManifest, game_settings::GameSettings, schedule::GameplaySchedulePlugin, stage::manifest::StageManifest,
 };
 
 mod args;

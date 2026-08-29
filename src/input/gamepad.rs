@@ -8,7 +8,7 @@ use crate::input::{BaseInputMap, FighterInputFrame, InputMapAction};
 use crate::math::int::FGi32;
 use crate::math::vec::FGVec2;
 
-pub fn sample_gamepad(pad: &Gamepad, input_map: &BaseInputMap, game_settings: &GameSettings) -> FighterInputFrame {
+pub fn sample_gamepad(pad: &Gamepad, input_map: &BaseInputMap, _game_settings: &GameSettings) -> FighterInputFrame {
     let mut input_frame = FighterInputFrame::default();
     let mut movement = Vec2::ZERO;
 

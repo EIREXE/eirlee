@@ -3,14 +3,9 @@
 use std::f32::consts::PI;
 
 use bevy::prelude::*;
-use serde::{Deserialize, Serialize};
 
 use crate::{
-    camera::MatchCamera,
-    math::{int::FGi32, vec::FGVec2}, stage::{
-        StagePoly,
-        line::{StageCollision, StagePolyLineSegmentType, StagePolyType},
-    },
+    camera::MatchCamera, stage::line::StageCollision,
 };
 
 pub fn spawn_stage_support(

@@ -8,7 +8,7 @@ use strum_macros::EnumIter;
 use crate::{
     AppState,
     game_settings::GameSettings,
-    math::{int::FGi32, vec::FGVec2},
+    math::vec::FGVec2,
     stage::{
         StagePoly,
         line::{StageCollision, StagePolyLineSegmentType, StagePolyType},

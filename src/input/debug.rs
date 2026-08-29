@@ -1,9 +1,9 @@
-use bevy_egui::{egui::Color32, prelude::*};
+use bevy_egui::prelude::*;
 
 use crate::input::FighterInput;
 use bevy::prelude::*;
 
-pub fn input_debug(mut contexts: EguiContexts, query: Query<(&FighterInput)>) -> Result {
+pub fn input_debug(mut contexts: EguiContexts, query: Query<&FighterInput>) -> Result {
     for (i, input) in query.iter().enumerate() {
         const STICK_SIZE: f32 = 50.0;
         const STICK_SIZE_FRACTION: f32 = 0.75;

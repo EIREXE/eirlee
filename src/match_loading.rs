@@ -286,7 +286,7 @@ pub fn prepare_match(
 
     for (
         index,
-        (player, (scene, animations, attributes, camera_profile, manifest, manifest_handle)),
+        (player, (scene, animations, attributes, _camera_profile, manifest, manifest_handle)),
     ) in request.players.iter().zip(prepared).enumerate()
     {
         let spawn_x = (index as i32 * 2 + 1 - request.players.len() as i32) * 5;

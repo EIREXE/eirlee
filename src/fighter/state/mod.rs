@@ -11,7 +11,7 @@ use crate::fighter::ecb::FighterPreviousECB;
 use crate::fighter::manifest::FighterManifest;
 use crate::fighter::visual::FighterAnimations;
 use crate::fighter::{
-    Fighter, FighterAttributes, FighterECB, FighterFacingDirection, FighterPreviousTranslation,
+    Fighter, FighterECB, FighterFacingDirection, FighterPreviousTranslation,
     FighterTranslation, FighterVelocity,
 };
 use crate::game_settings::GameSettings;

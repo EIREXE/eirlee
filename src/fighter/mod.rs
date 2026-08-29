@@ -171,7 +171,7 @@ pub fn spawn_fighter(
     player_handle: usize,
     spawn_position: FGVec2,
     manifest: (Handle<FighterManifest>, &FighterManifest),
-    attributes: FighterAttributes,
+    _attributes: FighterAttributes,
     animations: FighterAnimations,
     visual_root: WorldAssetRoot,
 ) {

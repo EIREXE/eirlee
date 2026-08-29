@@ -7,15 +7,13 @@ use bevy_egui::{EguiContexts, egui};
 use crate::fighter::animation::FighterAnimationFrame;
 use crate::fighter::baked_animation::BakedFighterAnimations;
 use crate::fighter::ecb::FighterPreviousECB;
-use crate::fighter::manifest::{FighterManifest, FighterManifestRegistry};
 use crate::fighter::state::StateNameDebug;
 use crate::fighter::visual::FighterAnimations;
 use crate::fighter::{
-    Fighter, FighterECB, FighterFacingDirection, FighterPreviousTranslation, FighterTranslation,
+    FighterECB, FighterPreviousTranslation, FighterTranslation,
     FighterVelocity,
 };
 use crate::input::FighterInput;
-use crate::match_loading::MatchPlayer;
 
 pub fn debug_draw_ecb(
     ecbs: Query<(

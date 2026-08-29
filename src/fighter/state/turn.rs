@@ -1,10 +1,8 @@
 use super::{FighterStateContext, FighterStateImpl};
 use crate::fighter::animation::AnimKind;
-use crate::fighter::collision;
 use crate::fighter::state::fall::FallState;
 use crate::fighter::state::ground::{self, GroundedMotionResult, GroundedStateCommon};
-use crate::fighter::state::land::LandingState;
-use crate::fighter::state::{air, dash, jump, wait, walk, FighterState};
+use crate::fighter::state::{dash, jump, wait, walk, FighterState};
 
 #[derive(Debug, Clone, Hash)]
 pub struct TurnState {
