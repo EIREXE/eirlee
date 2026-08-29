@@ -34,9 +34,9 @@
         air_dodge_decay: "0.9"
     ),
     camera: (
-        vertical_origin_offset: "10.0",
+        vertical_origin_offset: "8.0",
         forward_extent: "25.5",
-        backward_extent: "2.5",
+        backward_extent: "8.5",
         upward_extent: "15.0",
         downward_extent: "5.0",
         visibility_radius: "5.0",
@@ -54,5 +54,8 @@
         DoubleJump: "PlyPurin5K_Share_ACTION_JumpAerialF1",
         Fall: "PlyPurin5K_Share_ACTION_Fall",
         Turn: "PlyPurin5K_Share_ACTION_Turn",
+    },
+    attack_scripts: {
+        NAir: "fighters/test/scripts/fair.attack.rhai"
     }
 )

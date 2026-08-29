@@ -7,19 +7,9 @@ use bevy_asset_loader::prelude::*;
 use bevy_ggrs::prelude::Session;
 
 use crate::{
-    AppState,
-    args::Args,
-    fighter::{
-        FighterId,
-        animation::AnimKind,
-        baked_animation::BakedFighterAnimations,
-        manifest::{FighterManifest, FighterManifestRegistry},
-        spawn_fighter,
-        visual::FighterAnimations,
-    },
-    math::{int::FGi32, vec::FGVec2},
-    netcode::{GGRSCfg, session::create_session},
-    stage::{
+    AppState, args::Args, fighter::{
+        FighterId, animation::AnimKind, attack::AttackKind, baked_animation::BakedFighterAnimations, manifest::{FighterManifest, FighterManifestRegistry}, spawn_fighter, visual::FighterAnimations,
+    }, math::{int::FGi32, vec::FGVec2}, netcode::{GGRSCfg, session::create_session}, scripting::FighterAttackScript, stage::{
         self,
         manifest::{StageId, StageManifest, StageManifestRegistry},
     },
@@ -41,6 +31,7 @@ pub struct SelectedFighterAssets {
     pub fighter: FighterId,
     pub model: Handle<Gltf>,
     pub baked_animations: Handle<BakedFighterAnimations>,
+    pub attack_scripts: HashMap<AttackKind, Handle<FighterAttackScript>>
 }
 
 #[derive(Resource)]
@@ -82,6 +73,7 @@ impl MatchAssets {
                         fighter: player.fighter,
                         model: asset_server.load(manifest.model_path.clone()),
                         baked_animations: asset_server.load(manifest.baked_animation_path.clone()),
+                        attack_scripts: manifest.attack_scripts.clone().into_iter().map(|(kind, path)| (kind, asset_server.load(path))).collect()
                     }
                 })
                 .collect(),

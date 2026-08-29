@@ -59,6 +59,11 @@ impl AttackAngle {
     }
 }
 
+#[derive(Serialize, Deserialize, Reflect, PartialEq, Eq, Hash, Clone)]
+pub enum AttackKind {
+    NAir
+}
+
 #[derive(Debug, Clone, Reflect, Serialize, Deserialize)]
 #[reflect(opaque)]
 pub struct AttackHitbox {

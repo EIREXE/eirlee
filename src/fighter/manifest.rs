@@ -7,9 +7,7 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use crate::{
-    AppState,
-    fighter::{FighterAttributes, FighterCameraProfile, animation::AnimKind},
-    game_settings::GameSettings,
+    AppState, fighter::{FighterAttributes, FighterCameraProfile, animation::AnimKind, attack::AttackKind}, game_settings::GameSettings,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Reflect, EnumIter)]
@@ -25,6 +23,7 @@ pub struct FighterManifest {
     pub attributes: FighterAttributes,
     pub camera: FighterCameraProfile,
     pub animations: HashMap<AnimKind, String>,
+    pub attack_scripts: HashMap<AttackKind, String>,
 }
 
 #[derive(Resource)]
