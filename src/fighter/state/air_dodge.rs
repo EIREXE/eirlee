@@ -17,7 +17,6 @@ use crate::{
 
 #[derive(Debug, Clone, Hash)]
 pub struct AirDodgeState {
-    pub duration_counter: u32,
     pub direction: FGVec2,
 }
 
@@ -25,7 +24,7 @@ impl FighterStateImpl for AirDodgeState {
     const NAME: &'static str = "AirDodge";
 
     fn check_interrupt(&self, state_context: &mut FighterStateContext) -> Option<FighterState> {
-        if self.duration_counter >= state_context.fighter_manifest.attributes.air_dodge_duration {
+        if state_context.is_current_animation_finished() {
             Some(FighterState::Fall(FallState))
         } else {
             None
@@ -33,8 +32,6 @@ impl FighterStateImpl for AirDodgeState {
     }
 
     fn update(&mut self, state_context: &mut FighterStateContext) {
-        self.duration_counter += 1;
-
         state_context.velocity.0 *= state_context.fighter_manifest.attributes.air_dodge_decay;
 
         air::apply_air_motion(
@@ -55,8 +52,7 @@ impl FighterStateImpl for AirDodgeState {
                 current_line_id: res.line_id,
             };
             Some(FighterState::Land(LandingState {
-                grounded_common,
-                duration_counter: 0,
+                grounded_common
             }))
         } else {
             None
@@ -77,7 +73,6 @@ pub fn check_input(state_context: &FighterStateContext) -> Option<FighterState> 
         .has_command(input::FighterCommands::Shield)
         .then(|| {
             FighterState::AirDodge(AirDodgeState {
-                duration_counter: 0,
                 direction: state_context
                     .input
                     .get_last_frame()

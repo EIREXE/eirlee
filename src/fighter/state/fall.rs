@@ -46,8 +46,7 @@ impl FighterStateImpl for FallState {
                 current_line_id: res.line_id,
             };
             Some(FighterState::Land(LandingState {
-                grounded_common,
-                duration_counter: 0,
+                grounded_common
             }))
         } else {
             None

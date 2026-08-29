@@ -68,7 +68,6 @@ impl FighterStateImpl for JumpSquatState {
             }
 
             Some(FighterState::AirDodge(AirDodgeState {
-                duration_counter: 0,
                 direction: wavedash_dir.normalize_or_zero(),
             }))
         } else if self.duration_counter
@@ -241,8 +240,7 @@ impl FighterStateImpl for JumpState {
                 current_line_id: res.line_id,
             };
             Some(FighterState::Land(LandingState {
-                grounded_common,
-                duration_counter: 0,
+                grounded_common
             }))
         } else {
             None

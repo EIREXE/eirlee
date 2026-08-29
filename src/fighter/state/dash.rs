@@ -10,7 +10,6 @@ use crate::input::FighterCommands::{SmashMoveLeft, SmashMoveRight};
 
 #[derive(Debug, Clone)]
 pub struct DashState {
-    frames_in_dash: u32,
     direction: FighterFacingDirection,
     ground_common: GroundedStateCommon,
 }
@@ -18,14 +17,12 @@ pub struct DashState {
 impl std::hash::Hash for DashState {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.direction.hash(state);
-        self.frames_in_dash.hash(state);
     }
 }
 
 impl DashState {
     pub fn new(direction: FighterFacingDirection, ground_common: GroundedStateCommon) -> Self {
         Self {
-            frames_in_dash: 0,
             direction,
             ground_common,
         }
@@ -52,13 +49,13 @@ impl FighterStateImpl for DashState {
             return Some(state);
         }
 
-        if self.frames_in_dash > attributes.dash_duration {
+        if ctx.is_current_animation_finished() {
             return run::check_input(ctx, ground)
                 .or_else(|| walk::check_input(ctx, ground))
                 .or_else(|| wait::check_input(ctx, ground));
         }
 
-        if self.frames_in_dash > attributes.dash_acceleration_duration {
+        if ctx.get_current_animation_frame() > attributes.dash_acceleration_duration {
             return run::check_input(ctx, ground);
         }
 
@@ -90,9 +87,7 @@ impl FighterStateImpl for DashState {
     }
 
     fn update(&mut self, state_context: &mut FighterStateContext) {
-        self.frames_in_dash += 1;
-
-        if self.frames_in_dash
+        if state_context.get_current_animation_frame()
             < state_context
                 .fighter_manifest
                 .attributes

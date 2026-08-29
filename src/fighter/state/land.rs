@@ -13,15 +13,13 @@ use crate::fighter::{
 
 #[derive(Debug, Clone, Hash)]
 pub struct LandingState {
-    pub grounded_common: GroundedStateCommon,
-    pub duration_counter: u32,
+    pub grounded_common: GroundedStateCommon
 }
 
 impl LandingState {
     pub fn create(grounded_common: GroundedStateCommon) -> Self {
         Self {
-            grounded_common,
-            duration_counter: 0,
+            grounded_common
         }
     }
 }
@@ -32,7 +30,7 @@ impl FighterStateImpl for LandingState {
     fn check_interrupt(&self, state_context: &mut FighterStateContext) -> Option<FighterState> {
         if state_context.is_current_animation_finished() {
             grounded_movement_standstill_common_interrupts(state_context, &self.grounded_common)
-        } else if self.duration_counter >= state_context.fighter_manifest.attributes.landing_iasa {
+        } else if state_context.get_current_animation_frame() >= state_context.fighter_manifest.attributes.landing_iasa {
             dash::check_input(state_context, &self.grounded_common).or_else(|| {
                 ground::grounded_movement_common_interrupts(state_context, &self.grounded_common)
                     .or_else(|| walk::check_input(state_context, &self.grounded_common))
@@ -43,8 +41,6 @@ impl FighterStateImpl for LandingState {
     }
 
     fn update(&mut self, state_context: &mut FighterStateContext) {
-        self.duration_counter += 1;
-
         let friction = if state_context.velocity.x.abs()
             > state_context.fighter_manifest.attributes.max_walk_vel
         {
