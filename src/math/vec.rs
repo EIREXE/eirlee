@@ -239,6 +239,15 @@ impl MulAssign<FGi32> for FGVec2 {
     }
 }
 
+impl From<(FGi32, FGi32)> for FGVec2 {
+    fn from(value: (FGi32, FGi32)) -> Self {
+        Self {
+            x: value.0,
+            y: value.1,
+        }
+    }
+}
+
 #[cfg(test)]
 mod is_normalized_tests {
     use super::*;

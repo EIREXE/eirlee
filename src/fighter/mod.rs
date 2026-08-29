@@ -16,6 +16,7 @@ pub mod manifest;
 pub mod motion;
 pub mod state;
 pub mod visual;
+pub mod attack;
 
 // The fighter components are re-exported so the rest of the crate can say
 // `fighter::FighterVelocity` without caring which file it lives in. Named

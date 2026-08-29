@@ -42,6 +42,7 @@ pub mod netcode;
 pub mod player;
 pub mod schedule;
 pub mod stage;
+pub mod scripting;
 
 #[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
 pub enum AppState {
