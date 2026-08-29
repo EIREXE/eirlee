@@ -6,6 +6,18 @@ use crate::{fighter::manifest::FighterManifest, stage::manifest::StageCameraProf
 
 const EMPTY_FRAME_HALF_SIZE: f32 = 40.0;
 const SUBJECT_COUNT_SCALES: [f32; 4] = [1.5, 1.32, 1.16, 1.0];
+const VERTICAL_PAN_REFERENCE_OFFSET: f32 = -30.0;
+const EXTENT_APPROACH_PER_SECOND: f32 = 30.0;
+const MELEE_DOWNWARD_EXPANSION_START_DEPTH: f32 = 80.0;
+const MELEE_DOWNWARD_EXPANSION_END_DEPTH: f32 = 5000.0;
+const MELEE_DOWNWARD_EXPANSION_MIN: f32 = 10.0;
+const MELEE_DOWNWARD_EXPANSION_MAX: f32 = 400.0;
+const MELEE_INTEREST_FOLLOW_MIN: f32 = 0.05;
+const MELEE_INTEREST_FOLLOW_MAX: f32 = 0.1;
+const MELEE_INTEREST_FOLLOW_START_SPREAD: f32 = 120.0;
+const MELEE_INTEREST_FOLLOW_END_SPREAD: f32 = 900.0;
+const MELEE_EYE_FOLLOW: f32 = 0.15;
+const MELEE_FOV_FOLLOW: f32 = 0.1;
 
 /// The rectangle contributed by one tracked subject on the gameplay plane.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -15,6 +27,17 @@ pub struct CameraSubjectBounds {
     pub right_extent: f32,
     pub bottom_extent: f32,
     pub top_extent: f32,
+}
+
+/// Presentation-only fighter camera extents that ease toward the manifest
+/// values. This prevents a facing change from instantly expanding the frame.
+#[derive(Component, Clone, Copy, Debug, Default)]
+pub struct FighterCameraExtents {
+    left: f32,
+    right: f32,
+    bottom: f32,
+    top: f32,
+    initialized: bool,
 }
 
 /// The aggregate rectangle the camera must keep in view on the gameplay plane.
@@ -87,7 +110,9 @@ impl Plugin for MatchCameraPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (update_match_camera, debug_draw_camera).run_if(in_state(crate::AppState::InMatch)),
+            (update_match_camera, debug_draw_camera)
+                .chain()
+                .run_if(in_state(crate::AppState::InMatch)),
         );
     }
 }
@@ -141,12 +166,16 @@ pub fn frame_subjects(
         frame
     };
 
-    let depth_fraction = ((current_depth - profile.min_depth)
-        / (profile.max_depth - profile.min_depth).max(f32::EPSILON))
-    .clamp(0.0, 1.0);
-    frame.bottom =
-        (frame.bottom - profile.max_downward_expansion * depth_fraction).max(profile.bottom);
+    frame.bottom -= melee_downward_expansion(current_depth);
     frame
+}
+
+fn melee_downward_expansion(depth: f32) -> f32 {
+    let fraction = ((depth.abs() - MELEE_DOWNWARD_EXPANSION_START_DEPTH)
+        / (MELEE_DOWNWARD_EXPANSION_END_DEPTH - MELEE_DOWNWARD_EXPANSION_START_DEPTH))
+        .clamp(0.0, 1.0);
+    MELEE_DOWNWARD_EXPANSION_MIN
+        + (MELEE_DOWNWARD_EXPANSION_MAX - MELEE_DOWNWARD_EXPANSION_MIN) * fraction
 }
 
 /// Solves a perspective camera pose that contains `frame` at the supplied
@@ -163,78 +192,156 @@ pub fn solve_pose(
     let vertical_center = profile.origin.y
         + ((frame.bottom - profile.origin.y) + (frame.top - profile.origin.y))
             * (0.5 - vertical_bias);
-    let vertical_angle =
-        (-(vertical_center - profile.origin.y) * profile.vertical_pan_coefficient).clamp(
+    let vertical_angle = (-(vertical_center + VERTICAL_PAN_REFERENCE_OFFSET)
+        * profile.vertical_pan_degrees_per_unit)
+        .to_radians()
+        .clamp(
             -profile.max_downward_pan_degrees.to_radians(),
             profile.max_upward_pan_degrees.to_radians(),
-        ) + profile.vertical_tilt_degrees.to_radians();
+        )
+        + profile.vertical_pan_degrees.to_radians();
     let up_angle = vertical_half_fov + vertical_angle;
     let down_angle = vertical_half_fov - vertical_angle;
     let vertical_depth = frame.height() / (up_angle.tan() + down_angle.tan()).max(f32::EPSILON);
     let vertical_eye_offset = vertical_depth * vertical_angle.tan();
     let interest_y = vertical_eye_offset + frame.top - vertical_depth * up_angle.tan();
 
-    let horizontal_half_fov = (vertical_half_fov.tan() * aspect_ratio).atan();
     let horizontal_center = (frame.left + frame.right) * 0.5;
-    let horizontal_angle =
-        (-(horizontal_center - profile.origin.x) * profile.horizontal_pan_coefficient).clamp(
+    let horizontal_angle = (-(horizontal_center - profile.origin.x)
+        * profile.horizontal_pan_degrees_per_unit)
+        .to_radians()
+        .clamp(
             -profile.max_horizontal_pan_degrees.to_radians(),
             profile.max_horizontal_pan_degrees.to_radians(),
         );
-    let right_angle = horizontal_half_fov - horizontal_angle;
-    let left_angle = horizontal_half_fov + horizontal_angle;
-    let horizontal_depth = frame.width() / (right_angle.tan() + left_angle.tan()).max(f32::EPSILON);
-    let horizontal_eye_offset = horizontal_depth * horizontal_angle.tan();
-    let interest_x = frame.right - horizontal_depth * right_angle.tan() - horizontal_eye_offset;
+    let right_tangent = aspect_ratio * (vertical_half_fov - horizontal_angle).tan();
+    let left_tangent = aspect_ratio * (vertical_half_fov + horizontal_angle).tan();
+    let horizontal_depth = frame.width() / (right_tangent + left_tangent).max(f32::EPSILON);
+    let horizontal_eye_offset = aspect_ratio * horizontal_depth * horizontal_angle.tan();
+    let interest_x = frame.right - horizontal_depth * right_tangent - horizontal_eye_offset;
 
     let depth = horizontal_depth
         .max(vertical_depth)
         .clamp(profile.min_depth, profile.max_depth);
-    let interest = Vec2::new(interest_x, interest_y).clamp(
-        Vec2::new(profile.left, profile.bottom),
-        Vec2::new(profile.right, profile.top),
-    );
+    let interest = Vec2::new(interest_x, interest_y);
 
-    CameraPose {
-        eye: interest + Vec2::new(horizontal_eye_offset, -vertical_eye_offset),
-        interest,
-        depth,
-        fov: profile.vertical_fov_degrees.to_radians(),
+    correct_pose_to_camera_bounds(
+        CameraPose {
+            eye: interest + Vec2::new(horizontal_eye_offset, -vertical_eye_offset),
+            interest,
+            depth,
+            fov: profile.vertical_fov_degrees.to_radians(),
+        },
+        profile,
+        aspect_ratio,
+    )
+}
+
+fn correct_pose_to_camera_bounds(
+    mut pose: CameraPose,
+    profile: &StageCameraProfile,
+    aspect_ratio: f32,
+) -> CameraPose {
+    let Some(corners) = view_corners_on_plane(pose, aspect_ratio) else {
+        return pose;
+    };
+    let mut left = f32::INFINITY;
+    let mut right = f32::NEG_INFINITY;
+    let mut bottom = f32::INFINITY;
+    let mut top = f32::NEG_INFINITY;
+    for corner in corners {
+        left = left.min(corner.x);
+        right = right.max(corner.x);
+        bottom = bottom.min(corner.y);
+        top = top.max(corner.y);
     }
+    let correction = Vec2::new(
+        axis_correction(left, right, profile.left, profile.right),
+        axis_correction(bottom, top, profile.bottom, profile.top),
+    );
+    pose.eye += correction;
+    pose.interest += correction;
+    pose
+}
+
+fn axis_correction(minimum: f32, maximum: f32, lower_bound: f32, upper_bound: f32) -> f32 {
+    let lower_overlap = (lower_bound - minimum).max(0.0);
+    let upper_overlap = (upper_bound - maximum).min(0.0);
+    match (lower_overlap > 0.0, upper_overlap < 0.0) {
+        (true, true) => (lower_overlap + upper_overlap) * 0.5,
+        (true, false) => lower_overlap,
+        (false, true) => upper_overlap,
+        (false, false) => 0.0,
+    }
+}
+
+fn view_corners_on_plane(pose: CameraPose, aspect_ratio: f32) -> Option<[Vec2; 4]> {
+    let eye = Vec3::new(pose.eye.x, pose.eye.y, pose.depth);
+    let interest = Vec3::new(pose.interest.x, pose.interest.y, 0.0);
+    let forward = (interest - eye).try_normalize()?;
+    let right = forward.cross(Vec3::Y).try_normalize()?;
+    let up = right.cross(forward).try_normalize()?;
+    let vertical_tangent = (pose.fov * 0.5).tan();
+    let horizontal_tangent = vertical_tangent * aspect_ratio;
+    [(1.0, 1.0), (-1.0, 1.0), (1.0, -1.0), (-1.0, -1.0)]
+        .map(|(horizontal, vertical)| {
+            let ray = (forward
+                + right * horizontal_tangent * horizontal
+                + up * vertical_tangent * vertical)
+                .try_normalize()?;
+            let distance = -eye.z / ray.z;
+            (distance >= 0.0).then(|| (eye + ray * distance).truncate())
+        })
+        .into_iter()
+        .collect::<Option<Vec<_>>>()
+        .and_then(|corners| corners.try_into().ok())
 }
 
 fn update_match_camera(
     time: Res<Time>,
-    fighters: Query<
+    mut fighters: Query<
         (
             &crate::fighter::motion::FighterTranslation,
             &crate::fighter::Fighter,
             &crate::fighter::FighterFacingDirection,
+            &mut FighterCameraExtents,
         ),
         With<crate::player::Player>,
     >,
-    mut cameras: Query<(
-        &mut Transform,
-        &mut Projection,
-        &mut MatchCamera,
-        &StageCameraProfile,
-    )>,
-    manifests: Res<Assets<FighterManifest>>
+    camera_profiles: Query<&StageCameraProfile, With<MatchCamera>>,
+    mut cameras: Query<(&mut Transform, &mut Projection, &mut MatchCamera), With<MatchCamera>>,
+    manifests: Res<Assets<FighterManifest>>,
 ) {
-    let subjects = fighters.iter().map(|(translation, fighter, facing)| {
-        let manifest = manifests.get(&fighter.manifest).expect("Fighter manifest should be valid");
-        fighter_subject_bounds(
-            Vec2::new(translation.x.to_num(), translation.y.to_num()),
-            manifest.camera,
-            *facing,
-        )
-    });
+    let Ok(profile) = camera_profiles.single() else {
+        return;
+    };
+    let subjects = fighters
+        .iter_mut()
+        .map(|(translation, fighter, facing, mut extents)| {
+            let manifest = manifests
+                .get(&fighter.manifest)
+                .expect("Fighter manifest should be valid");
+            fighter_subject_bounds(
+                Vec2::new(translation.x.to_num(), translation.y.to_num()),
+                manifest.camera,
+                *facing,
+                profile,
+                &mut extents,
+                time.delta_secs(),
+            )
+        })
+        .collect::<Vec<_>>();
 
-    for (mut transform, mut projection, mut camera, profile) in &mut cameras {
+    for (mut transform, mut projection, mut camera) in &mut cameras {
         let Projection::Perspective(projection) = projection.as_mut() else {
             continue;
         };
-        camera.frame = frame_subjects(subjects.clone(), profile, camera.current.depth);
+        let frame_depth = if camera.needs_snap {
+            transform.translation.z.abs()
+        } else {
+            camera.current.depth
+        };
+        camera.frame = frame_subjects(subjects.iter().copied(), profile, frame_depth);
         camera.target = solve_pose(camera.frame, profile, projection.aspect_ratio);
 
         if camera.needs_snap {
@@ -242,17 +349,29 @@ fn update_match_camera(
             camera.needs_snap = false;
         } else {
             let spread = camera.frame.width().max(camera.frame.height());
-            let interest_rate =
-                profile.tracking_smoothness * (1.0 + ((spread - 120.0) / 780.0).clamp(0.0, 1.0));
-            let interest_alpha = 1.0 - (-interest_rate * time.delta_secs()).exp();
-            let eye_alpha = 1.0 - (-(profile.tracking_smoothness * 3.0) * time.delta_secs()).exp();
+            let interest_rate = if spread <= MELEE_INTEREST_FOLLOW_START_SPREAD {
+                MELEE_INTEREST_FOLLOW_MIN
+            } else if spread >= MELEE_INTEREST_FOLLOW_END_SPREAD {
+                MELEE_INTEREST_FOLLOW_MAX
+            } else {
+                MELEE_INTEREST_FOLLOW_MIN
+                    + (MELEE_INTEREST_FOLLOW_MAX - MELEE_INTEREST_FOLLOW_MIN)
+                        * (spread - MELEE_INTEREST_FOLLOW_START_SPREAD)
+                        / (MELEE_INTEREST_FOLLOW_END_SPREAD - MELEE_INTEREST_FOLLOW_START_SPREAD)
+            } * profile.tracking_smoothness;
+            let interest_alpha = sixty_hz_lerp_alpha(interest_rate, time.delta_secs());
+            let eye_alpha = sixty_hz_lerp_alpha(
+                MELEE_EYE_FOLLOW * profile.tracking_smoothness,
+                time.delta_secs(),
+            );
+            let fov_alpha = sixty_hz_lerp_alpha(MELEE_FOV_FOLLOW, time.delta_secs());
             camera.current.interest = camera
                 .current
                 .interest
                 .lerp(camera.target.interest, interest_alpha);
             camera.current.eye = camera.current.eye.lerp(camera.target.eye, eye_alpha);
             camera.current.depth += (camera.target.depth - camera.current.depth) * eye_alpha;
-            camera.current.fov += (camera.target.fov - camera.current.fov) * interest_alpha;
+            camera.current.fov += (camera.target.fov - camera.current.fov) * fov_alpha;
         }
 
         projection.fov = camera.current.fov;
@@ -268,29 +387,56 @@ fn update_match_camera(
     }
 }
 
+fn sixty_hz_lerp_alpha(per_frame_factor: f32, delta_secs: f32) -> f32 {
+    1.0 - (1.0 - per_frame_factor.clamp(0.0, 1.0)).powf(delta_secs * 60.0)
+}
+
 fn fighter_subject_bounds(
     translation: Vec2,
     profile: crate::fighter::FighterCameraProfile,
     facing: crate::fighter::FighterFacingDirection,
+    stage_profile: &StageCameraProfile,
+    extents: &mut FighterCameraExtents,
+    delta_secs: f32,
 ) -> CameraSubjectBounds {
-    let (left_extent, right_extent) = match facing {
+    let (left, right) = match facing {
         crate::fighter::FighterFacingDirection::Left => (
-            profile.forward_extent.to_num(),
+            profile.forward_extent.to_num::<f32>() * stage_profile.fighter_forward_extent_scale,
             profile.backward_extent.to_num(),
         ),
         crate::fighter::FighterFacingDirection::Right => (
             profile.backward_extent.to_num(),
-            profile.forward_extent.to_num(),
+            profile.forward_extent.to_num::<f32>() * stage_profile.fighter_forward_extent_scale,
         ),
     };
+    let target = FighterCameraExtents {
+        left,
+        right,
+        bottom: profile.downward_extent.to_num(),
+        top: profile.upward_extent.to_num(),
+        initialized: true,
+    };
+    if !extents.initialized {
+        *extents = target;
+    } else {
+        let maximum_delta = EXTENT_APPROACH_PER_SECOND * delta_secs;
+        extents.left = approach(extents.left, target.left, maximum_delta);
+        extents.right = approach(extents.right, target.right, maximum_delta);
+        extents.bottom = approach(extents.bottom, target.bottom, maximum_delta);
+        extents.top = approach(extents.top, target.top, maximum_delta);
+    }
 
     CameraSubjectBounds {
         center: translation + Vec2::Y * profile.vertical_origin_offset.to_num::<f32>(),
-        left_extent,
-        right_extent,
-        bottom_extent: profile.downward_extent.to_num(),
-        top_extent: profile.upward_extent.to_num(),
+        left_extent: extents.left,
+        right_extent: extents.right,
+        bottom_extent: extents.bottom,
+        top_extent: extents.top,
     }
+}
+
+fn approach(current: f32, target: f32, maximum_delta: f32) -> f32 {
+    current + (target - current).clamp(-maximum_delta, maximum_delta)
 }
 
 fn debug_draw_camera(
@@ -300,6 +446,7 @@ fn debug_draw_camera(
             &crate::fighter::motion::FighterTranslation,
             &crate::fighter::Fighter,
             &crate::fighter::FighterFacingDirection,
+            &FighterCameraExtents,
         ),
         With<crate::player::Player>,
     >,
@@ -318,20 +465,19 @@ fn debug_draw_camera(
             Color::srgb(1.0, 0.5, 0.0),
         );
         draw_rectangle(&mut gizmos, camera.frame, Color::srgb(1.0, 1.0, 0.0));
-        for (translation, fighter, facing) in &fighters {
-            let manifest = manifests.get(&fighter.manifest).expect("Fighter manifest should be valid");
-            let subject = fighter_subject_bounds(
-                Vec2::new(translation.x.to_num(), translation.y.to_num()),
-                manifest.camera,
-                *facing,
-            );
+        for (translation, fighter, _facing, extents) in &fighters {
+            let manifest = manifests
+                .get(&fighter.manifest)
+                .expect("Fighter manifest should be valid");
+            let center = Vec2::new(translation.x.to_num(), translation.y.to_num())
+                + Vec2::Y * manifest.camera.vertical_origin_offset.to_num::<f32>();
             draw_rectangle(
                 &mut gizmos,
                 CameraFrameBounds {
-                    left: subject.center.x - subject.left_extent,
-                    right: subject.center.x + subject.right_extent,
-                    bottom: subject.center.y - subject.bottom_extent,
-                    top: subject.center.y + subject.top_extent,
+                    left: center.x - extents.left,
+                    right: center.x + extents.right,
+                    bottom: center.y - extents.bottom,
+                    top: center.y + extents.top,
                 },
                 Color::srgb(0.0, 1.0, 0.0),
             );
@@ -370,14 +516,14 @@ mod tests {
             min_depth: 20.0,
             max_depth: 200.0,
             subject_scale: 1.0,
+            fighter_forward_extent_scale: 1.0,
             tracking_smoothness: 3.0,
-            vertical_tilt_degrees: 0.0,
-            horizontal_pan_coefficient: 0.0,
-            vertical_pan_coefficient: 0.0,
+            vertical_pan_degrees: 0.0,
+            horizontal_pan_degrees_per_unit: 0.0,
+            vertical_pan_degrees_per_unit: 0.0,
             max_horizontal_pan_degrees: 17.5,
             max_upward_pan_degrees: 5.0,
             max_downward_pan_degrees: 7.0,
-            max_downward_expansion: 40.0,
         }
     }
 
@@ -394,17 +540,26 @@ mod tests {
 
     #[test]
     fn fighter_camera_bounds_mirror_with_facing_direction() {
-        let profile = fighter_profile();
+        let fighter_profile = fighter_profile();
+        let stage_profile = profile();
         let translation = Vec2::new(10.0, 20.0);
+        let mut right_extents = FighterCameraExtents::default();
         let right = fighter_subject_bounds(
             translation,
-            profile,
+            fighter_profile,
             crate::fighter::FighterFacingDirection::Right,
+            &stage_profile,
+            &mut right_extents,
+            1.0 / 60.0,
         );
+        let mut left_extents = FighterCameraExtents::default();
         let left = fighter_subject_bounds(
             translation,
-            profile,
+            fighter_profile,
             crate::fighter::FighterFacingDirection::Left,
+            &stage_profile,
+            &mut left_extents,
+            1.0 / 60.0,
         );
 
         assert_eq!(right.center, Vec2::new(10.0, 21.5));
@@ -417,13 +572,56 @@ mod tests {
     }
 
     #[test]
+    fn fighter_forward_extent_uses_the_stage_scale() {
+        let mut stage_profile = profile();
+        stage_profile.fighter_forward_extent_scale = 1.5;
+        let mut extents = FighterCameraExtents::default();
+        let bounds = fighter_subject_bounds(
+            Vec2::ZERO,
+            fighter_profile(),
+            crate::fighter::FighterFacingDirection::Right,
+            &stage_profile,
+            &mut extents,
+            1.0 / 60.0,
+        );
+
+        assert_eq!(bounds.left_extent, 2.0);
+        assert_eq!(bounds.right_extent, 6.0);
+    }
+
+    #[test]
+    fn fighter_extents_approach_facing_changes_at_half_a_unit_per_sixtieth() {
+        let stage_profile = profile();
+        let mut extents = FighterCameraExtents::default();
+        fighter_subject_bounds(
+            Vec2::ZERO,
+            fighter_profile(),
+            crate::fighter::FighterFacingDirection::Right,
+            &stage_profile,
+            &mut extents,
+            1.0 / 60.0,
+        );
+        let bounds = fighter_subject_bounds(
+            Vec2::ZERO,
+            fighter_profile(),
+            crate::fighter::FighterFacingDirection::Left,
+            &stage_profile,
+            &mut extents,
+            1.0 / 60.0,
+        );
+
+        assert_eq!(bounds.left_extent, 2.5);
+        assert_eq!(bounds.right_extent, 3.5);
+    }
+
+    #[test]
     fn empty_frame_is_centered_on_the_stage_origin() {
         let profile = profile();
         let frame = frame_subjects([], &profile, profile.min_depth);
 
         assert_eq!(frame.left, -40.0);
         assert_eq!(frame.right, 40.0);
-        assert_eq!(frame.bottom, -20.0);
+        assert_eq!(frame.bottom, -30.0);
         assert_eq!(frame.top, 60.0);
     }
 
@@ -511,7 +709,11 @@ mod tests {
     }
 
     #[test]
-    fn downward_expansion_increases_with_depth_without_crossing_stage_bottom() {
+    fn downward_expansion_matches_melees_global_curve() {
+        assert_eq!(melee_downward_expansion(80.0), 10.0);
+        assert_eq!(melee_downward_expansion(5000.0), 400.0);
+        assert!((melee_downward_expansion(1000.0) - 82.92683).abs() < 0.0001);
+
         let profile = profile();
         let subject = CameraSubjectBounds {
             center: Vec2::new(0.0, 0.0),
@@ -525,5 +727,81 @@ mod tests {
 
         assert!(far.bottom < near.bottom);
         assert!(far.bottom >= profile.bottom);
+    }
+
+    #[test]
+    fn pan_coefficients_are_degrees_per_world_unit() {
+        let mut profile = profile();
+        profile.left = -1_000.0;
+        profile.right = 1_000.0;
+        profile.bottom = -1_000.0;
+        profile.top = 1_000.0;
+        profile.max_depth = 1_000.0;
+        profile.horizontal_pan_degrees_per_unit = 0.1;
+        let pose = solve_pose(
+            CameraFrameBounds {
+                left: 90.0,
+                right: 110.0,
+                bottom: 19.0,
+                top: 21.0,
+            },
+            &profile,
+            16.0 / 9.0,
+        );
+
+        let expected_offset = (pose.eye.x - pose.interest.x).abs();
+        assert!(expected_offset > 5.0);
+        assert!(expected_offset < 7.0);
+    }
+
+    #[test]
+    fn solved_view_is_corrected_inside_camera_bounds() {
+        let mut profile = profile();
+        profile.max_depth = 1_000.0;
+        profile.vertical_pan_degrees = -10.0;
+        profile.horizontal_pan_degrees_per_unit = 0.1;
+        profile.vertical_pan_degrees_per_unit = 0.1;
+        let pose = solve_pose(
+            CameraFrameBounds {
+                left: 70.0,
+                right: 95.0,
+                bottom: 70.0,
+                top: 95.0,
+            },
+            &profile,
+            16.0 / 9.0,
+        );
+
+        for corner in view_corners_on_plane(pose, 16.0 / 9.0).unwrap() {
+            assert!(corner.x >= profile.left - 0.001);
+            assert!(corner.x <= profile.right + 0.001);
+            assert!(corner.y >= profile.bottom - 0.001);
+            assert!(corner.y <= profile.top + 0.001);
+        }
+    }
+
+    #[test]
+    fn frame_independent_smoothing_matches_melee_at_sixty_hz() {
+        assert!((sixty_hz_lerp_alpha(0.09, 1.0 / 60.0) - 0.09).abs() < f32::EPSILON);
+        assert!(sixty_hz_lerp_alpha(0.09, 1.0 / 30.0) > 0.09);
+    }
+
+    #[test]
+    fn battlefield_profile_matches_the_source_stage_data() {
+        let manifest: crate::stage::manifest::StageManifest =
+            ron::from_str(include_str!("../../assets/stages/test.stage.ron")).unwrap();
+        let profile = manifest.camera;
+
+        assert_eq!((profile.left, profile.right), (-200.0, 200.0));
+        assert_eq!((profile.bottom, profile.top), (-59.0, 170.0));
+        assert_eq!(profile.origin, Vec2::new(0.0, 44.0));
+        assert_eq!(profile.vertical_fov_degrees, 30.0);
+        assert_eq!((profile.min_depth, profile.max_depth), (83.0, 1000.0));
+        assert_eq!(profile.subject_scale, 1.5);
+        assert_eq!(profile.fighter_forward_extent_scale, 1.5);
+        assert_eq!(profile.tracking_smoothness, 1.8);
+        assert_eq!(profile.vertical_pan_degrees, -10.0);
+        assert_eq!(profile.horizontal_pan_degrees_per_unit, 0.1);
+        assert_eq!(profile.vertical_pan_degrees_per_unit, 0.1);
     }
 }
