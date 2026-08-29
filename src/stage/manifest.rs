@@ -2,37 +2,62 @@ use std::collections::HashMap;
 
 use bevy_asset_loader::asset_collection::AssetCollection;
 use serde::{Deserialize, Serialize};
-use strum_macros::{EnumIter};
 use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 
 use crate::{
-    AppState, game_settings::GameSettings, math::{int::FGi32, vec::FGVec2}, stage::{StagePoly, line::{StageCollision, StagePolyLineSegmentType, StagePolyType}},
+    AppState,
+    game_settings::GameSettings,
+    math::{int::FGi32, vec::FGVec2},
+    stage::{
+        StagePoly,
+        line::{StageCollision, StagePolyLineSegmentType, StagePolyType},
+    },
 };
 use bevy::prelude::*;
 
 /// Per-stage presentation tuning for the standard match camera.
 ///
-/// Values use gameplay world units on the XY plane
+/// Spatial values use gameplay world units on the XY plane. Angle values use
+/// degrees
 #[derive(Component, Serialize, Deserialize, Clone, Reflect)]
 #[reflect(opaque)]
 pub struct StageCameraProfile {
+    /// World-space left edge of the camera range.
     pub left: f32,
+    /// World-space right edge of the camera range.
     pub right: f32,
+    /// World-space bottom edge of the camera range.
     pub bottom: f32,
+    /// World-space top edge of the camera range.
     pub top: f32,
+    /// Neutral focus point used for empty framing and dynamic pan calculations.
     pub origin: Vec2,
+    /// Vertical perspective field of view for the standard match camera.
     pub vertical_fov_degrees: f32,
+    /// Nearest allowed positive Z distance from the gameplay plane.
     pub min_depth: f32,
+    /// Farthest allowed positive Z distance from the gameplay plane.
     pub max_depth: f32,
+    /// Multiplies fighter camera extents after the player-count scale.
     pub subject_scale: f32,
+    /// Multiplies the facing-forward horizontal fighter camera extent.
+    pub fighter_forward_extent_scale: f32,
+    /// Multiplies the standard camera's interest and eye follow speeds.
     pub tracking_smoothness: f32,
-    pub vertical_tilt_degrees: f32,
-    pub horizontal_pan_coefficient: f32,
-    pub vertical_pan_coefficient: f32,
+    /// Constant vertical pitch added after dynamic vertical pan is clamped.
+    pub vertical_pan_degrees: f32,
+    /// Dynamic horizontal pan in degrees for every world unit from 0,0
+    pub horizontal_pan_degrees_per_unit: f32,
+    /// Dynamic vertical pan in degrees for every world unit from the vertical reference line
+    pub vertical_pan_degrees_per_unit: f32,
+    /// Symmetric limit on dynamic horizontal pan, before any other adjustment.
     pub max_horizontal_pan_degrees: f32,
+    /// Maximum upward dynamic vertical pan, before constant pitch is added.
     pub max_upward_pan_degrees: f32,
+    /// Magnitude of the maximum downward dynamic vertical pan, before constant
+    /// pitch is added.
     pub max_downward_pan_degrees: f32,
-    pub max_downward_expansion: f32,
 }
 
 #[derive(Reflect, Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Hash, Debug, EnumIter)]
@@ -101,7 +126,6 @@ fn fail(next_state: &mut NextState<AppState>, message: &str) {
     next_state.set(AppState::CommonAssetLoadFailed);
 }
 
-
 pub fn prepare_stage_manifests(
     mut commands: Commands,
     handles: Res<StageManifestAssets>,
@@ -154,13 +178,13 @@ pub fn prepare_stage_manifests(
 
 impl StageManifest {
     pub fn to_collision(&self) -> StageCollision {
-        let stage_polys: Vec<StagePoly> = self.polygons.iter().map(|def| {
-            StagePoly::build(def.poly_type, &def.lines)
-        }).collect();
-        
-        StageCollision {
-            stage_polys
-        }
+        let stage_polys: Vec<StagePoly> = self
+            .polygons
+            .iter()
+            .map(|def| StagePoly::build(def.poly_type, &def.lines))
+            .collect();
+
+        StageCollision { stage_polys }
     }
 }
 
@@ -175,24 +199,33 @@ impl StageCameraProfile {
             && self.min_depth.is_finite()
             && self.max_depth.is_finite()
             && self.subject_scale.is_finite()
+            && self.fighter_forward_extent_scale.is_finite()
             && self.tracking_smoothness.is_finite()
-            && self.vertical_tilt_degrees.is_finite()
-            && self.horizontal_pan_coefficient.is_finite()
-            && self.vertical_pan_coefficient.is_finite()
+            && self.vertical_pan_degrees.is_finite()
+            && self.horizontal_pan_degrees_per_unit.is_finite()
+            && self.vertical_pan_degrees_per_unit.is_finite()
             && self.max_horizontal_pan_degrees.is_finite()
             && self.max_upward_pan_degrees.is_finite()
             && self.max_downward_pan_degrees.is_finite()
-            && self.max_downward_expansion.is_finite()
             && self.left < self.right
             && self.bottom < self.top
+            && (self.left..=self.right).contains(&self.origin.x)
+            && (self.bottom..=self.top).contains(&self.origin.y)
             && (0.0..180.0).contains(&self.vertical_fov_degrees)
             && self.min_depth > 0.0
             && self.min_depth <= self.max_depth
             && self.subject_scale > 0.0
+            && self.fighter_forward_extent_scale > 0.0
             && self.tracking_smoothness >= 0.0
             && self.max_horizontal_pan_degrees >= 0.0
             && self.max_upward_pan_degrees >= 0.0
             && self.max_downward_pan_degrees >= 0.0
-            && self.max_downward_expansion >= 0.0
+            && self.vertical_fov_degrees * 0.5 + self.max_horizontal_pan_degrees < 90.0
+            && self.vertical_fov_degrees * 0.5
+                + self.vertical_pan_degrees.abs()
+                + self
+                    .max_upward_pan_degrees
+                    .max(self.max_downward_pan_degrees)
+                < 90.0
     }
 }

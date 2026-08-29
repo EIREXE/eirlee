@@ -7,8 +7,8 @@ use bevy_ggrs::prelude::*;
 use serde::{Deserialize, Serialize};
 
 pub mod animation;
-pub mod baked_animation;
 pub mod attributes;
+pub mod baked_animation;
 pub mod collision;
 pub mod debug;
 pub mod ecb;
@@ -28,8 +28,16 @@ pub use motion::{FighterPreviousTranslation, FighterTranslation, FighterVelocity
 
 use crate::{
     fighter::{
-        animation::animation_init, manifest::FighterManifest, state::{FighterState, fall::FallState}, visual::FighterAnimations,
-    }, input::FighterInput, math::{int::FGi32, vec::FGVec2}, player::Player, schedule::GameplaySet, stage::line::StageCollision,
+        animation::animation_init,
+        manifest::FighterManifest,
+        state::{FighterState, fall::FallState},
+        visual::FighterAnimations,
+    },
+    input::FighterInput,
+    math::{int::FGi32, vec::FGVec2},
+    player::Player,
+    schedule::GameplaySet,
+    stage::line::StageCollision,
 };
 use state::state_interrupt_system;
 
@@ -91,7 +99,7 @@ pub struct FighterVisual;
 #[derive(Component)]
 pub struct Fighter {
     id: FighterId,
-    pub manifest: Handle<FighterManifest>
+    pub manifest: Handle<FighterManifest>,
 }
 
 impl Plugin for FighterPlugin {
@@ -174,7 +182,7 @@ pub fn spawn_fighter(
         },
         Fighter {
             id: manifest.1.id,
-            manifest: manifest.0
+            manifest: manifest.0,
         },
         FighterFacingDirection::Right,
         FighterECB {
@@ -189,5 +197,6 @@ pub fn spawn_fighter(
         animation::FighterAnimationFrame::new(animation::AnimKind::Wait, true),
         FighterVisual,
         FighterInput::default(),
+        crate::camera::FighterCameraExtents::default(),
     ));
 }

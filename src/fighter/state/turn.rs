@@ -4,7 +4,7 @@ use crate::fighter::collision;
 use crate::fighter::state::fall::FallState;
 use crate::fighter::state::ground::{self, GroundedMotionResult, GroundedStateCommon};
 use crate::fighter::state::land::LandingState;
-use crate::fighter::state::{FighterState, air, dash, jump, wait, walk};
+use crate::fighter::state::{air, dash, jump, wait, walk, FighterState};
 
 #[derive(Debug, Clone, Hash)]
 pub struct TurnState {
@@ -80,9 +80,13 @@ pub fn check_input(
     grounded_common: &GroundedStateCommon,
 ) -> Option<FighterState> {
     let input_frame = state_context.input.get_last_frame();
-
+    let smash_input_frame_threshold = state_context
+        .game_settings
+        .input_common
+        .smash_input_frame_threshold;
     if !input_frame.movement.x.is_zero()
         && input_frame.movement.x.signum() != state_context.facing_direction.to_sign()
+        && state_context.input.get_frames_in_smash_move_deadzone() > smash_input_frame_threshold
     {
         return Some(FighterState::Turn(TurnState {
             grounded_common: grounded_common.clone(),

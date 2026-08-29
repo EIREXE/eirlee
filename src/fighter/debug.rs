@@ -10,7 +10,10 @@ use crate::fighter::ecb::FighterPreviousECB;
 use crate::fighter::manifest::{FighterManifest, FighterManifestRegistry};
 use crate::fighter::state::StateNameDebug;
 use crate::fighter::visual::FighterAnimations;
-use crate::fighter::{Fighter, FighterECB, FighterFacingDirection, FighterPreviousTranslation, FighterTranslation, FighterVelocity};
+use crate::fighter::{
+    Fighter, FighterECB, FighterFacingDirection, FighterPreviousTranslation, FighterTranslation,
+    FighterVelocity,
+};
 use crate::input::FighterInput;
 use crate::match_loading::MatchPlayer;
 
@@ -45,26 +48,27 @@ pub fn fighter_debug(
             ui.label(format!("{:?}", vel));
             ui.label(format!("{:?}", input.get_last_frame()));
         });
-
     }
     Ok(())
 }
 
 pub fn animation_debug(
-    query: Query<(
-        &GlobalTransform,
-        &FighterAnimationFrame,
-        &FighterAnimations,
-    )>,
+    query: Query<(&GlobalTransform, &FighterAnimationFrame, &FighterAnimations)>,
     baked_anims: Res<Assets<BakedFighterAnimations>>,
     mut gizmos: Gizmos,
 ) {
     for (global_transform, frame, anims) in query {
-        let baked: &BakedFighterAnimations = baked_anims.get(&anims.baked).expect("Baked anims should be in");
+        let baked: &BakedFighterAnimations = baked_anims
+            .get(&anims.baked)
+            .expect("Baked anims should be in");
         for bone in &baked.bone_names {
             let out = anims.sample_bone(&baked_anims, *frame, bone);
             if let Some(out) = out {
-                let pos = global_transform.transform_point(Vec3::new(out.cols[3][0].to_num(), out.cols[3][1].to_num(), out.cols[3][2].to_num()));
+                let pos = global_transform.transform_point(Vec3::new(
+                    out.cols[3][0].to_num(),
+                    out.cols[3][1].to_num(),
+                    out.cols[3][2].to_num(),
+                ));
                 gizmos.cross(pos, 0.5, bevy::color::palettes::css::RED);
             }
         }

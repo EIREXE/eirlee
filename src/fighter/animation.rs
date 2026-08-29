@@ -3,7 +3,11 @@ use std::time::Duration;
 use bevy::prelude::*;
 
 use crate::{
-    fighter::{FighterECB, FighterFacingDirection, FighterTranslation, FighterVisual, visual::FighterAnimations}, player::Player,
+    fighter::{
+        FighterECB, FighterFacingDirection, FighterTranslation, FighterVisual,
+        visual::FighterAnimations,
+    },
+    player::Player,
 };
 
 #[derive(Component)]
@@ -26,7 +30,11 @@ pub struct FighterAnimationFrame {
 
 impl FighterAnimationFrame {
     pub const fn new(kind: AnimKind, repeat: bool) -> Self {
-        Self { kind, frame: 0, repeat }
+        Self {
+            kind,
+            frame: 0,
+            repeat,
+        }
     }
 
     pub fn reset(&mut self, kind: AnimKind, repeat: bool) {
@@ -78,16 +86,28 @@ pub fn setup_fighter_animation_player(
     }
 }
 
-pub fn apply_animation(children: Query<(&mut Transform, &FighterFacingDirection, &FighterAnimationFrame), With<FighterVisual>>) {
+pub fn apply_animation(
+    children: Query<
+        (
+            &mut Transform,
+            &FighterFacingDirection,
+            &FighterAnimationFrame,
+        ),
+        With<FighterVisual>,
+    >,
+) {
     for (mut trf, facing_direction, frame) in children {
         // Melee model scale is in decimeters
         trf.rotation = Quat::IDENTITY;
         if let AnimKind::Turn = frame.kind {
-            trf.rotate_local_y(std::f32::consts::PI * -0.5 * facing_direction.to_sign().to_num::<f32>());
+            trf.rotate_local_y(
+                std::f32::consts::PI * -0.5 * facing_direction.to_sign().to_num::<f32>(),
+            );
         } else {
-            trf.rotate_local_y(std::f32::consts::PI * 0.5 * facing_direction.to_sign().to_num::<f32>());
+            trf.rotate_local_y(
+                std::f32::consts::PI * 0.5 * facing_direction.to_sign().to_num::<f32>(),
+            );
         }
-        
     }
 }
 

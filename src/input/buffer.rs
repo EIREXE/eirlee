@@ -94,6 +94,10 @@ impl FighterInput {
     pub fn reduce_command_lifetime(&mut self, command: FighterCommands) {
         self.command_lifetimes[command] = self.command_lifetimes[command].saturating_sub(1);
     }
+
+    pub fn get_frames_in_smash_move_deadzone(&self) -> u8 {
+        self.frames_in_smash_move_deadzone
+    }
 }
 
 /// Turns this frame's rolled-back inputs into per-fighter [`FighterInput`]
@@ -124,7 +128,7 @@ pub fn postprocess_input(
             if prev_x_abs < reset_deadzone
                 || input.prev_frame.movement.x.signum() != input.current_frame.movement.x.signum()
             {
-                input.frames_in_smash_move_deadzone = 0;
+                input.frames_in_smash_move_deadzone = 1;
             } else {
                 input.frames_in_smash_move_deadzone = input.frames_in_smash_move_deadzone.saturating_add(1);
             }

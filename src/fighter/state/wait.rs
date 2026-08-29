@@ -18,20 +18,18 @@ pub struct WaitState {
 impl FighterStateImpl for WaitState {
     const NAME: &'static str = "Wait";
     fn check_interrupt(&self, state_context: &mut FighterStateContext) -> Option<FighterState> {
-        if let Some(state) = ground::grounded_movement_standstill_common_interrupts(
+        if let Some(state) = ground::grounded_movement_common_interrupts(state_context, &self.grounded_common) {
+            Some(state)
+        } else if let Some(state) = ground::grounded_movement_standstill_common_interrupts(
             state_context,
-            &self.grounded_common,
-        ) {
-            // Prevent transitioning into myself
+            &self.grounded_common)
+        {
+            // Don't transition into yourself
             if let FighterState::Wait(_) = state {
                 None
             } else {
                 Some(state)
             }
-        } else if let Some(state) =
-            ground::grounded_movement_common_interrupts(state_context, &self.grounded_common)
-        {
-            Some(state)
         } else {
             None
         }

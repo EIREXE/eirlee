@@ -6,6 +6,7 @@ use super::{FighterStateContext, FighterStateImpl, dash, ground, wait};
 use crate::fighter::animation::AnimKind;
 use crate::fighter::state::FighterState;
 use crate::fighter::state::fall::FallState;
+use crate::fighter::state::turn;
 use crate::fighter::state::ground::{GroundedMotionResult, GroundedStateCommon};
 
 #[derive(Debug, Clone, Hash)]
@@ -16,7 +17,10 @@ pub struct WalkState {
 impl FighterStateImpl for WalkState {
     const NAME: &'static str = "Walk";
     fn check_interrupt(&self, state_context: &mut FighterStateContext) -> Option<FighterState> {
-        if let Some(state) =
+        if let Some(state) = turn::check_input(state_context, &self.grounded_common) {
+            return Some(state)
+        }
+        else if let Some(state) =
             ground::grounded_movement_common_interrupts(state_context, &self.grounded_common)
         {
             return Some(state);
