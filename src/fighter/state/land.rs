@@ -1,6 +1,3 @@
-
-use bevy::prelude::*;
-
 use crate::fighter::{
     animation::AnimKind,
     state::{

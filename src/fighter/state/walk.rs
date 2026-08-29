@@ -1,6 +1,4 @@
 
-use bevy::prelude::*;
-
 use super::{FighterStateContext, FighterStateImpl, dash, ground, wait};
 use crate::fighter::animation::AnimKind;
 use crate::fighter::state::FighterState;

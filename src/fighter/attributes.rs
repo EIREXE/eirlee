@@ -64,7 +64,3 @@ impl FighterAttributes {
         (accel, target_vel)
     }
 }
-
-pub struct FighterAttributesLink {
-    attributes: Handle<FighterAttributes>,
-}

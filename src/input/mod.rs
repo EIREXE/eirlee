@@ -134,7 +134,7 @@ fn read_local_inputs(
             .and_then(|entity| gamepads.get(entity).ok());
 
         let mut input_frame = match gamepad {
-            Some(pad) => gamepad::sample_gamepad(pad, &input_map, &game_settings),
+            Some(pad) => gamepad::sample_gamepad(pad, &input_map),
             None => keyboard::sample_keyboard(&key, &input_map),
         };
 

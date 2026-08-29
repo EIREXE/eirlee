@@ -12,7 +12,6 @@ use crate::math::vec::FGVec2;
 use crate::stage::line::{StageLineID, StagePolyLineSegmentType};
 
 use bevy::prelude::*;
-use fixed::traits::Fixed;
 
 #[derive(Reflect, Hash, Clone, Debug)]
 pub struct GroundedStateCommon {

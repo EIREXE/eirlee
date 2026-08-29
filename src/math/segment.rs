@@ -1,6 +1,5 @@
 
 use bevy::prelude::*;
-use fixed::prelude::*;
 
 use crate::math::{
     int::{FGWide, FGi32},

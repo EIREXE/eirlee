@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use fixed::traits::Fixed;
 
 use crate::math::{int::FGi32, vec::FGVec2};
 

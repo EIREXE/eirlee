@@ -1,5 +1,3 @@
-use fixed::traits::Fixed;
-
 use crate::fighter::*;
 
 pub fn integrate_gravity(velocity: &mut FighterVelocity, attributes: &FighterAttributes) {

@@ -201,9 +201,6 @@ pub fn prepare_match(
             prepared.push((
                 scene,
                 animations.clone(),
-                manifest.attributes,
-                manifest.camera,
-                manifest,
                 manifest_handle,
             ));
             continue;
@@ -250,9 +247,6 @@ pub fn prepare_match(
         prepared.push((
             scene,
             animations,
-            manifest.attributes,
-            manifest.camera,
-            manifest,
             manifest_handle,
         ));
     }
@@ -286,7 +280,7 @@ pub fn prepare_match(
 
     for (
         index,
-        (player, (scene, animations, attributes, _camera_profile, manifest, manifest_handle)),
+        (player, (scene, animations, manifest_handle)),
     ) in request.players.iter().zip(prepared).enumerate()
     {
         let spawn_x = (index as i32 * 2 + 1 - request.players.len() as i32) * 5;
@@ -294,8 +288,7 @@ pub fn prepare_match(
             &mut commands,
             player.handle,
             FGVec2::new(FGi32::from_num(spawn_x), FGi32::lit("12.5")),
-            (manifest_handle.clone(), manifest),
-            attributes,
+            manifest_handle.clone(),
             animations,
             WorldAssetRoot(scene),
         );

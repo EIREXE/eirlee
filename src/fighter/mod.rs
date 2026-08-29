@@ -98,7 +98,6 @@ pub struct FighterVisual;
 
 #[derive(Component)]
 pub struct Fighter {
-    id: FighterId,
     pub manifest: Handle<FighterManifest>,
 }
 
@@ -170,8 +169,7 @@ pub fn spawn_fighter(
     commands: &mut Commands,
     player_handle: usize,
     spawn_position: FGVec2,
-    manifest: (Handle<FighterManifest>, &FighterManifest),
-    _attributes: FighterAttributes,
+    manifest: Handle<FighterManifest>,
     animations: FighterAnimations,
     visual_root: WorldAssetRoot,
 ) {
@@ -181,8 +179,7 @@ pub fn spawn_fighter(
             handle: player_handle,
         },
         Fighter {
-            id: manifest.1.id,
-            manifest: manifest.0,
+            manifest: manifest,
         },
         FighterFacingDirection::Right,
         FighterECB {

@@ -1,14 +1,12 @@
 use bevy::math::Vec2;
 use bevy::prelude::*;
-use fixed::traits::Fixed;
 
-use crate::game_settings::GameSettings;
 use crate::input::map::GamepadBinding;
 use crate::input::{BaseInputMap, FighterInputFrame, InputMapAction};
 use crate::math::int::FGi32;
 use crate::math::vec::FGVec2;
 
-pub fn sample_gamepad(pad: &Gamepad, input_map: &BaseInputMap, _game_settings: &GameSettings) -> FighterInputFrame {
+pub fn sample_gamepad(pad: &Gamepad, input_map: &BaseInputMap) -> FighterInputFrame {
     let mut input_frame = FighterInputFrame::default();
     let mut movement = Vec2::ZERO;
 

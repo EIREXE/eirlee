@@ -1,7 +1,5 @@
 //! Resolving an integrated fighter position against the stage.
 
-use bevy::prelude::*;
-
 use crate::fighter::state::FighterStateContext;
 use crate::math::segment::FGSegment2d;
 use crate::math::vec::FGVec2;
