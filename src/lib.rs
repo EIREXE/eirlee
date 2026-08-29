@@ -81,6 +81,7 @@ impl Plugin for GamePlugin {
                 input::FighterInputPlugin,
                 fighter::FighterPlugin,
                 fighter::baked_animation::BakedAnimationPlugin,
+                scripting::importer::FighterScriptImportPlugin,
                 stage::StagePlugin,
                 MatchCameraPlugin,
                 bevy_common_assets::ron::RonAssetPlugin::<FighterManifest>::new(&["fighter.ron"]),

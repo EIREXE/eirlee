@@ -3,8 +3,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use rhai::EvalAltResult;
 
 use crate::{
-    fighter::attack::{self, AttackAngle, FighterDamage, Knockback, KnockbackType},
-    math::{int::FGi32, vec::FGVec2, vec3::FGVec3},
+    fighter::attack::{self, AttackAngle, FighterDamage, Knockback, KnockbackType}, math::{int::FGi32, vec::FGVec2, vec3::FGVec3}, scripting::FighterAttackScript,
 };
 
 #[derive(Debug, Default)]
@@ -59,6 +58,14 @@ impl MoveCompiler {
 
         Ok(())
     }
+
+    fn into_attack_script(mut self) -> Result<FighterAttackScript, String> {
+        self.remove_all_hitboxes().map_err(|err| err.to_string())?;
+        let hitboxes = self.hitboxes.into_iter().map(|(_, hitbox)| hitbox).collect();
+        Ok(FighterAttackScript {
+            hitboxes
+        })
+    }
 }
 
 // scripting functions
@@ -83,95 +90,97 @@ pub fn register_common_types(engine: &mut rhai::Engine) {
         .register_fn("damage", FighterDamage::lit);
 }
 
-pub fn compile_script(text: &str) -> Result<MoveCompiler, String> {
+pub fn compile_script(text: &str) -> Result<FighterAttackScript, String> {
     let mc = Rc::new(RefCell::new(MoveCompiler {
         cursor: 0,
         ..Default::default()
     }));
-    let mut engine = rhai::Engine::new();
+    let result = {
+        let mut engine = rhai::Engine::new();
 
-    register_common_types(&mut engine);
+        register_common_types(&mut engine);
 
-    {
-        let mc = mc.clone();
-        engine.register_fn(
-            "frame",
-            move |frame: i64| -> Result<(), Box<EvalAltResult>> {
-                let mut b = mc.borrow_mut();
-                b.frame(frame as u32)
-            },
-        );
-    }
+        {
+            let mc = mc.clone();
+            engine.register_fn(
+                "frame",
+                move |frame: i64| -> Result<(), Box<EvalAltResult>> {
+                    let mut b = mc.borrow_mut();
+                    b.frame(frame as u32)
+                },
+            );
+        }
 
-    {
-        let mc = mc.clone();
-        engine.register_fn(
-            "remove_all_hitboxes",
-            move || -> Result<(), Box<EvalAltResult>> {
-                let mut b = mc.borrow_mut();
-                b.remove_all_hitboxes()
-            },
-        );
-    }
+        {
+            let mc = mc.clone();
+            engine.register_fn(
+                "remove_all_hitboxes",
+                move || -> Result<(), Box<EvalAltResult>> {
+                    let mut b = mc.borrow_mut();
+                    b.remove_all_hitboxes()
+                },
+            );
+        }
 
-    {
-        let mc = mc.clone();
-        engine.register_fn(
-            "remove_all_hitboxes",
-            move |id: i64| -> Result<(), Box<EvalAltResult>> {
-                let mut b = mc.borrow_mut();
-                b.remove_hitbox(id as u32)
-            },
-        );
-    }
+        {
+            let mc = mc.clone();
+            engine.register_fn(
+                "remove_all_hitboxes",
+                move |id: i64| -> Result<(), Box<EvalAltResult>> {
+                    let mut b = mc.borrow_mut();
+                    b.remove_hitbox(id as u32)
+                },
+            );
+        }
 
-    {
-        let mc = mc.clone();
-        engine.register_fn(
-            "hitbox",
-            move |id: i64,
-                  bone: &str,
-                  damage: FighterDamage,
-                  offset: FGVec3,
-                  radius: FGi32,
-                  angle: AttackAngle,
-                  knockback_type: KnockbackType,
-                  knockback: Knockback,
-                  knockback_growth: FGi32|
-                  -> Result<(), Box<EvalAltResult>> {
-                let mut b = mc.borrow_mut();
+        {
+            let mc = mc.clone();
+            engine.register_fn(
+                "hitbox",
+                move |id: i64,
+                    bone: &str,
+                    damage: FighterDamage,
+                    offset: FGVec3,
+                    radius: FGi32,
+                    angle: AttackAngle,
+                    knockback_type: KnockbackType,
+                    knockback: Knockback,
+                    knockback_growth: FGi32|
+                    -> Result<(), Box<EvalAltResult>> {
+                    let mut b = mc.borrow_mut();
 
-                // Rhai does not have first class u32 support, so we have to do this.
-                let id = id as u32;
+                    // Rhai does not have first class u32 support, so we have to do this.
+                    let id = id as u32;
 
-                if b.hitboxes.contains_key(&id) {
-                    return Err(format!("Hitbox with ID {} already existed!", id).into());
-                }
+                    if b.hitboxes.contains_key(&id) {
+                        return Err(format!("Hitbox with ID {} already existed!", id).into());
+                    }
 
-                let hitbox = attack::AttackHitbox {
-                    id,
-                    bone: bone.to_owned(),
-                    damage,
-                    offset,
-                    radius,
-                    angle,
-                    knockback_type,
-                    knockback,
-                    knockback_growth,
-                    start_frame: b.cursor,
-                    end_frame: b.cursor,
-                };
+                    let hitbox = attack::AttackHitbox {
+                        id,
+                        bone: bone.to_owned(),
+                        damage,
+                        offset,
+                        radius,
+                        angle,
+                        knockback_type,
+                        knockback,
+                        knockback_growth,
+                        start_frame: b.cursor,
+                        end_frame: b.cursor,
+                    };
 
-                b.hitboxes.insert(id, hitbox);
-                b.active_hitboxes.push(id);
+                    b.hitboxes.insert(id, hitbox);
+                    b.active_hitboxes.push(id);
 
-                Ok(())
-            },
-        );
-    }
+                    Ok(())
+                },
+            );
+        }
+        engine.run(&text)
+    };
 
-    engine
-        .run(&text)
-        .map(|_| Rc::into_inner(mc).unwrap().into_inner())
-        .map_err(|err| err.to_string())
+
+    result.map(|_| Rc::into_inner(mc).unwrap().into_inner().into_attack_script())
+        .map_err(|err| err.to_string())?
 }

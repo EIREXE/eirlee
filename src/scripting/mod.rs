@@ -1,23 +1,17 @@
-use bevy::ecs::name::HashedStr;
+use bevy::{prelude::*};
+use serde::{Deserialize, Serialize};
 
-use crate::math::int::FGi32;
+use crate::{fighter::attack::AttackHitbox, math::int::FGi32};
 
 pub mod move_compiler;
+pub mod importer;
 
 pub enum MoveAngleKind {
     Normal(FGi32),
     Sakurai
 }
 
-pub struct MoveEventHurtbox {
-    pub priority: u32,
-    pub bone: HashedStr,
-    pub radius: FGi32,
-    pub damage: FGi32,
-    pub knockback_scaling: FGi32,
-    pub angle: MoveAngleKind,
-}
-
-pub enum MoveEvent {
-    Hurtbox(MoveEventHurtbox)
+#[derive(Asset, Reflect, Serialize, Deserialize)]
+pub struct FighterAttackScript {
+    pub hitboxes: Vec<AttackHitbox>
 }

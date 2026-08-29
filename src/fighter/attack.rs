@@ -1,12 +1,8 @@
+use bevy::reflect::Reflect;
+use serde::{Deserialize, Serialize};
+
 use crate::math::{int::FGi32, vec3::FGVec3};
-
-
-pub struct FighterMoveManifest {
-    script_path: String,
-    
-}
-
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct FighterDamage(FGi32);
 
 impl FighterDamage {
@@ -15,7 +11,7 @@ impl FighterDamage {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum KnockbackType {
     Normal,
     Fixed
@@ -31,7 +27,7 @@ impl KnockbackType {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct Knockback(FGi32);
 
 impl Knockback {
@@ -40,7 +36,7 @@ impl Knockback {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AttackAngle {
     Normal(FGi32),
     Sakurai
@@ -63,7 +59,8 @@ impl AttackAngle {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Reflect, Serialize, Deserialize)]
+#[reflect(opaque)]
 pub struct AttackHitbox {
     pub id: u32,
     pub bone: String,
