@@ -52,6 +52,10 @@ macro_rules! fighter_states {
                 match self { $(Self::$variant(s) => s.on_enter(ctx)),* }
             }
 
+            pub fn on_exit(&mut self, ctx: &mut FighterStateContext) {
+                match self { $(Self::$variant(s) => s.on_exit(ctx)),* }
+            }
+
             pub fn check_collision_interrupt(&mut self, ctx: &mut FighterStateContext) -> Option<FighterState> {
                 match self { $(Self::$variant(s) => s.check_collision_interrupt(ctx)),* }
             }
@@ -68,6 +72,7 @@ pub trait FighterStateImpl: Sized {
     fn check_interrupt(&self, state_context: &mut FighterStateContext) -> Option<FighterState>;
 
     fn on_enter(&mut self, _state_context: &mut FighterStateContext) {}
+    fn on_exit(&mut self, _state_context: &mut FighterStateContext) {}
     fn update(&mut self, _state_context: &mut FighterStateContext);
 
     fn check_collision_interrupt(
@@ -272,7 +277,7 @@ pub fn state_interrupt_system(
     for fighter in &mut query {
         let StatefulFighterQueryItem {
             entity,
-            state,
+            mut state,
             mut frame,
             animations,
             animation_player_link,
@@ -301,6 +306,7 @@ pub fn state_interrupt_system(
             let mut new_state = new_state;
             let old_state_name = state.name();
             let new_state_name = new_state.name();
+            state.on_exit(&mut state_context);
             new_state.on_enter(&mut state_context);
             commands
                 .entity(entity)
@@ -352,6 +358,7 @@ pub fn state_collision_interrupt_system(
             let mut new_state = new_state;
             let old_state_name = state.name();
             let new_state_name = new_state.name();
+            state.on_exit(&mut state_context);
             new_state.on_enter(&mut state_context);
             commands
                 .entity(entity)

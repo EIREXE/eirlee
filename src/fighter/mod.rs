@@ -125,13 +125,10 @@ impl Plugin for FighterPlugin {
             state::state_collision_interrupt_system.in_set(GameplaySet::Collision),
         )
         .add_systems(
-            GgrsSchedule,
-            (
-                animation::apply_fighter_translation_to_visuals,
-                animation::apply_animation,
-            )
+            Update,
+            (motion::apply_fighter_translation_to_visuals, animation::apply_animation)
                 .chain()
-                .in_set(GameplaySet::Animation),
+                .run_if(in_state(crate::AppState::InMatch)),
         )
         // Rollback registration lives next to the systems that write these
         // components; a component simulated here but missing from this list
@@ -177,6 +174,13 @@ pub struct FighterHitboxes {
     pub active_hitboxes: Vec<usize>
 }
 
+impl FighterHitboxes {
+    pub fn clear(&mut self) {
+        self.attack_script = None;
+        self.active_hitboxes.clear();
+    }
+}
+
 pub fn spawn_fighter(
     commands: &mut Commands,
     player_handle: usize,
@@ -203,8 +207,11 @@ pub fn spawn_fighter(
             attack_script: None,
             active_hitboxes: vec![]
         }),
-        FighterVelocity::default(),
-        FighterTranslation(spawn_position),
+        (
+            FighterVelocity::default(),
+            FighterTranslation(spawn_position),
+            FighterPreviousTranslation(spawn_position),
+        ),
         visual_root,
         animations,
         attack_scripts,

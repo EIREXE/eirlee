@@ -32,6 +32,17 @@ impl FighterStateImpl for GroundAttackState {
         state_context.hitboxes.attack_script = Some(state_context.attack_script_assets.scripts[&self.attack_kind].clone());
         state_context.hitboxes.active_hitboxes.clear();
     }
+    
+    fn on_exit(&mut self, state_context: &mut super::FighterStateContext) {
+        state_context.hitboxes.clear();
+    }
+    
+    fn check_collision_interrupt(
+        &mut self,
+        _state_context: &mut super::FighterStateContext,
+    ) -> Option<FighterState> {
+        None
+    }
 }
 
 pub fn check_interrupt(state_context: &super::FighterStateContext, grounded_common: &GroundedStateCommon) -> Option<FighterState> {

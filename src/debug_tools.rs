@@ -19,6 +19,29 @@ pub enum FighterDebugRowKind {
     Facing,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum PresentationMotionMode {
+    #[default]
+    Interpolation,
+    Extrapolation,
+}
+
+impl PresentationMotionMode {
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Interpolation => "Interpolation",
+            Self::Extrapolation => "Extrapolation",
+        }
+    }
+
+    fn cycle(&mut self) {
+        *self = match self {
+            Self::Interpolation => Self::Extrapolation,
+            Self::Extrapolation => Self::Interpolation,
+        };
+    }
+}
+
 impl FighterDebugRowKind {
     const ALL: [Self; 6] = [
         Self::None,
@@ -57,6 +80,7 @@ enum DebugFlag {
     StageCollision,
     AnimationBones,
     AttackHitboxes,
+    Camera,
     DrawThroughGeometry,
 }
 
@@ -71,6 +95,9 @@ enum DebugMenuEntry {
         entries: &'static [DebugMenuEntry],
     },
     PlayerSlots {
+        label: &'static str,
+    },
+    MotionSampling {
         label: &'static str,
     },
 }
@@ -88,6 +115,10 @@ const FIGHTER_MENU: &[DebugMenuEntry] = &[
         flag: DebugFlag::AnimationBones,
     },
     DebugMenuEntry::Toggle {
+        label: "Camera",
+        flag: DebugFlag::Camera,
+    },
+    DebugMenuEntry::Toggle {
         label: "Attack hitboxes",
         flag: DebugFlag::AttackHitboxes,
     },
@@ -103,10 +134,15 @@ const DIAGNOSTICS_MENU: &[DebugMenuEntry] = &[DebugMenuEntry::Toggle {
     flag: DebugFlag::Network,
 }];
 
-const RENDERING_MENU: &[DebugMenuEntry] = &[DebugMenuEntry::Toggle {
-    label: "Draw through geometry",
-    flag: DebugFlag::DrawThroughGeometry,
-}];
+const RENDERING_MENU: &[DebugMenuEntry] = &[
+    DebugMenuEntry::MotionSampling {
+        label: "Motion sampling",
+    },
+    DebugMenuEntry::Toggle {
+        label: "Draw through geometry",
+        flag: DebugFlag::DrawThroughGeometry,
+    },
+];
 
 const ROOT_MENU: &[DebugMenuEntry] = &[
     DebugMenuEntry::Submenu {
@@ -146,7 +182,9 @@ pub struct DebugSettings {
     pub stage_collision: bool,
     pub animation_bones: bool,
     pub attack_hitboxes: bool,
+    pub camera: bool,
     pub draw_through_geometry: bool,
+    pub motion_sampling: PresentationMotionMode,
 }
 
 impl Default for DebugSettings {
@@ -162,7 +200,9 @@ impl Default for DebugSettings {
             stage_collision: false,
             animation_bones: false,
             attack_hitboxes: false,
+            camera: false,
             draw_through_geometry: false,
+            motion_sampling: PresentationMotionMode::default(),
         }
     }
 }
@@ -223,6 +263,7 @@ impl DebugSettings {
             DebugFlag::AnimationBones => self.animation_bones,
             DebugFlag::AttackHitboxes => self.attack_hitboxes,
             DebugFlag::DrawThroughGeometry => self.draw_through_geometry,
+            DebugFlag::Camera => self.camera,
         }
     }
 
@@ -236,7 +277,12 @@ impl DebugSettings {
             DebugFlag::DrawThroughGeometry => {
                 self.draw_through_geometry = !self.draw_through_geometry
             }
+            DebugFlag::Camera => self.camera = !self.camera,
         }
+    }
+
+    fn cycle_motion_sampling(&mut self) {
+        self.motion_sampling.cycle();
     }
 
     fn rows_mut(&mut self, handle: usize) -> &mut [FighterDebugRowKind; PLAYER_DEBUG_ROW_COUNT] {
@@ -342,6 +388,16 @@ fn handle_palette_input(
             rows[selected] = rows[selected].cycle(direction);
         }
     }
+    if let DebugMenuPage::Static(entries) = page
+        && matches!(
+            entries.get(settings.selected()),
+            Some(DebugMenuEntry::MotionSampling { .. })
+        )
+        && (gamepad.just_pressed(GamepadButton::DPadLeft)
+            || gamepad.just_pressed(GamepadButton::DPadRight))
+    {
+        settings.cycle_motion_sampling();
+    }
     if gamepad.just_pressed(GamepadButton::South) {
         match page {
             DebugMenuPage::Static(entries) if page_len != 0 => match entries[settings.selected()] {
@@ -350,6 +406,7 @@ fn handle_palette_input(
                     settings.push_page(DebugMenuPage::Static(entries));
                 }
                 DebugMenuEntry::PlayerSlots { .. } => settings.push_page(DebugMenuPage::PlayerList),
+                DebugMenuEntry::MotionSampling { .. } => settings.cycle_motion_sampling(),
             },
             DebugMenuPage::PlayerList if page_len != 0 => {
                 let handle = player_handles[settings.selected()];
@@ -409,6 +466,12 @@ fn draw_palette(
                             | DebugMenuEntry::PlayerSlots { label } => {
                                 ui.label(format!("{marker} {label} >"));
                             }
+                            DebugMenuEntry::MotionSampling { label } => {
+                                ui.label(format!(
+                                    "{marker} {label}: {}",
+                                    settings.motion_sampling.label()
+                                ));
+                            }
                         }
                     }
                 }
@@ -437,7 +500,7 @@ fn draw_palette(
             let controls = if matches!(page, DebugMenuPage::PlayerRows(_)) {
                 "D-pad: select/change   B: back"
             } else {
-                "D-pad: select   A: enter/toggle   B: back"
+                "D-pad: select   A: enter/toggle   Left/right: change   B: back"
             };
             ui.label(controls);
         });
@@ -469,6 +532,10 @@ pub fn animation_bones_enabled(settings: Res<DebugSettings>) -> bool {
 
 pub fn attack_hitboxes_enabled(settings: Res<DebugSettings>) -> bool {
     settings.attack_hitboxes
+}
+
+pub fn camera_debug_enabled(settings: Res<DebugSettings>) -> bool {
+    settings.camera
 }
 
 #[cfg(test)]
@@ -508,5 +575,15 @@ mod tests {
             FighterDebugRowKind::CurrentState
         );
         assert!(settings.player_rows(1).is_none());
+    }
+
+    #[test]
+    fn presentation_motion_mode_cycles_between_choices() {
+        let mut mode = PresentationMotionMode::Interpolation;
+
+        mode.cycle();
+        assert_eq!(mode, PresentationMotionMode::Extrapolation);
+        mode.cycle();
+        assert_eq!(mode, PresentationMotionMode::Interpolation);
     }
 }

@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use crate::{
     fighter::{
-        FighterECB, FighterFacingDirection, FighterTranslation, FighterVisual,
+        FighterFacingDirection, FighterVisual,
         visual::FighterAnimations,
     },
     player::Player,
@@ -51,15 +51,6 @@ impl FighterAnimationFrame {
 pub fn advance_fighter_animation_frames(mut fighters: Query<&mut FighterAnimationFrame>) {
     for mut animation in &mut fighters {
         animation.advance();
-    }
-}
-
-pub fn apply_fighter_translation_to_visuals(
-    query: Query<(&FighterTranslation, &FighterECB, &mut Transform)>,
-) {
-    for (translation, ecb, mut transform) in query {
-        let translation = translation.0 + ecb.get_bottom_point();
-        transform.translation = Vec3::new(translation.x.to_num(), translation.y.to_num(), 0.0);
     }
 }
 
@@ -153,4 +144,5 @@ pub enum AnimKind {
     // Attacks
 
     AttackJab1,
+    AttackUpTilt,
 }

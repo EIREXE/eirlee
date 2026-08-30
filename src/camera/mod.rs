@@ -1,8 +1,13 @@
 //! Presentation-only state and tuning for the match camera.
 
 use bevy::prelude::*;
+use bevy_ggrs::GgrsFrameTiming;
 
-use crate::{fighter::manifest::FighterManifest, stage::manifest::StageCameraProfile};
+use crate::{
+    debug_tools::DebugSettings,
+    fighter::{manifest::FighterManifest, motion::sample_presentation_translation},
+    stage::manifest::StageCameraProfile,
+};
 
 const EMPTY_FRAME_HALF_SIZE: f32 = 40.0;
 const SUBJECT_COUNT_SCALES: [f32; 4] = [1.5, 1.32, 1.16, 1.0];
@@ -110,7 +115,10 @@ impl Plugin for MatchCameraPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (update_match_camera, debug_draw_camera)
+            (
+                update_match_camera,
+                debug_draw_camera.run_if(crate::debug_tools::camera_debug_enabled),
+            )
                 .chain()
                 .run_if(in_state(crate::AppState::InMatch)),
         );
@@ -302,6 +310,7 @@ fn update_match_camera(
     mut fighters: Query<
         (
             &crate::fighter::motion::FighterTranslation,
+            &crate::fighter::motion::FighterPreviousTranslation,
             &crate::fighter::Fighter,
             &crate::fighter::FighterFacingDirection,
             &mut FighterCameraExtents,
@@ -311,25 +320,34 @@ fn update_match_camera(
     camera_profiles: Query<&StageCameraProfile, With<MatchCamera>>,
     mut cameras: Query<(&mut Transform, &mut Projection, &mut MatchCamera), With<MatchCamera>>,
     manifests: Res<Assets<FighterManifest>>,
+    timing: Res<GgrsFrameTiming>,
+    debug_settings: Res<DebugSettings>,
 ) {
     let Ok(profile) = camera_profiles.single() else {
         return;
     };
     let subjects = fighters
         .iter_mut()
-        .map(|(translation, fighter, facing, mut extents)| {
-            let manifest = manifests
-                .get(&fighter.manifest)
-                .expect("Fighter manifest should be valid");
-            fighter_subject_bounds(
-                Vec2::new(translation.x.to_num(), translation.y.to_num()),
-                manifest.camera,
-                *facing,
-                profile,
-                &mut extents,
-                time.delta_secs(),
-            )
-        })
+        .map(
+            |(translation, previous_translation, fighter, facing, mut extents)| {
+                let manifest = manifests
+                    .get(&fighter.manifest)
+                    .expect("Fighter manifest should be valid");
+                fighter_subject_bounds(
+                    sample_presentation_translation(
+                        *previous_translation,
+                        *translation,
+                        timing.overstep_fraction(),
+                        debug_settings.motion_sampling,
+                    ),
+                    manifest.camera,
+                    *facing,
+                    profile,
+                    &mut extents,
+                    time.delta_secs(),
+                )
+            },
+        )
         .collect::<Vec<_>>();
 
     for (mut transform, mut projection, mut camera) in &mut cameras {
@@ -444,6 +462,7 @@ fn debug_draw_camera(
     fighters: Query<
         (
             &crate::fighter::motion::FighterTranslation,
+            &crate::fighter::motion::FighterPreviousTranslation,
             &crate::fighter::Fighter,
             &crate::fighter::FighterFacingDirection,
             &FighterCameraExtents,
@@ -452,6 +471,8 @@ fn debug_draw_camera(
     >,
     cameras: Query<(&MatchCamera, &StageCameraProfile)>,
     manifests: Res<Assets<FighterManifest>>,
+    timing: Res<GgrsFrameTiming>,
+    debug_settings: Res<DebugSettings>,
 ) {
     for (camera, profile) in &cameras {
         draw_rectangle(
@@ -465,12 +486,16 @@ fn debug_draw_camera(
             Color::srgb(1.0, 0.5, 0.0),
         );
         draw_rectangle(&mut gizmos, camera.frame, Color::srgb(1.0, 1.0, 0.0));
-        for (translation, fighter, _facing, extents) in &fighters {
+        for (translation, previous_translation, fighter, _facing, extents) in &fighters {
             let manifest = manifests
                 .get(&fighter.manifest)
                 .expect("Fighter manifest should be valid");
-            let center = Vec2::new(translation.x.to_num(), translation.y.to_num())
-                + Vec2::Y * manifest.camera.vertical_origin_offset.to_num::<f32>();
+            let center = sample_presentation_translation(
+                *previous_translation,
+                *translation,
+                timing.overstep_fraction(),
+                debug_settings.motion_sampling,
+            ) + Vec2::Y * manifest.camera.vertical_origin_offset.to_num::<f32>();
             draw_rectangle(
                 &mut gizmos,
                 CameraFrameBounds {

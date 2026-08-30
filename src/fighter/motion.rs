@@ -2,8 +2,13 @@
 //! this module is what turns that into a position.
 
 use bevy::prelude::*;
+use bevy_ggrs::GgrsFrameTiming;
 
-use crate::{fighter::{FighterFacingDirection, baked_animation::FixedMat4}, math::{int::FGi32, vec::FGVec2, vec3::FGVec3}};
+use crate::debug_tools::PresentationMotionMode;
+use crate::{
+    fighter::{FighterECB, FighterFacingDirection, baked_animation::FixedMat4},
+    math::{int::FGi32, vec::FGVec2, vec3::FGVec3},
+};
 
 #[derive(Component, Clone, Copy)]
 pub struct Grounded;
@@ -29,6 +34,49 @@ impl FighterTranslation {
     }
 }
 
+/// Samples deterministic fighter positions for presentation without changing
+/// gameplay state or rollback timing.
+pub fn sample_presentation_translation(
+    previous: FighterPreviousTranslation,
+    current: FighterTranslation,
+    overstep_fraction: f32,
+    mode: PresentationMotionMode,
+) -> Vec2 {
+    let previous = Vec2::new(previous.x.to_num(), previous.y.to_num());
+    let current = Vec2::new(current.x.to_num(), current.y.to_num());
+    match mode {
+        PresentationMotionMode::Interpolation => previous.lerp(current, overstep_fraction),
+        PresentationMotionMode::Extrapolation => current + (current - previous) * overstep_fraction,
+    }
+}
+
+pub fn apply_fighter_translation_to_visuals(
+    query: Query<(
+        &FighterTranslation,
+        &FighterPreviousTranslation,
+        &FighterECB,
+        &mut Transform,
+    )>,
+    timing: Res<GgrsFrameTiming>,
+    debug_settings: Res<crate::debug_tools::DebugSettings>,
+) {
+    let overstep_fraction = timing.overstep_fraction();
+    for (translation, previous_translation, ecb, mut transform) in query {
+        let translation = sample_presentation_translation(
+            *previous_translation,
+            *translation,
+            overstep_fraction,
+            debug_settings.motion_sampling,
+        );
+        let bottom = ecb.get_bottom_point();
+        transform.translation = Vec3::new(
+            translation.x + bottom.x.to_num::<f32>(),
+            translation.y + bottom.y.to_num::<f32>(),
+            0.0,
+        );
+    }
+}
+
 pub fn apply_air_motion(
     fighters: Query<(
         &FighterVelocity,
@@ -51,3 +99,32 @@ pub fn copy_fighter_transform_to_visuals(fighters: Query<(&FighterTranslation, &
 }
 
 pub fn fighter_movement() {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn presentation_translation_interpolates_between_fixed_samples() {
+        let position = sample_presentation_translation(
+            FighterPreviousTranslation(FGVec2::new(FGi32::lit("2"), FGi32::lit("4"))),
+            FighterTranslation(FGVec2::new(FGi32::lit("6"), FGi32::lit("12"))),
+            0.25,
+            PresentationMotionMode::Interpolation,
+        );
+
+        assert_eq!(position, Vec2::new(3.0, 6.0));
+    }
+
+    #[test]
+    fn presentation_translation_extrapolates_from_current_sample() {
+        let position = sample_presentation_translation(
+            FighterPreviousTranslation(FGVec2::new(FGi32::lit("2"), FGi32::lit("4"))),
+            FighterTranslation(FGVec2::new(FGi32::lit("6"), FGi32::lit("12"))),
+            0.25,
+            PresentationMotionMode::Extrapolation,
+        );
+
+        assert_eq!(position, Vec2::new(7.0, 14.0));
+    }
+}

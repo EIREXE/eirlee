@@ -64,7 +64,8 @@ impl AttackAngle {
 #[derive(Serialize, Deserialize, Reflect, PartialEq, Eq, Hash, Clone, Debug)]
 pub enum AttackKind {
     NAir,
-    Jab
+    Jab,
+    UpTilt,
 }
 
 impl AttackKind {
@@ -72,6 +73,7 @@ impl AttackKind {
         match self {
             AttackKind::NAir => AnimKind::AttackJab1,
             AttackKind::Jab => AnimKind::AttackJab1,
+            AttackKind::UpTilt => AnimKind::AttackUpTilt,
         }
     }
 }

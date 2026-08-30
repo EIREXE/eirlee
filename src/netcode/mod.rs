@@ -21,7 +21,6 @@ impl Plugin for FighterNetcodePlugin {
         app.add_plugins(plugin)
             // Engine-level components that every rolled-back entity may carry.
             // Gameplay components are registered by the plugin that owns them.
-            .rollback_component_with_clone::<Transform>()
             .rollback_component_with_clone::<Name>()
             .add_systems(
                 EguiPrimaryContextPass,
