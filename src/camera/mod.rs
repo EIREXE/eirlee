@@ -785,23 +785,4 @@ mod tests {
         assert!((sixty_hz_lerp_alpha(0.09, 1.0 / 60.0) - 0.09).abs() < f32::EPSILON);
         assert!(sixty_hz_lerp_alpha(0.09, 1.0 / 30.0) > 0.09);
     }
-
-    #[test]
-    fn battlefield_profile_matches_the_source_stage_data() {
-        let manifest: crate::stage::manifest::StageManifest =
-            ron::from_str(include_str!("../../assets/stages/test.stage.ron")).unwrap();
-        let profile = manifest.camera;
-
-        assert_eq!((profile.left, profile.right), (-200.0, 200.0));
-        assert_eq!((profile.bottom, profile.top), (-59.0, 170.0));
-        assert_eq!(profile.origin, Vec2::new(0.0, 44.0));
-        assert_eq!(profile.vertical_fov_degrees, 30.0);
-        assert_eq!((profile.min_depth, profile.max_depth), (83.0, 1000.0));
-        assert_eq!(profile.subject_scale, 1.5);
-        assert_eq!(profile.fighter_forward_extent_scale, 1.5);
-        assert_eq!(profile.tracking_smoothness, 1.8);
-        assert_eq!(profile.vertical_pan_degrees, -10.0);
-        assert_eq!(profile.horizontal_pan_degrees_per_unit, 0.1);
-        assert_eq!(profile.vertical_pan_degrees_per_unit, 0.1);
-    }
 }

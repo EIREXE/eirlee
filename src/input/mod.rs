@@ -3,7 +3,6 @@
 
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
-use bevy_egui::EguiPrimaryContextPass;
 use bevy_ggrs::prelude::*;
 use bevy_ggrs::{LocalInputs, LocalPlayers};
 
@@ -14,7 +13,6 @@ pub mod gamecube;
 pub mod gamepad;
 pub mod keyboard;
 pub mod map;
-pub mod debug;
 
 pub use buffer::{FighterCommands, FighterInput};
 pub use frame::FighterInputFrame;
@@ -106,7 +104,6 @@ impl Plugin for FighterInputPlugin {
         })
         .add_plugins(gamecube::GamecubeAdapterPlugin)
         .add_systems(ReadInputs, read_local_inputs)
-        .add_systems(EguiPrimaryContextPass, debug::input_debug)
         .add_systems(
             GgrsSchedule,
             buffer::postprocess_input.in_set(GameplaySet::Input),

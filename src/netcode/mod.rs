@@ -23,7 +23,10 @@ impl Plugin for FighterNetcodePlugin {
             // Gameplay components are registered by the plugin that owns them.
             .rollback_component_with_clone::<Transform>()
             .rollback_component_with_clone::<Name>()
-            .add_systems(EguiPrimaryContextPass, debug::network_debug)
+            .add_systems(
+                EguiPrimaryContextPass,
+                debug::network_debug.run_if(crate::debug_tools::network_enabled),
+            )
             .add_systems(Update, session::print_events_system)
             .insert_resource(RollbackFrameRate(60));
     }

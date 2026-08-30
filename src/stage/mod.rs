@@ -20,7 +20,9 @@ impl Plugin for StagePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            debug::debug_draw_scene.run_if(resource_exists::<line::StageCollision>),
+            debug::debug_draw_scene
+                .run_if(resource_exists::<line::StageCollision>)
+                .run_if(crate::debug_tools::stage_collision_enabled),
         );
     }
 }

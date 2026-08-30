@@ -10,7 +10,6 @@ use crate::fighter::attack::FighterAttackScriptAssets;
 use crate::fighter::baked_animation::{BakedFighterAnimations, FixedMat4};
 use crate::fighter::ecb::FighterPreviousECB;
 use crate::fighter::manifest::FighterManifest;
-use crate::fighter::state::ground_attack::GroundAttackState;
 use crate::fighter::visual::FighterAnimations;
 use crate::fighter::{
     Fighter, FighterECB, FighterFacingDirection, FighterHitboxes, FighterPreviousTranslation, FighterTranslation, FighterVelocity,

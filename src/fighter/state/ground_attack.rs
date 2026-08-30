@@ -1,7 +1,5 @@
 use crate::fighter::{attack::{AttackKind, update_active_hitbox_list}, state::{FighterState, FighterStateImpl, ground::GroundedStateCommon, wait::WaitState}};
 
-use bevy::prelude::*;
-
 #[derive(Clone, Debug, Hash)]
 pub struct GroundAttackState {
     pub attack_kind: AttackKind,

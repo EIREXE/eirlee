@@ -147,11 +147,22 @@ impl Plugin for FighterPlugin {
         .rollback_component_with_copy::<FighterFacingDirection>()
         .rollback_resource_with_reflect::<StageCollision>()
         // Debug views.
-        .add_systems(FixedPostUpdate, debug::debug_draw_ecb)
-        .add_systems(EguiPrimaryContextPass, debug::fighter_debug)
-        .add_systems(FixedPostUpdate, debug::animation_debug)
-        .add_systems(FixedPostUpdate, debug::attack_debug)
-        .add_systems(EguiPrimaryContextPass, debug::update_config)
+        .add_systems(
+            FixedPostUpdate,
+            debug::debug_draw_ecb.run_if(crate::debug_tools::ecb_enabled),
+        )
+        .add_systems(
+            EguiPrimaryContextPass,
+            debug::fighter_debug.run_if(crate::debug_tools::fighter_info_enabled),
+        )
+        .add_systems(
+            FixedPostUpdate,
+            debug::animation_debug.run_if(crate::debug_tools::animation_bones_enabled),
+        )
+        .add_systems(
+            FixedPostUpdate,
+            debug::attack_debug.run_if(crate::debug_tools::attack_hitboxes_enabled),
+        )
         .rollback_component_with_clone::<FighterState>()
         .rollback_component_with_clone::<FighterHitboxes>()
         .checksum_component_with_hash::<FighterState>()

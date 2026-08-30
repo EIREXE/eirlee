@@ -47,3 +47,12 @@ impl FromWorld for GameSettings {
             .clone()
     }
 }
+
+#[derive(Reflect, Resource, Default)]
+#[reflect(Resource)]
+pub struct DebugSettings {
+    pub show_attack_hitboxes: bool,
+    pub show_stage_lines: bool,
+    pub show_ecb: bool,
+    pub debug_gizmos_draw_in_front: bool
+}

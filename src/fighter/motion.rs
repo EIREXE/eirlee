@@ -2,7 +2,6 @@
 //! this module is what turns that into a position.
 
 use bevy::prelude::*;
-use fixed::types::I16F16;
 
 use crate::{fighter::{FighterFacingDirection, baked_animation::FixedMat4}, math::{int::FGi32, vec::FGVec2, vec3::FGVec3}};
 

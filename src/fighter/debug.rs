@@ -14,7 +14,9 @@ use crate::fighter::{
 };
 use crate::input::FighterInput;
 use crate::math::vec3::FGVec3;
+use crate::player::Player;
 use crate::scripting::FighterAttackScript;
+use crate::debug_tools::{DebugSettings, FighterDebugRowKind};
 
 pub fn debug_draw_ecb(
     ecbs: Query<(
@@ -39,13 +41,77 @@ pub fn debug_draw_ecb(
 }
 pub fn fighter_debug(
     mut contexts: EguiContexts,
-    query: Query<(&FighterVelocity, &FighterInput, &StateNameDebug)>,
+    query: Query<(
+        &Player,
+        &FighterVelocity,
+        &FighterInput,
+        &FighterAnimationFrame,
+        &StateNameDebug,
+        &FighterAnimations,
+        &FighterTranslation,
+        &FighterFacingDirection,
+    )>,
+    anims: Res<Assets<BakedFighterAnimations>>,
+    settings: Res<DebugSettings>,
 ) -> Result {
-    for (i, (vel, input, name)) in query.iter().enumerate() {
-        egui::Window::new(format!("Player {}", i)).show(contexts.ctx_mut()?, |ui| {
-            ui.label(format!("State: {}", name.0));
-            ui.label(format!("{:?}", vel));
-            ui.label(format!("{:?}", input.get_last_frame()));
+    let mut fighters = query.iter().collect::<Vec<_>>();
+    fighters.sort_unstable_by_key(|(player, ..)| player.handle);
+
+    for (player, velocity, input, animation_frame, state_name, animations, translation, facing) in fighters {
+        let Some(rows) = settings.player_rows(player.handle) else {
+            continue;
+        };
+        if rows.iter().all(|row| *row == FighterDebugRowKind::None) {
+            continue;
+        }
+
+        egui::Window::new(format!("Player {}", player.handle + 1)).show(contexts.ctx_mut()?, |ui| {
+            for row in rows {
+                match row {
+                    FighterDebugRowKind::None => {}
+                    FighterDebugRowKind::CurrentState => {
+                        let frame_count = anims
+                            .get(&animations.baked)
+                            .and_then(|animation| animation.frame_count(animation_frame.kind));
+                        if let Some(frame_count) = frame_count {
+                            ui.label(format!(
+                                "State: {:?} ({:?} {}/{})",
+                                state_name.0, animation_frame.kind, animation_frame.frame, frame_count
+                            ));
+                        } else {
+                            ui.label(format!("State: {:?} ({:?})", state_name.0, animation_frame.kind));
+                        }
+                    }
+                    FighterDebugRowKind::Velocity => {
+                        ui.label(format!("Velocity: ({:.2}, {:.2})", velocity.0.x, velocity.0.y));
+                    }
+                    FighterDebugRowKind::Input => {
+                        const STICK_SIZE: f32 = 50.0;
+                        const STICK_SIZE_FRACTION: f32 = 0.75;
+                        let last_frame = input.get_last_frame();
+                        let movement = egui::Vec2::new(last_frame.movement.x.to_num(), -last_frame.movement.y.to_num::<f32>());
+                        
+                        ui.horizontal(|ui| {
+                            let (_, rect) = ui.allocate_space(egui::Vec2::new(STICK_SIZE*(1.0 + STICK_SIZE_FRACTION), STICK_SIZE*(1.0 + STICK_SIZE_FRACTION)));
+                            let painter = ui.painter();
+                            let button_bg = egui::Rgba::WHITE * egui::Rgba::from_white_alpha(0.25);
+                            painter.circle_filled(rect.center(), STICK_SIZE * 0.5, button_bg);
+                            painter.circle_filled(
+                                rect.center() + STICK_SIZE * 0.5 * movement,
+                                STICK_SIZE * STICK_SIZE_FRACTION * 0.5,
+                                button_bg,
+                            );
+                            ui.label(format!("X: {:.2}\nY:{:.2}", last_frame.movement.x, last_frame.movement.y));
+                        });
+                    }
+                    FighterDebugRowKind::Position => {
+                        ui.label(format!("Position: {:?}", translation.0));
+                    },
+                    FighterDebugRowKind::Facing => {
+                        ui.label(format!("Facing: {:?}", facing));
+                    }
+                }
+            }
         });
     }
     Ok(())
@@ -107,19 +173,6 @@ pub fn attack_debug(
                     gizmos.arrow(start.to_vec3(), end.to_vec3(),bevy::color::palettes::css::RED);
                 }
             }
-        }
-    }
-}
-
-pub fn update_config(
-    mut config_store: ResMut<GizmoConfigStore>,
-    keyboard: Res<ButtonInput<KeyCode>>,
-    _real_time: Res<Time<Real>>,
-    _virtual_time: ResMut<Time<Virtual>>,
-) {
-    if keyboard.just_pressed(KeyCode::KeyT) {
-        for (_, config, _) in config_store.iter_mut() {
-            config.depth_bias = if config.depth_bias == 0. { -1. } else { 0. };
         }
     }
 }

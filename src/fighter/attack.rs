@@ -93,7 +93,7 @@ pub struct AttackHitbox {
 }
 
 pub fn update_active_hitbox_list(script: &FighterAttackScript, list: &mut Vec<usize>, frame: u32) {
-    *list = script.hitboxes.iter().enumerate().filter(|(i, hb)| {
+    *list = script.hitboxes.iter().enumerate().filter(|(_, hb)| {
         hb.start_frame <= frame && hb.end_frame > frame
     }).map(|(i, _)| i).collect()
 }

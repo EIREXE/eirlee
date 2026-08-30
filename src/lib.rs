@@ -33,6 +33,7 @@ use crate::{
 
 mod args;
 pub mod camera;
+pub mod debug_tools;
 pub mod fighter;
 pub mod game_settings;
 pub mod input;
@@ -79,6 +80,7 @@ impl Plugin for GamePlugin {
                 netcode::FighterNetcodePlugin::default(),
                 GameplaySchedulePlugin,
                 input::FighterInputPlugin,
+                debug_tools::DebugToolsPlugin,
                 fighter::FighterPlugin,
                 fighter::baked_animation::BakedAnimationPlugin,
                 scripting::importer::FighterScriptImportPlugin,
