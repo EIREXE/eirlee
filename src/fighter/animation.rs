@@ -149,4 +149,8 @@ pub enum AnimKind {
     AirDodge,
     Fall,
     Turn,
+
+    // Attacks
+
+    AttackJab1,
 }

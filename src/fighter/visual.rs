@@ -16,7 +16,7 @@ impl FighterAnimations {
     pub fn sample_bone(
         &self,
         baked_assets: &Assets<BakedFighterAnimations>,
-        frame: FighterAnimationFrame,
+        frame: &FighterAnimationFrame,
         bone: &str,
     ) -> Option<crate::fighter::baked_animation::FixedMat4> {
         let baked = baked_assets.get(&self.baked)?;

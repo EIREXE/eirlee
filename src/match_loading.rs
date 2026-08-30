@@ -8,7 +8,7 @@ use bevy_ggrs::prelude::Session;
 
 use crate::{
     AppState, args::Args, fighter::{
-        FighterId, animation::AnimKind, attack::AttackKind, baked_animation::BakedFighterAnimations, manifest::{FighterManifest, FighterManifestRegistry}, spawn_fighter, visual::FighterAnimations,
+        FighterId, animation::AnimKind, attack::{AttackKind, FighterAttackScriptAssets}, baked_animation::BakedFighterAnimations, manifest::{FighterManifest, FighterManifestRegistry}, spawn_fighter, visual::FighterAnimations,
     }, math::{int::FGi32, vec::FGVec2}, netcode::{GGRSCfg, session::create_session}, scripting::FighterAttackScript, stage::{
         self,
         manifest::{StageId, StageManifest, StageManifestRegistry},
@@ -163,7 +163,6 @@ pub fn prepare_match(
     }
 
     let mut prepared = Vec::with_capacity(assets.fighters.len());
-    let mut shared_animations = HashMap::<FighterId, FighterAnimations>::new();
 
     for character in &assets.fighters {
         let manifest_handle = registry
@@ -188,15 +187,6 @@ pub fn prepare_match(
             fail_match(&mut next_state, "a character GLTF contains no scene");
             return;
         };
-
-        if let Some(animations) = shared_animations.get(&character.fighter) {
-            prepared.push((
-                scene,
-                animations.clone(),
-                manifest_handle,
-            ));
-            continue;
-        }
 
         let mut graph = AnimationGraph::new();
         let mut clips = HashMap::<AnimKind, AnimationNodeIndex>::new();
@@ -235,10 +225,15 @@ pub fn prepare_match(
             clips,
             baked: character.baked_animations.clone(),
         };
-        shared_animations.insert(character.fighter, animations.clone());
+
+        let attack_scripts = FighterAttackScriptAssets {
+            scripts: character.attack_scripts.clone()
+        };
+
         prepared.push((
             scene,
             animations,
+            attack_scripts,
             manifest_handle,
         ));
     }
@@ -272,7 +267,7 @@ pub fn prepare_match(
 
     for (
         index,
-        (player, (scene, animations, manifest_handle)),
+        (player, (scene, animations, attack_scripts, manifest_handle)),
     ) in request.players.iter().zip(prepared).enumerate()
     {
         let spawn_x = (index as i32 * 2 + 1 - request.players.len() as i32) * 5;
@@ -282,6 +277,7 @@ pub fn prepare_match(
             FGVec2::new(FGi32::from_num(spawn_x), FGi32::lit("12.5")),
             manifest_handle.clone(),
             animations,
+            attack_scripts,
             WorldAssetRoot(scene),
         );
     }

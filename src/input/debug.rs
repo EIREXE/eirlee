@@ -1,6 +1,6 @@
 use bevy_egui::prelude::*;
 
-use crate::input::FighterInput;
+use crate::{fighter::{FighterHitboxes, animation::FighterAnimationFrame, visual::FighterAnimations}, input::FighterInput};
 use bevy::prelude::*;
 
 pub fn input_debug(mut contexts: EguiContexts, query: Query<&FighterInput>) -> Result {

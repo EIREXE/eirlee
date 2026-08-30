@@ -2,8 +2,9 @@
 //! this module is what turns that into a position.
 
 use bevy::prelude::*;
+use fixed::types::I16F16;
 
-use crate::math::vec::FGVec2;
+use crate::{fighter::{FighterFacingDirection, baked_animation::FixedMat4}, math::{int::FGi32, vec::FGVec2, vec3::FGVec3}};
 
 #[derive(Component, Clone, Copy)]
 pub struct Grounded;
@@ -17,6 +18,17 @@ pub struct FighterPreviousTranslation(pub FGVec2);
 #[derive(Component, Deref, DerefMut, Default, Clone, Copy)]
 #[require(FighterPreviousTranslation)]
 pub struct FighterTranslation(pub FGVec2);
+
+impl FighterTranslation {
+    pub fn get_3d_transform(&self, facing_dir: &FighterFacingDirection) -> FixedMat4 {
+        let mut o = match facing_dir {
+            FighterFacingDirection::Left => FixedMat4::IDENTITY.rotate_y(3),
+            FighterFacingDirection::Right => FixedMat4::IDENTITY.rotate_y(1),
+        };
+        o.translate(FGVec3::new(self.0.x, self.0.y, FGi32::ZERO));
+        o
+    }
+}
 
 pub fn apply_air_motion(
     fighters: Query<(

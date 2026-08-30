@@ -2,7 +2,7 @@
 //! ECS types so it stays cheap to reason about and to unit-test — it has to be
 //! bit-for-bit deterministic for rollback.
 
-use crate::fighter::state::{FighterState, FighterStateContext, dash, turn, wait, walk};
+use crate::fighter::state::{FighterState, FighterStateContext, dash, ground_attack, turn, wait, walk};
 use crate::fighter::{
     FighterAttributes, FighterPreviousTranslation, FighterTranslation, FighterVelocity,
 };
@@ -151,7 +151,9 @@ pub fn grounded_movement_standstill_common_interrupts(
     state_context: &FighterStateContext,
     ground_common: &GroundedStateCommon,
 ) -> Option<FighterState> {
-    if let Some(state) = dash::check_input(state_context, &ground_common) {
+    if let Some(state) = ground_attack::check_interrupt(state_context, &ground_common) {
+        Some(state)
+    } else if let Some(state) = dash::check_input(state_context, &ground_common) {
         Some(state)
     } else if let Some(state) = turn::check_input(state_context, &ground_common) {
         Some(state)

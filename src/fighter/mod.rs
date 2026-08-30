@@ -29,16 +29,8 @@ pub use motion::{FighterPreviousTranslation, FighterTranslation, FighterVelocity
 
 use crate::{
     fighter::{
-        animation::animation_init,
-        manifest::FighterManifest,
-        state::{FighterState, fall::FallState},
-        visual::FighterAnimations,
-    },
-    input::FighterInput,
-    math::{int::FGi32, vec::FGVec2},
-    player::Player,
-    schedule::GameplaySet,
-    stage::line::StageCollision,
+        animation::animation_init, attack::FighterAttackScriptAssets, manifest::FighterManifest, state::{FighterState, fall::FallState}, visual::FighterAnimations,
+    }, input::FighterInput, math::{int::FGi32, vec::FGVec2}, player::Player, schedule::GameplaySet, scripting::FighterAttackScript, stage::line::StageCollision,
 };
 use state::state_interrupt_system;
 
@@ -158,12 +150,20 @@ impl Plugin for FighterPlugin {
         .add_systems(FixedPostUpdate, debug::debug_draw_ecb)
         .add_systems(EguiPrimaryContextPass, debug::fighter_debug)
         .add_systems(FixedPostUpdate, debug::animation_debug)
+        .add_systems(FixedPostUpdate, debug::attack_debug)
         .add_systems(EguiPrimaryContextPass, debug::update_config)
         .rollback_component_with_clone::<FighterState>()
+        .rollback_component_with_clone::<FighterHitboxes>()
         .checksum_component_with_hash::<FighterState>()
         .checksum_component_with_hash::<FighterFacingDirection>()
         .register_type::<FighterFacingDirection>();
     }
+}
+
+#[derive(Component, Clone)]
+pub struct FighterHitboxes {
+    pub attack_script: Option<Handle<FighterAttackScript>>,
+    pub active_hitboxes: Vec<usize>
 }
 
 pub fn spawn_fighter(
@@ -172,6 +172,7 @@ pub fn spawn_fighter(
     spawn_position: FGVec2,
     manifest: Handle<FighterManifest>,
     animations: FighterAnimations,
+    attack_scripts: FighterAttackScriptAssets,
     visual_root: WorldAssetRoot,
 ) {
     commands.spawn((
@@ -183,14 +184,19 @@ pub fn spawn_fighter(
             manifest: manifest,
         },
         FighterFacingDirection::Right,
-        FighterECB {
+        (FighterECB {
             vertical_half: FGi32::lit("5.0"),
             horizontal_half: FGi32::lit("2.5"),
         },
+        FighterHitboxes {
+            attack_script: None,
+            active_hitboxes: vec![]
+        }),
         FighterVelocity::default(),
         FighterTranslation(spawn_position),
         visual_root,
         animations,
+        attack_scripts,
         FighterState::Fall(FallState),
         animation::FighterAnimationFrame::new(animation::AnimKind::Wait, true),
         FighterVisual,

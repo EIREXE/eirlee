@@ -20,7 +20,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     fighter::{animation::AnimKind, manifest::FighterManifest},
-    math::int::{FGWide, FGi32},
+    math::{
+        int::{FGWide, FGi32},
+        vec3::FGVec3,
+    },
 };
 
 pub const BAKED_ANIMATION_FPS: u32 = 60;
@@ -33,6 +36,14 @@ pub struct FixedMat4 {
 }
 
 impl FixedMat4 {
+    pub const IDENTITY: Self = Self {
+        cols: [
+            [FGi32::ONE, FGi32::ZERO, FGi32::ZERO, FGi32::ZERO],
+            [FGi32::ZERO, FGi32::ONE, FGi32::ZERO, FGi32::ZERO],
+            [FGi32::ZERO, FGi32::ZERO, FGi32::ONE, FGi32::ZERO],
+            [FGi32::ZERO, FGi32::ZERO, FGi32::ZERO, FGi32::ONE],
+        ]
+    };
     fn from_mat4(matrix: Mat4) -> io::Result<Self> {
         let values = matrix.to_cols_array();
         let mut cols = [[FGi32::ZERO; 4]; 4];
@@ -47,7 +58,7 @@ impl FixedMat4 {
         Ok(Self { cols })
     }
 
-    fn mul(self, rhs: Self) -> Self {
+    pub fn mul(self, rhs: Self) -> Self {
         let mut cols = [[FGi32::ZERO; 4]; 4];
         for column in 0..4 {
             for row in 0..4 {
@@ -60,6 +71,67 @@ impl FixedMat4 {
             }
         }
         Self { cols }
+    }
+
+    pub fn transform_point(self, point: FGVec3) -> FGVec3 {
+        let input = [point.x, point.y, point.z, FGi32::ONE];
+        let mut output = [FGi32::ZERO; 3];
+        for row in 0..3 {
+            let mut value = FGWide::ZERO;
+            for (column, input) in input.into_iter().enumerate() {
+                value += FGWide::from_num(self.cols[column][row]) * FGWide::from_num(input);
+            }
+            output[row] = FGi32::from_num(value);
+        }
+        FGVec3 {
+            x: output[0],
+            y: output[1],
+            z: output[2],
+        }
+    }
+
+    pub fn translate(&mut self, translation: FGVec3) {
+        self.cols[3][0] = translation.x;
+        self.cols[3][1] = translation.y;
+        self.cols[3][2] = translation.z;
+    }
+
+    pub fn rotate_y(self, quarter_turns: u8) -> Self {
+        let rotation = match quarter_turns % 4 {
+            0 => Self {
+                cols: [
+                    [FGi32::ONE, FGi32::ZERO, FGi32::ZERO, FGi32::ZERO],
+                    [FGi32::ZERO, FGi32::ONE, FGi32::ZERO, FGi32::ZERO],
+                    [FGi32::ZERO, FGi32::ZERO, FGi32::ONE, FGi32::ZERO],
+                    [FGi32::ZERO, FGi32::ZERO, FGi32::ZERO, FGi32::ONE],
+                ],
+            },
+            1 => Self {
+                cols: [
+                    [FGi32::ZERO, FGi32::ZERO, FGi32::NEG_ONE, FGi32::ZERO],
+                    [FGi32::ZERO, FGi32::ONE, FGi32::ZERO, FGi32::ZERO],
+                    [FGi32::ONE, FGi32::ZERO, FGi32::ZERO, FGi32::ZERO],
+                    [FGi32::ZERO, FGi32::ZERO, FGi32::ZERO, FGi32::ONE],
+                ],
+            },
+            2 => Self {
+                cols: [
+                    [FGi32::NEG_ONE, FGi32::ZERO, FGi32::ZERO, FGi32::ZERO],
+                    [FGi32::ZERO, FGi32::ONE, FGi32::ZERO, FGi32::ZERO],
+                    [FGi32::ZERO, FGi32::ZERO, FGi32::NEG_ONE, FGi32::ZERO],
+                    [FGi32::ZERO, FGi32::ZERO, FGi32::ZERO, FGi32::ONE],
+                ],
+            },
+            _ => Self {
+                cols: [
+                    [FGi32::ZERO, FGi32::ZERO, FGi32::ONE, FGi32::ZERO],
+                    [FGi32::ZERO, FGi32::ONE, FGi32::ZERO, FGi32::ZERO],
+                    [FGi32::NEG_ONE, FGi32::ZERO, FGi32::ZERO, FGi32::ZERO],
+                    [FGi32::ZERO, FGi32::ZERO, FGi32::ZERO, FGi32::ONE],
+                ],
+            },
+        };
+        self.mul(rotation)
     }
 }
 
@@ -523,6 +595,52 @@ mod tests {
         assert_eq!(
             baked.clip(AnimKind::Wait).unwrap().frames[0].len(),
             baked.bone_names.len()
+        );
+    }
+
+    #[test]
+    fn fixed_matrix_transforms_points() {
+        let transform = FixedMat4 {
+            cols: [
+                [FGi32::lit("2"), FGi32::ZERO, FGi32::ZERO, FGi32::ZERO],
+                [FGi32::ZERO, FGi32::lit("3"), FGi32::ZERO, FGi32::ZERO],
+                [FGi32::ZERO, FGi32::ZERO, FGi32::lit("4"), FGi32::ZERO],
+                [
+                    FGi32::lit("10"),
+                    FGi32::lit("-5"),
+                    FGi32::lit("1.5"),
+                    FGi32::ONE,
+                ],
+            ],
+        };
+
+        assert_eq!(
+            transform.transform_point(FGVec3::lit("1.25", "-2", "0.5")),
+            FGVec3::lit("12.5", "-11", "3.5")
+        );
+    }
+
+    #[test]
+    fn fixed_matrix_rotates_points_around_y() {
+        let transform = FixedMat4 {
+            cols: [
+                [FGi32::ONE, FGi32::ZERO, FGi32::ZERO, FGi32::ZERO],
+                [FGi32::ZERO, FGi32::ONE, FGi32::ZERO, FGi32::ZERO],
+                [FGi32::ZERO, FGi32::ZERO, FGi32::ONE, FGi32::ZERO],
+                [
+                    FGi32::lit("10"),
+                    FGi32::lit("2"),
+                    FGi32::lit("-3"),
+                    FGi32::ONE,
+                ],
+            ],
+        };
+
+        assert_eq!(
+            transform
+                .rotate_y(5)
+                .transform_point(FGVec3::lit("1", "0", "0")),
+            FGVec3::lit("10", "2", "-4")
         );
     }
 }

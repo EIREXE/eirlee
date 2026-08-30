@@ -67,6 +67,11 @@ impl Plugin for FighterInputPlugin {
                     key: KeyCode::ShiftLeft,
                     action: InputMapAction::Shield,
                 },
+                // attack
+                KeyboardInputMapElement {
+                    key: KeyCode::KeyJ,
+                    action: InputMapAction::Attack,
+                },
             ],
             gamepad: vec![
                 // left stick
@@ -91,6 +96,11 @@ impl Plugin for FighterInputPlugin {
                 GamepadInputMapElement {
                     binding: GamepadBinding::Button(GamepadButton::RightTrigger),
                     action: InputMapAction::Shield,
+                },
+                // attack
+                GamepadInputMapElement {
+                    binding: GamepadBinding::Button(GamepadButton::East),
+                    action: InputMapAction::Attack,
                 },
             ],
         })

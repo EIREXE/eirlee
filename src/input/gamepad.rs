@@ -17,6 +17,7 @@ pub fn sample_gamepad(pad: &Gamepad, input_map: &BaseInputMap) -> FighterInputFr
                 match gamepad_element.action {
                     InputMapAction::Jump => input_frame.jump |= pressed,
                     InputMapAction::Shield => input_frame.shield |= pressed,
+                    InputMapAction::Attack => input_frame.attack |= pressed,
                     // Digital buttons driving movement isn't used by the
                     // default bindings (the stick covers that), but stay
                     // consistent with the keyboard backend if one is added.

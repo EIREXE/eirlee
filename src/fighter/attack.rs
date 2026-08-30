@@ -1,7 +1,9 @@
-use bevy::reflect::Reflect;
+use std::collections::HashMap;
+
+use bevy::{asset::Handle, ecs::component::Component, reflect::Reflect};
 use serde::{Deserialize, Serialize};
 
-use crate::math::{int::FGi32, vec3::FGVec3};
+use crate::{fighter::animation::AnimKind, math::{int::FGi32, vec3::FGVec3}, scripting::FighterAttackScript};
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct FighterDamage(FGi32);
 
@@ -59,9 +61,19 @@ impl AttackAngle {
     }
 }
 
-#[derive(Serialize, Deserialize, Reflect, PartialEq, Eq, Hash, Clone)]
+#[derive(Serialize, Deserialize, Reflect, PartialEq, Eq, Hash, Clone, Debug)]
 pub enum AttackKind {
-    NAir
+    NAir,
+    Jab
+}
+
+impl AttackKind {
+    pub fn get_animation(&self) -> AnimKind {
+        match self {
+            AttackKind::NAir => AnimKind::AttackJab1,
+            AttackKind::Jab => AnimKind::AttackJab1,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Reflect, Serialize, Deserialize)]
@@ -78,4 +90,15 @@ pub struct AttackHitbox {
     pub knockback_growth: FGi32,
     pub start_frame: u32,
     pub end_frame: u32
+}
+
+pub fn update_active_hitbox_list(script: &FighterAttackScript, list: &mut Vec<usize>, frame: u32) {
+    *list = script.hitboxes.iter().enumerate().filter(|(i, hb)| {
+        hb.start_frame <= frame && hb.end_frame > frame
+    }).map(|(i, _)| i).collect()
+}
+
+#[derive(Component)]
+pub struct FighterAttackScriptAssets {
+    pub scripts: HashMap<AttackKind, Handle<FighterAttackScript>>
 }

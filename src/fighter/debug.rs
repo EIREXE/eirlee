@@ -10,10 +10,11 @@ use crate::fighter::ecb::FighterPreviousECB;
 use crate::fighter::state::StateNameDebug;
 use crate::fighter::visual::FighterAnimations;
 use crate::fighter::{
-    FighterECB, FighterPreviousTranslation, FighterTranslation,
-    FighterVelocity,
+    FighterECB, FighterFacingDirection, FighterHitboxes, FighterPreviousTranslation, FighterTranslation, FighterVelocity,
 };
 use crate::input::FighterInput;
+use crate::math::vec3::FGVec3;
+use crate::scripting::FighterAttackScript;
 
 pub fn debug_draw_ecb(
     ecbs: Query<(
@@ -60,14 +61,51 @@ pub fn animation_debug(
             .get(&anims.baked)
             .expect("Baked anims should be in");
         for bone in &baked.bone_names {
-            let out = anims.sample_bone(&baked_anims, *frame, bone);
+            if bone != "Bone_30" {
+                continue;
+            }
+            let out = anims.sample_bone(&baked_anims, frame, bone);
             if let Some(out) = out {
                 let pos = global_transform.transform_point(Vec3::new(
                     out.cols[3][0].to_num(),
                     out.cols[3][1].to_num(),
                     out.cols[3][2].to_num(),
                 ));
+                //gizmos.text(pos, bone, 1.0, Vec2::new(0.0, 0.0), bevy::color::palettes::css::BLACK);
                 gizmos.cross(pos, 0.5, bevy::color::palettes::css::RED);
+                gizmos.axes(*global_transform, 1.0);
+            }
+        }
+    }
+}
+
+pub fn attack_debug(
+    query: Query<(&FighterHitboxes, &FighterAnimationFrame, &FighterAnimations, &FighterTranslation, &FighterFacingDirection)>,
+    baked_anims: Res<Assets<BakedFighterAnimations>>,
+    attack_scripts: Res<Assets<FighterAttackScript>>,
+    mut gizmos: Gizmos,
+) {
+    for (hitboxes, frame, animations, translation, facing_direction) in query {
+        if let Some(script) = &hitboxes.attack_script {
+            let script = attack_scripts.get(script).expect("Script ref should be valid");
+            let player_trf = translation.get_3d_transform(facing_direction);
+
+            for i in hitboxes.active_hitboxes.iter() {
+                let offset = script.hitboxes[*i].offset;
+                let radius = script.hitboxes[*i].radius;
+                let bone = &script.hitboxes[*i].bone;
+
+                let trf = animations.sample_bone(&baked_anims, frame, bone);
+                if let Some(trf) = trf {
+                    let trf = player_trf.mul(trf);
+                    let start = player_trf.transform_point(FGVec3::lit("0.0", "1.0", "0.0"));
+                    let end = player_trf.transform_point(FGVec3::lit("0.0", "1.0", "1.0"));
+                    let pos = trf.transform_point(offset);
+                    let pos_draw = Vec3::new(pos.x.to_num(), pos.y.to_num(), pos.z.to_num());
+                    gizmos.sphere(pos_draw, radius.to_num(), bevy::color::palettes::css::RED);
+                    
+                    gizmos.arrow(start.to_vec3(), end.to_vec3(),bevy::color::palettes::css::RED);
+                }
             }
         }
     }

@@ -12,11 +12,24 @@ pub struct FGVec3 {
 }
 
 impl FGVec3 {
+
+    pub fn new(x: FGi32, y: FGi32, z: FGi32) -> Self {
+        Self {
+            x,
+            y,
+            z
+        }
+    }
+
     pub fn lit(x: &str, y: &str, z: &str) -> Self {
         Self {
             x: FGi32::lit(x),
             y: FGi32::lit(y),
             z: FGi32::lit(z),
         }
+    }
+
+    pub fn to_vec3(&self) -> Vec3 {
+        Vec3::new(self.x.to_num(), self.y.to_num(), self.z.to_num())
     }
 }
