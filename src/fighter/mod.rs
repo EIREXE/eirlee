@@ -7,6 +7,7 @@ use bevy_ggrs::prelude::*;
 use serde::{Deserialize, Serialize};
 
 pub mod animation;
+pub mod attack;
 pub mod attributes;
 pub mod baked_animation;
 pub mod collision;
@@ -16,7 +17,6 @@ pub mod manifest;
 pub mod motion;
 pub mod state;
 pub mod visual;
-pub mod attack;
 
 // The fighter components are re-exported so the rest of the crate can say
 // `fighter::FighterVelocity` without caring which file it lives in. Named
@@ -29,8 +29,18 @@ pub use motion::{FighterPreviousTranslation, FighterTranslation, FighterVelocity
 
 use crate::{
     fighter::{
-        animation::animation_init, attack::FighterAttackScriptAssets, manifest::FighterManifest, state::{FighterState, fall::FallState}, visual::FighterAnimations,
-    }, input::FighterInput, math::{int::FGi32, vec::FGVec2}, player::Player, schedule::GameplaySet, scripting::FighterAttackScript, stage::line::StageCollision,
+        animation::animation_init,
+        attack::FighterAttackScriptAssets,
+        manifest::FighterManifest,
+        state::{FighterState, fall::FallState},
+        visual::FighterAnimations,
+    },
+    input::FighterInput,
+    math::{int::FGi32, vec::FGVec2},
+    player::Player,
+    schedule::GameplaySet,
+    scripting::FighterAttackScript,
+    stage::line::StageCollision,
 };
 use state::state_interrupt_system;
 
@@ -126,7 +136,10 @@ impl Plugin for FighterPlugin {
         )
         .add_systems(
             Update,
-            (motion::apply_fighter_translation_to_visuals, animation::apply_animation)
+            (
+                motion::apply_fighter_translation_to_visuals,
+                animation::apply_animation,
+            )
                 .chain()
                 .run_if(in_state(crate::AppState::InMatch)),
         )
@@ -171,7 +184,7 @@ impl Plugin for FighterPlugin {
 #[derive(Component, Clone)]
 pub struct FighterHitboxes {
     pub attack_script: Option<Handle<FighterAttackScript>>,
-    pub active_hitboxes: Vec<usize>
+    pub active_hitboxes: Vec<usize>,
 }
 
 impl FighterHitboxes {
@@ -195,18 +208,18 @@ pub fn spawn_fighter(
         Player {
             handle: player_handle,
         },
-        Fighter {
-            manifest: manifest,
-        },
+        Fighter { manifest: manifest },
         FighterFacingDirection::Right,
-        (FighterECB {
-            vertical_half: FGi32::lit("5.0"),
-            horizontal_half: FGi32::lit("2.5"),
-        },
-        FighterHitboxes {
-            attack_script: None,
-            active_hitboxes: vec![]
-        }),
+        (
+            FighterECB {
+                vertical_half: FGi32::lit("5.0"),
+                horizontal_half: FGi32::lit("2.5"),
+            },
+            FighterHitboxes {
+                attack_script: None,
+                active_hitboxes: vec![],
+            },
+        ),
         (
             FighterVelocity::default(),
             FighterTranslation(spawn_position),
@@ -217,6 +230,7 @@ pub fn spawn_fighter(
         attack_scripts,
         FighterState::Fall(FallState),
         animation::FighterAnimationFrame::new(animation::AnimKind::Wait, true),
+        baked_animation::FighterBoneMatrices::default(),
         FighterVisual,
         FighterInput::default(),
         crate::camera::FighterCameraExtents::default(),

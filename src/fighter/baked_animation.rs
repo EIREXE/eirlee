@@ -16,14 +16,20 @@ use bevy::{
     prelude::*,
     reflect::TypePath,
 };
+use bevy_ggrs::prelude::GgrsSchedule;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    fighter::{animation::AnimKind, manifest::FighterManifest},
+    fighter::{
+        animation::{AnimKind, FighterAnimationFrame},
+        manifest::FighterManifest,
+        visual::FighterAnimations,
+    },
     math::{
         int::{FGWide, FGi32},
         vec3::FGVec3,
     },
+    schedule::GameplaySet,
 };
 
 pub const BAKED_ANIMATION_FPS: u32 = 60;
@@ -42,7 +48,7 @@ impl FixedMat4 {
             [FGi32::ZERO, FGi32::ONE, FGi32::ZERO, FGi32::ZERO],
             [FGi32::ZERO, FGi32::ZERO, FGi32::ONE, FGi32::ZERO],
             [FGi32::ZERO, FGi32::ZERO, FGi32::ZERO, FGi32::ONE],
-        ]
+        ],
     };
     fn from_mat4(matrix: Mat4) -> io::Result<Self> {
         let values = matrix.to_cols_array();
@@ -151,11 +157,17 @@ pub struct BakedFighterAnimations {
 }
 
 impl BakedFighterAnimations {
-    pub fn sample(&self, kind: AnimKind, frame: u32, bone: &str) -> Option<FixedMat4> {
-        let bone_index = self.bone_names.iter().position(|name| name == bone)?;
-        let frames = &self.clip(kind)?.frames;
-        let pose = frames.get(frame as usize).or_else(|| frames.last())?;
-        pose.get(bone_index).copied()
+    pub fn sample_pose(&self, frame: &FighterAnimationFrame) -> Option<&[FixedMat4]> {
+        let frames = &self.clip(frame.kind)?.frames;
+        let frame_index = if frame.repeat {
+            frame.frame % frames.len() as u32
+        } else {
+            frame.frame
+        };
+        frames
+            .get(frame_index as usize)
+            .or_else(|| frames.last())
+            .map(Vec::as_slice)
     }
 
     pub fn frame_count(&self, kind: AnimKind) -> Option<u32> {
@@ -166,6 +178,62 @@ impl BakedFighterAnimations {
         self.clip_indices
             .get(&kind)
             .and_then(|index| self.clips.get(*index))
+    }
+}
+
+/// The current baked model-space pose for a fighter, recalculated every
+/// rollback frame from its animation clock and immutable baked asset.
+#[derive(Component, Clone, Debug, Default)]
+pub struct FighterBoneMatrices {
+    bone_names: Vec<String>,
+    matrices: Vec<FixedMat4>,
+}
+
+impl FighterBoneMatrices {
+    pub fn get(&self, bone: &str) -> Option<FixedMat4> {
+        let index = self.bone_names.iter().position(|name| name == bone)?;
+        self.matrices.get(index).copied()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&str, FixedMat4)> {
+        self.bone_names
+            .iter()
+            .map(String::as_str)
+            .zip(self.matrices.iter().copied())
+    }
+
+    fn set_pose(&mut self, bone_names: &[String], matrices: &[FixedMat4]) {
+        assert_eq!(
+            bone_names.len(),
+            matrices.len(),
+            "baked animation pose does not match its bone names"
+        );
+        if self.bone_names.is_empty() {
+            self.bone_names.extend_from_slice(bone_names);
+        } else {
+            assert_eq!(self.bone_names, bone_names, "baked bone names changed");
+        }
+        self.matrices.clear();
+        self.matrices.extend_from_slice(matrices);
+    }
+}
+
+pub fn update_fighter_bone_matrices(
+    mut fighters: Query<(
+        &FighterAnimationFrame,
+        &FighterAnimations,
+        &mut FighterBoneMatrices,
+    )>,
+    baked_assets: Res<Assets<BakedFighterAnimations>>,
+) {
+    for (frame, animations, mut matrices) in &mut fighters {
+        let baked = baked_assets
+            .get(&animations.baked)
+            .expect("fighter baked animation asset should be loaded before the match starts");
+        let pose = baked
+            .sample_pose(frame)
+            .expect("fighter animation frame should select a baked pose");
+        matrices.set_pose(&baked.bone_names, pose);
     }
 }
 
@@ -304,7 +372,11 @@ impl Plugin for BakedAnimationPlugin {
                 FighterBakeTransformer,
                 BakedFighterAnimationsSaver,
             ))
-            .set_default_asset_processor::<FighterBakeProcessor>("fighterbake");
+            .set_default_asset_processor::<FighterBakeProcessor>("fighterbake")
+            .add_systems(
+                GgrsSchedule,
+                update_fighter_bone_matrices.in_set(GameplaySet::Animation),
+            );
     }
 }
 
@@ -595,6 +667,50 @@ mod tests {
         assert_eq!(
             baked.clip(AnimKind::Wait).unwrap().frames[0].len(),
             baked.bone_names.len()
+        );
+    }
+
+    #[test]
+    fn pose_sampling_wraps_repeating_frames_and_clamps_finished_frames() {
+        let first = FixedMat4::IDENTITY;
+        let mut second = FixedMat4::IDENTITY;
+        second.translate(FGVec3::lit("2", "0", "0"));
+        let baked = BakedFighterAnimations {
+            frame_rate: BAKED_ANIMATION_FPS,
+            bone_names: vec!["root".into()],
+            clips: vec![BakedAnimationClip {
+                frames: vec![vec![first], vec![second]],
+            }],
+            clip_indices: HashMap::from([(AnimKind::Wait, 0)]),
+        };
+
+        let repeating = FighterAnimationFrame {
+            kind: AnimKind::Wait,
+            frame: 3,
+            repeat: true,
+        };
+        let finished = FighterAnimationFrame {
+            kind: AnimKind::Wait,
+            frame: 3,
+            repeat: false,
+        };
+
+        assert_eq!(baked.sample_pose(&repeating), Some(&[second][..]));
+        assert_eq!(baked.sample_pose(&finished), Some(&[second][..]));
+    }
+
+    #[test]
+    fn bone_matrix_component_keeps_names_aligned_with_the_current_pose() {
+        let first = FixedMat4::IDENTITY;
+        let mut second = FixedMat4::IDENTITY;
+        second.translate(FGVec3::lit("0", "3", "0"));
+        let mut matrices = FighterBoneMatrices::default();
+        matrices.set_pose(&["root".into(), "hand".into()], &[first, second]);
+
+        assert_eq!(matrices.get("hand"), Some(second));
+        assert_eq!(
+            matrices.iter().collect::<Vec<_>>(),
+            vec![("root", first), ("hand", second)]
         );
     }
 

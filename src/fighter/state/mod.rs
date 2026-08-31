@@ -7,12 +7,13 @@ use bevy::prelude::*;
 
 use crate::fighter::animation::{AnimKind, FighterAnimationFrame, FighterAnimationPlayerLink};
 use crate::fighter::attack::FighterAttackScriptAssets;
-use crate::fighter::baked_animation::{BakedFighterAnimations, FixedMat4};
+use crate::fighter::baked_animation::BakedFighterAnimations;
 use crate::fighter::ecb::FighterPreviousECB;
 use crate::fighter::manifest::FighterManifest;
 use crate::fighter::visual::FighterAnimations;
 use crate::fighter::{
-    Fighter, FighterECB, FighterFacingDirection, FighterHitboxes, FighterPreviousTranslation, FighterTranslation, FighterVelocity,
+    Fighter, FighterECB, FighterFacingDirection, FighterHitboxes, FighterPreviousTranslation,
+    FighterTranslation, FighterVelocity,
 };
 use crate::game_settings::GameSettings;
 use crate::input::FighterInput;
@@ -24,13 +25,13 @@ pub mod air_dodge;
 pub mod dash;
 pub mod fall;
 pub mod ground;
+pub mod ground_attack;
 pub mod jump;
 pub mod land;
 pub mod run;
 pub mod turn;
 pub mod wait;
 pub mod walk;
-pub mod ground_attack;
 
 macro_rules! fighter_states {
     ($($variant:ident => $ty:ty),* $(,)?) => {
@@ -130,11 +131,6 @@ impl FighterStateContext<'_> {
             .frame_count(self.animation_frame.kind)
             .expect("Current animation should have baked frames")
             < self.animation_frame.frame
-    }
-
-    pub fn sample_bone(&self, bone: &str) -> Option<FixedMat4> {
-        self.animations
-            .sample_bone(self.baked_animations, self.animation_frame, bone)
     }
 }
 
@@ -282,7 +278,7 @@ pub fn state_interrupt_system(
             animations,
             animation_player_link,
             fighter,
-            attack_script_assets
+            attack_script_assets,
         } = fighter;
         let Ok((mut animation_player, mut animation_transitions)) =
             animation_players.get_mut(animation_player_link.player())

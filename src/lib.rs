@@ -21,14 +21,19 @@
 //! save, click Rebuild in jackdaw (or run `jd build`) and it
 //! appears in `Add Component`. No registration code is needed.
 
-use bevy::{asset::processor::{AssetProcessor, ProcessorState}, prelude::*, tasks::block_on};
+use bevy::{
+    asset::processor::{AssetProcessor, ProcessorState},
+    prelude::*,
+    tasks::block_on,
+};
 use bevy_asset_loader::prelude::*;
 use bevy_wind_waker_shader::prelude::*;
 use clap::Parser;
 use jackdaw_runtime::EditorCategory;
 
 use crate::{
-    camera::MatchCameraPlugin, fighter::manifest::FighterManifest, game_settings::GameSettings, schedule::GameplaySchedulePlugin, stage::manifest::StageManifest,
+    camera::MatchCameraPlugin, fighter::manifest::FighterManifest, game_settings::GameSettings,
+    schedule::GameplaySchedulePlugin, stage::manifest::StageManifest,
 };
 
 mod args;
@@ -42,8 +47,8 @@ mod math;
 pub mod netcode;
 pub mod player;
 pub mod schedule;
-pub mod stage;
 pub mod scripting;
+pub mod stage;
 
 #[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
 pub enum AppState {
@@ -145,7 +150,8 @@ fn wait_for_asset_processor(
     processor: Option<Res<AssetProcessor>>,
     mut next_state: ResMut<NextState<AppState>>,
 ) {
-    if processor.is_none_or(|processor| block_on(processor.get_state()) == ProcessorState::Finished) {
+    if processor.is_none_or(|processor| block_on(processor.get_state()) == ProcessorState::Finished)
+    {
         next_state.set(AppState::LoadCommonAssets);
     }
 }
