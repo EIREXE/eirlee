@@ -15,7 +15,7 @@ authors = [""]
 [workspace]
 
 [dependencies]
-bevy = { version = "0.19", features = ["asset_processor", "dynamic_linking", "free_camera"] }
+bevy = { version = "0.19", features = ["asset_processor", "dynamic_linking", "free_camera", "file_watcher"] }
 # Loads the scenes you author in the editor (assets/*.bsn) and builds
 # physics colliders from them. An ordinary dependency; remove it if you
 # stop using authored scenes.

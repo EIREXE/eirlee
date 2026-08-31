@@ -927,7 +927,6 @@ dependencies = [
  "bevy_math",
  "bevy_pbr",
  "bevy_picking",
- "bevy_platform",
  "bevy_reflect",
  "bevy_render",
  "bevy_shader",
@@ -937,11 +936,7 @@ dependencies = [
  "bevy_transform",
  "bevy_ui",
  "bevy_ui_render",
- "bevy_utils",
  "bevy_window",
- "ron 0.12.2",
- "serde",
- "thiserror 2.0.19",
  "tracing",
 ]
 
@@ -1359,7 +1354,6 @@ dependencies = [
  "bevy_post_process",
  "bevy_ptr",
  "bevy_reflect",
- "bevy_remote",
  "bevy_render",
  "bevy_scene",
  "bevy_shader",
@@ -1597,7 +1591,6 @@ version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3120670bb2308980f723477c9d82476fcda31f08be9b256c3f0acdee82a65094"
 dependencies = [
- "async-io",
  "critical-section",
  "foldhash 0.2.0",
  "futures-channel",
@@ -1686,34 +1679,6 @@ dependencies = [
  "quote",
  "syn 2.0.119",
  "uuid",
-]
-
-[[package]]
-name = "bevy_remote"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c3a8f11f0017b2b7b8b8bb907c499ace3baa9cda240065457fb7391a3fa2ee8"
-dependencies = [
- "anyhow",
- "async-channel",
- "async-io",
- "bevy_app",
- "bevy_asset",
- "bevy_color",
- "bevy_derive",
- "bevy_dev_tools",
- "bevy_ecs",
- "bevy_log",
- "bevy_platform",
- "bevy_reflect",
- "bevy_render",
- "bevy_tasks",
- "bevy_utils",
- "http-body-util",
- "hyper",
- "serde",
- "serde_json",
- "smol-hyper",
 ]
 
 [[package]]
@@ -3974,71 +3939,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
 
 [[package]]
-name = "http"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "918d3568bebf352712bc2ef3d46a8bcf1a75b373be6539de198e9105cbbf9ce0"
-dependencies = [
- "bytes",
- "itoa",
-]
-
-[[package]]
-name = "http-body"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca2a8f2913ee65f60facd6a5905613afaa448497a0230cc41ce022d93290bc2c"
-dependencies = [
- "bytes",
- "http",
-]
-
-[[package]]
-name = "http-body-util"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9f41fd6a08e4d4ec69df65976da761afd5ad5e58a9d4acb46bd1c953a9e3ff2"
-dependencies = [
- "bytes",
- "futures-core",
- "http",
- "http-body",
- "pin-project-lite",
-]
-
-[[package]]
-name = "httparse"
-version = "1.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
-
-[[package]]
-name = "httpdate"
-version = "1.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
-
-[[package]]
-name = "hyper"
-version = "1.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d22053281f852e11534f5198498373cbb59295120a20771d90f7ed1897490a72"
-dependencies = [
- "atomic-waker",
- "bytes",
- "futures-channel",
- "futures-core",
- "http",
- "http-body",
- "httparse",
- "httpdate",
- "itoa",
- "pin-project-lite",
- "smallvec",
- "tokio",
-]
-
-[[package]]
 name = "icu_collections"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4348,11 +4248,13 @@ dependencies = [
 name = "jackdaw_runtime"
 version = "0.19.0"
 dependencies = [
+ "avian3d",
  "bevy",
  "jackdaw_avian_integration",
  "jackdaw_bsn",
  "jackdaw_geometry",
  "jackdaw_scene_types",
+ "jackdaw_schema",
  "jackdaw_ui",
  "serde",
  "serde_json",
@@ -4367,6 +4269,16 @@ dependencies = [
  "glam 0.32.1",
  "jackdaw_geometry",
  "rand 0.9.5",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "jackdaw_schema"
+version = "0.19.0"
+dependencies = [
+ "bevy",
+ "jackdaw_scene_types",
  "serde",
  "serde_json",
 ]
@@ -4502,9 +4414,9 @@ checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
 name = "kqueue"
-version = "1.2.0"
+version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "273c0752728918e0ac4976f2b275b6fefb9ecd400585dec929419f3844cd87b5"
+checksum = "8d763e5b24120b4ddf50de6c92308156765aabfbbccebf401da7cff2d70a41ea"
 dependencies = [
  "kqueue-sys",
  "libc",
@@ -6675,19 +6587,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "smol-hyper"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7428a49d323867702cd12b97b08a6b0104f39ec13b49117911f101271321bc1a"
-dependencies = [
- "async-executor",
- "async-io",
- "futures-io",
- "hyper",
- "pin-project-lite",
-]
-
-[[package]]
 name = "smol_str"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7072,15 +6971,6 @@ name = "tinyvec_macros"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
-
-[[package]]
-name = "tokio"
-version = "1.53.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "202caea871b69668250d242070849eb495be178ed697a3e98aebce5bc81a0bed"
-dependencies = [
- "pin-project-lite",
-]
 
 [[package]]
 name = "toml_datetime"
