@@ -22,9 +22,7 @@
 //! appears in `Add Component`. No registration code is needed.
 
 use bevy::{
-    asset::processor::{AssetProcessor, ProcessorState},
-    prelude::*,
-    tasks::block_on,
+    asset::processor::{AssetProcessor, ProcessorState}, prelude::*, settings::SettingsPlugin, tasks::block_on,
 };
 use bevy_asset_loader::prelude::*;
 use bevy_wind_waker_shader::prelude::*;
@@ -80,6 +78,7 @@ impl Plugin for GamePlugin {
         // game-level content and configuration.
         app.init_state::<AppState>()
             .add_plugins((
+                SettingsPlugin::new("moe.eirteam.shinespark.debug_settings"),
                 WindWakerShaderPlugin::default(),
                 // Brings up GGRS (and with it `GgrsSchedule`), so it goes first.
                 netcode::FighterNetcodePlugin::default(),

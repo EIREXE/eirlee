@@ -1,15 +1,15 @@
 //! Local developer overlays and their controller-driven palette.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
-use bevy::prelude::*;
+use bevy::{prelude::*, settings::{SaveSettingsDeferred, SettingsGroup, ReflectSettingsGroup}};
 use bevy_egui::{EguiContexts, EguiPrimaryContextPass, egui};
 
 use crate::player::Player;
 
 pub const PLAYER_DEBUG_ROW_COUNT: usize = 6;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Reflect)]
 pub enum FighterDebugRowKind {
     None,
     CurrentState,
@@ -19,7 +19,7 @@ pub enum FighterDebugRowKind {
     Facing,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Reflect)]
 pub enum PresentationMotionMode {
     #[default]
     Interpolation,
@@ -169,13 +169,18 @@ enum DebugMenuPage {
     PlayerList,
     PlayerRows(usize),
 }
-
-#[derive(Resource)]
+#[derive(Resource, SettingsGroup, Reflect)]
+#[reflect(Resource, SettingsGroup, Default)]
 pub struct DebugSettings {
+    #[reflect(ignore)]
     pub menu_open: bool,
+    #[reflect(ignore)]
     controller: Option<Entity>,
+    #[reflect(ignore)]
     pages: Vec<DebugMenuPage>,
+    #[reflect(ignore)]
     selections: Vec<usize>,
+    #[reflect(ignore)]
     pub player_rows: HashMap<usize, [FighterDebugRowKind; PLAYER_DEBUG_ROW_COUNT]>,
     pub network: bool,
     pub ecb: bool,
@@ -328,6 +333,7 @@ fn handle_palette_input(
     gamepads: Query<(Entity, &Gamepad)>,
     players: Query<&Player>,
     mut settings: ResMut<DebugSettings>,
+    mut commands: Commands,
 ) {
     if keyboard.just_pressed(KeyCode::KeyT) {
         settings.toggle_flag(DebugFlag::DrawThroughGeometry);
@@ -386,6 +392,8 @@ fn handle_palette_input(
             let selected = settings.selected();
             let rows = settings.rows_mut(handle);
             rows[selected] = rows[selected].cycle(direction);
+
+            commands.queue(SaveSettingsDeferred(Duration::from_secs_f32(0.1)));
         }
     }
     if let DebugMenuPage::Static(entries) = page
@@ -401,7 +409,10 @@ fn handle_palette_input(
     if gamepad.just_pressed(GamepadButton::South) {
         match page {
             DebugMenuPage::Static(entries) if page_len != 0 => match entries[settings.selected()] {
-                DebugMenuEntry::Toggle { flag, .. } => settings.toggle_flag(flag),
+                DebugMenuEntry::Toggle { flag, .. } => {
+                    settings.toggle_flag(flag);
+                    commands.queue(SaveSettingsDeferred(Duration::from_secs_f32(0.1)));
+                },
                 DebugMenuEntry::Submenu { entries, .. } => {
                     settings.push_page(DebugMenuPage::Static(entries));
                 }
