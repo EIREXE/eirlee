@@ -163,11 +163,13 @@ pub fn attack_debug(
         &FighterBoneMatrices,
         &FighterTranslation,
         &FighterFacingDirection,
+        &FighterAnimationFrame,
+        &GlobalTransform
     )>,
     attack_scripts: Res<Assets<FighterAttackScript>>,
     mut gizmos: Gizmos,
 ) {
-    for (hitboxes, matrices, translation, facing_direction) in query {
+    for (hitboxes, matrices, translation, facing_direction, frame, global_trf) in query {
         if let Some(script) = &hitboxes.attack_script {
             let script = attack_scripts
                 .get(script)
@@ -180,34 +182,59 @@ pub fn attack_debug(
                 let bone = &script.hitboxes[*i].bone;
 
                 let trfs = matrices.get(bone);
+
                 if let Some((prev_trf, curr_trf)) = trfs {
-                    let prev_trf = player_trf.mul(prev_trf);
                     let curr_trf = player_trf.mul(curr_trf);
-                    
-                    let prev_pos = prev_trf.transform_point(offset);
                     let curr_pos = curr_trf.transform_point(offset);
 
-                    let prev_pos_draw = Vec3::new(prev_pos.x.to_num(), prev_pos.y.to_num(), prev_pos.z.to_num());
-                    let curr_pos_draw = Vec3::new(curr_pos.x.to_num(), curr_pos.y.to_num(), curr_pos.z.to_num());
+                    let curr_pos_draw = Vec3::new(
+                        curr_pos.x.to_num(),
+                        curr_pos.y.to_num(),
+                        curr_pos.z.to_num(),
+                    );
+
+                    if script.hitboxes[*i].start_frame == frame.frame {
+                        gizmos.sphere(curr_pos_draw, radius.to_num(), bevy::color::palettes::css::RED);
+                        continue;
+                    }
+
+                    let prev_trf = player_trf.mul(prev_trf);
+
+                    let prev_pos = prev_trf.transform_point(offset);
+
+                    let prev_pos_draw = Vec3::new(
+                        prev_pos.x.to_num(),
+                        prev_pos.y.to_num(),
+                        prev_pos.z.to_num(),
+                    );
+
 
                     let dist = Dir3::new_and_length(curr_pos_draw - prev_pos_draw);
 
                     if let Ok((aim_dir, dist)) = dist {
                         let attack_capsule = Capsule3d {
                             half_length: dist * 0.5,
-                            radius: radius.to_num()
+                            radius: radius.to_num(),
                         };
                         let mut capsule_draw_trf = Transform::IDENTITY;
-                        capsule_draw_trf.align(Dir3::Y, aim_dir, Dir3::X, aim_dir.any_orthonormal_vector());
+                        capsule_draw_trf.align(
+                            Dir3::Y,
+                            aim_dir,
+                            Dir3::X,
+                            aim_dir.any_orthonormal_vector(),
+                        );
                         capsule_draw_trf.translation = (prev_pos_draw + curr_pos_draw) * 0.5;
-                        gizmos.primitive_3d(&attack_capsule, capsule_draw_trf.to_isometry(), bevy::color::palettes::css::RED);
+                        gizmos.primitive_3d(
+                            &attack_capsule,
+                            capsule_draw_trf.to_isometry(),
+                            bevy::color::palettes::css::RED,
+                        );
                     }
 
-
-
-                    gizmos.sphere(prev_pos_draw, radius.to_num(), bevy::color::palettes::css::RED.darker(0.5));
-                    gizmos.sphere(curr_pos_draw, radius.to_num(), bevy::color::palettes::css::RED);
-
+                    gizmos.cross(curr_trf.transform_point(FGVec3::lit("0.0", "0.0", "0.0")).to_vec3(), 1.0, bevy::color::palettes::css::BLUE);
+                    gizmos.cross(curr_trf.to_mat4().transform_point(Vec3::ZERO), 1.0, bevy::color::palettes::css::HOT_PINK);
+                    
+                    gizmos.axes(curr_trf.to_mat4(), 1.0);
                 } else {
                     warn!("Bone not found required by attack script: {}", bone);
                 }

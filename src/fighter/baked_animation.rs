@@ -1,9 +1,10 @@
-//! Deterministic, fighter-local skeletal animation samples for gameplay.
-//!
-//! Rendering continues to use Bevy's floating-point animation player. Gameplay
-//! reads this asset instead, so rollback never depends on render-time sampling.
+//! Deterministic, fighter-local skeletal animation samples for gameplay and rendering.
 
-use std::{collections::HashMap, io, path::Path};
+use std::{
+    collections::{HashMap, HashSet},
+    io,
+    path::Path,
+};
 
 use bevy::{
     asset::{
@@ -15,6 +16,7 @@ use bevy::{
     },
     prelude::*,
     reflect::TypePath,
+    world_serialization::{WorldInstanceReady, WorldInstanceSpawner},
 };
 use bevy_ggrs::prelude::GgrsSchedule;
 use serde::{Deserialize, Serialize};
@@ -62,6 +64,10 @@ impl FixedMat4 {
             })?;
         }
         Ok(Self { cols })
+    }
+
+    pub fn to_mat4(self) -> Mat4 {
+        Mat4::from_cols_array_2d(&self.cols.map(|column| column.map(|value| value.to_num())))
     }
 
     pub fn mul(self, rhs: Self) -> Self {
@@ -147,7 +153,7 @@ impl FixedMat4 {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BakedAnimationClip {
-    /// One model-space matrix per stored node, for each 60 Hz simulation frame.
+    /// One parent-relative matrix per stored node, for each 60 Hz simulation frame.
     pub frames: Vec<Vec<FixedMat4>>,
 }
 
@@ -156,6 +162,8 @@ pub struct BakedFighterAnimations {
     pub frame_rate: u32,
     /// Indexed exactly like every frame in each clip.
     pub bone_names: Vec<String>,
+    /// Parent node for each stored node, indexed like `bone_names`.
+    pub parents: Vec<Option<usize>>,
     clips: Vec<BakedAnimationClip>,
     clip_indices: HashMap<AnimKind, usize>,
 }
@@ -190,8 +198,16 @@ impl BakedFighterAnimations {
 #[derive(Component, Clone, Debug, Default)]
 pub struct FighterBoneMatrices {
     bone_names: Vec<String>,
+    parents: Vec<Option<usize>>,
     matrices: Vec<FixedMat4>,
     previous_frame_matrices: Vec<FixedMat4>,
+    local_matrices: Vec<FixedMat4>,
+}
+
+#[derive(Component)]
+struct BakedFighterBone {
+    fighter: Entity,
+    index: usize,
 }
 
 impl FighterBoneMatrices {
@@ -221,20 +237,40 @@ impl FighterBoneMatrices {
             .zip(self.matrices.iter().copied())
     }
 
-    fn set_pose(&mut self, bone_names: &[String], matrices: &[FixedMat4]) {
+    pub fn local(&self, index: usize) -> Option<FixedMat4> {
+        self.local_matrices.get(index).copied()
+    }
+
+    fn set_pose(&mut self, bone_names: &[String], parents: &[Option<usize>], local: &[FixedMat4]) {
         assert_eq!(
             bone_names.len(),
-            matrices.len(),
+            local.len(),
             "baked animation pose does not match its bone names"
+        );
+        assert_eq!(
+            bone_names.len(),
+            parents.len(),
+            "baked bone parents do not match names"
         );
         if self.bone_names.is_empty() {
             self.bone_names.extend_from_slice(bone_names);
+            self.parents.extend_from_slice(parents);
         } else {
             assert_eq!(self.bone_names, bone_names, "baked bone names changed");
+            assert_eq!(self.parents, parents, "baked bone parents changed");
         }
         std::mem::swap(&mut self.matrices, &mut self.previous_frame_matrices);
-        self.matrices.clear();
-        self.matrices.extend_from_slice(matrices);
+        self.local_matrices.clear();
+        self.local_matrices.extend_from_slice(local);
+        let mut model = vec![None; local.len()];
+        for index in 0..local.len() {
+            resolve_model_transform(index, parents, local, &mut model)
+                .expect("baked bone hierarchy should be valid");
+        }
+        self.matrices = model
+            .into_iter()
+            .map(|matrix| matrix.expect("baked bone hierarchy should be valid"))
+            .collect();
     }
 }
 
@@ -253,7 +289,107 @@ pub fn update_fighter_bone_matrices(
         let pose = baked
             .sample_pose(frame)
             .expect("fighter animation frame should select a baked pose");
-        matrices.set_pose(&baked.bone_names, pose);
+        matrices.set_pose(&baked.bone_names, &baked.parents, pose);
+    }
+}
+
+fn bind_fighter_visual_bones(
+    ready: On<WorldInstanceReady>,
+    mut commands: Commands,
+    spawner: Res<WorldInstanceSpawner>,
+    fighters: Query<&FighterAnimations>,
+    baked_assets: Res<Assets<BakedFighterAnimations>>,
+    nodes: Query<(&Name, Option<&ChildOf>)>,
+    animation_players: Query<(), With<AnimationPlayer>>,
+) {
+    let fighter = ready.entity;
+    let Ok(animations) = fighters.get(fighter) else {
+        return;
+    };
+    let baked = baked_assets
+        .get(&animations.baked)
+        .expect("fighter baked animation asset should be loaded before its visual scene");
+    let entities = spawner
+        .iter_instance_entities(ready.instance_id)
+        .collect::<HashSet<_>>();
+    for &entity in &entities {
+        if animation_players.contains(entity) {
+            commands.entity(entity).remove::<AnimationPlayer>();
+        }
+    }
+    let mut indices = HashMap::with_capacity(baked.bone_names.len());
+    for (index, name) in baked.bone_names.iter().enumerate() {
+        let key = (baked.parents[index], name.as_str());
+        assert!(
+            indices.insert(key, index).is_none(),
+            "fighter GLTF has duplicate node names under the same parent"
+        );
+    }
+
+    let mut assigned = HashMap::new();
+    let mut remaining = entities.iter().copied().collect::<Vec<_>>();
+    while !remaining.is_empty() {
+        let mut next = Vec::new();
+        let mut progress = false;
+        for entity in remaining {
+            let Ok((name, parent)) = nodes.get(entity) else {
+                continue;
+            };
+            let parent = parent.map(ChildOf::parent);
+            let parent_index = match parent {
+                Some(parent) if entities.contains(&parent) => {
+                    if let Some(index) = assigned.get(&parent) {
+                        Some(*index)
+                    } else if nodes.get(parent).ok().is_some_and(|(name, _)| {
+                        baked.bone_names.iter().any(|bone| bone == name.as_str())
+                    }) {
+                        next.push(entity);
+                        continue;
+                    } else {
+                        // WorldAsset adds an unnamed instance root above the GLTF scene roots.
+                        None
+                    }
+                }
+                _ => None,
+            };
+            if let Some(&index) = indices.get(&(parent_index, name.as_str())) {
+                assigned.insert(entity, index);
+                progress = true;
+            }
+        }
+        if !progress {
+            break;
+        }
+        remaining = next;
+    }
+
+    if assigned.len() != baked.bone_names.len() {
+        warn!(
+            fighter = ?fighter,
+            bound = assigned.len(),
+            expected = baked.bone_names.len(),
+            "could not bind every baked fighter node to its visual scene"
+        );
+    }
+    for (entity, index) in assigned {
+        commands
+            .entity(entity)
+            .insert(BakedFighterBone { fighter, index });
+    }
+}
+
+fn apply_baked_fighter_visual_pose(
+    mut nodes: Query<(&mut Transform, &BakedFighterBone)>,
+    fighters: Query<&FighterBoneMatrices>,
+) {
+    for (mut transform, bone) in &mut nodes {
+        let Ok(matrices) = fighters.get(bone.fighter) else {
+            continue;
+        };
+        let Some(local) = matrices.local(bone.index) else {
+            continue;
+        };
+        *transform = Transform::from_matrix(local.to_mat4());
     }
 }
 
@@ -396,7 +532,9 @@ impl Plugin for BakedAnimationPlugin {
             .add_systems(
                 GgrsSchedule,
                 update_fighter_bone_matrices.in_set(GameplaySet::Animation),
-            );
+            )
+            .add_systems(Update, apply_baked_fighter_visual_pose)
+            .add_observer(bind_fighter_visual_bones);
     }
 }
 
@@ -464,11 +602,7 @@ fn bake_gltf(
                 .iter()
                 .map(|node| local_transform(node.clone(), &channels, time))
                 .collect::<io::Result<Vec<_>>>()?;
-            let mut model = vec![None; nodes.len()];
-            for index in 0..nodes.len() {
-                resolve_model_transform(index, &parents, &local, &mut model)?;
-            }
-            frames.push(model.into_iter().map(Option::unwrap).collect());
+            frames.push(local);
         }
         let index = clips.len();
         clips.push(BakedAnimationClip { frames });
@@ -496,6 +630,7 @@ fn bake_gltf(
     Ok(BakedFighterAnimations {
         frame_rate: BAKED_ANIMATION_FPS,
         bone_names: names,
+        parents,
         clips,
         clip_indices,
     })
@@ -688,6 +823,7 @@ mod tests {
             baked.clip(AnimKind::Wait).unwrap().frames[0].len(),
             baked.bone_names.len()
         );
+        assert_eq!(baked.parents.len(), baked.bone_names.len());
     }
 
     #[test]
@@ -698,6 +834,7 @@ mod tests {
         let baked = BakedFighterAnimations {
             frame_rate: BAKED_ANIMATION_FPS,
             bone_names: vec!["root".into()],
+            parents: vec![None],
             clips: vec![BakedAnimationClip {
                 frames: vec![vec![first], vec![second]],
             }],
@@ -725,12 +862,45 @@ mod tests {
         let mut second = FixedMat4::IDENTITY;
         second.translate(FGVec3::lit("0", "3", "0"));
         let mut matrices = FighterBoneMatrices::default();
-        matrices.set_pose(&["root".into(), "hand".into()], &[first, second]);
+        matrices.set_pose(
+            &["root".into(), "hand".into()],
+            &[None, Some(0)],
+            &[first, second],
+        );
 
         assert_eq!(matrices.get_current("hand"), Some(second));
         assert_eq!(
             matrices.iter().collect::<Vec<_>>(),
             vec![("root", first), ("hand", second)]
+        );
+    }
+
+    #[test]
+    fn local_pose_reconstructs_model_space_for_gameplay() {
+        let mut root = FixedMat4::IDENTITY;
+        root.translate(FGVec3::lit("10", "0", "0"));
+        let mut hand = FixedMat4::IDENTITY;
+        hand.translate(FGVec3::lit("0", "3", "0"));
+        let mut matrices = FighterBoneMatrices::default();
+
+        matrices.set_pose(
+            &["root".into(), "hand".into()],
+            &[None, Some(0)],
+            &[root, hand],
+        );
+
+        assert_eq!(matrices.local(1), Some(hand));
+        assert_eq!(
+            matrices.get_current("hand").unwrap().get_translation(),
+            FGVec3::lit("10", "3", "0")
+        );
+        assert_eq!(
+            matrices
+                .local(1)
+                .unwrap()
+                .to_mat4()
+                .transform_point3(Vec3::ZERO),
+            Vec3::new(0.0, 3.0, 0.0)
         );
     }
 

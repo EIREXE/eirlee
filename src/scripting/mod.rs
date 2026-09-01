@@ -1,14 +1,14 @@
-use bevy::{prelude::*};
+use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{fighter::attack::AttackHitbox, math::int::FGi32};
 
-pub mod move_compiler;
 pub mod importer;
+pub mod move_compiler;
 
 pub enum MoveAngleKind {
     Normal(FGi32),
-    Sakurai
+    Sakurai,
 }
 
 #[derive(Asset, Reflect, Serialize, Deserialize)]

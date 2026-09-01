@@ -29,7 +29,6 @@ pub use motion::{FighterPreviousTranslation, FighterTranslation, FighterVelocity
 
 use crate::{
     fighter::{
-        animation::animation_init,
         attack::FighterAttackScriptAssets,
         manifest::FighterManifest,
         state::{FighterState, fall::FallState},
@@ -106,78 +105,75 @@ pub struct Fighter {
 
 impl Plugin for FighterPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (animation_init, animation::setup_fighter_animation_player),
-        )
-        // Every state gets a chance to interrupt itself, in priority order.
-        .add_systems(
-            GgrsSchedule,
-            (
-                ecb::snapshot_fighter_ecb.before(state_interrupt_system),
-                animation::advance_fighter_animation_frames.before(state_interrupt_system),
-                state::state_interrupt_system,
+        app
+            // Every state gets a chance to interrupt itself, in priority order.
+            .add_systems(
+                GgrsSchedule,
+                (
+                    ecb::snapshot_fighter_ecb.before(state_interrupt_system),
+                    animation::advance_fighter_animation_frames.before(state_interrupt_system),
+                    state::state_interrupt_system,
+                )
+                    .in_set(GameplaySet::Interrupt),
             )
-                .in_set(GameplaySet::Interrupt),
-        )
-        .add_systems(
-            GgrsSchedule,
-            (state::state_update_system,).in_set(GameplaySet::StateUpdate),
-        )
-        /*.add_systems(
-            GgrsSchedule,
-            (motion::integrate_gravity, motion::apply_grounded_motion)
-                .chain()
-                .in_set(GameplaySet::Physics),
-        )*/
-        .add_systems(
-            GgrsSchedule,
-            state::state_collision_interrupt_system.in_set(GameplaySet::Collision),
-        )
-        .add_systems(
-            Update,
-            (
-                motion::apply_fighter_translation_to_visuals,
-                animation::apply_animation,
+            .add_systems(
+                GgrsSchedule,
+                (state::state_update_system,).in_set(GameplaySet::StateUpdate),
             )
-                .chain()
-                .run_if(in_state(crate::AppState::InMatch)),
-        )
-        // Rollback registration lives next to the systems that write these
-        // components; a component simulated here but missing from this list
-        // is a desync waiting to happen.
-        .rollback_component_with_copy::<FighterECB>()
-        .rollback_component_with_copy::<ecb::FighterPreviousECB>()
-        .rollback_component_with_copy::<FighterVelocity>()
-        .rollback_component_with_copy::<FighterTranslation>()
-        .rollback_component_with_copy::<FighterPreviousTranslation>()
-        .rollback_component_with_copy::<animation::FighterAnimationFrame>()
-        .checksum_component_with_hash::<animation::FighterAnimationFrame>()
-        .rollback_component_with_copy::<Grounded>()
-        .rollback_component_with_copy::<FighterFacingDirection>()
-        .rollback_resource_with_reflect::<StageCollision>()
-        // Debug views.
-        .add_systems(
-            FixedPostUpdate,
-            debug::debug_draw_ecb.run_if(crate::debug_tools::ecb_enabled),
-        )
-        .add_systems(
-            EguiPrimaryContextPass,
-            debug::fighter_debug.run_if(crate::debug_tools::fighter_info_enabled),
-        )
-        .add_systems(
-            FixedPostUpdate,
-            debug::animation_debug.run_if(crate::debug_tools::animation_bones_enabled),
-        )
-        .add_systems(
-            FixedPostUpdate,
-            debug::attack_debug.run_if(crate::debug_tools::attack_hitboxes_enabled),
-        )
-        .rollback_component_with_clone::<FighterState>()
-        .rollback_component_with_clone::<FighterHitboxes>()
-        .checksum_component_with_hash::<FighterState>()
-        .checksum_component_with_hash::<FighterFacingDirection>()
-        .register_type::<FighterFacingDirection>();
+            /*.add_systems(
+                GgrsSchedule,
+                (motion::integrate_gravity, motion::apply_grounded_motion)
+                    .chain()
+                    .in_set(GameplaySet::Physics),
+            )*/
+            .add_systems(
+                GgrsSchedule,
+                state::state_collision_interrupt_system.in_set(GameplaySet::Collision),
+            )
+            .add_systems(
+                Update,
+                (
+                    motion::apply_fighter_translation_to_visuals,
+                    animation::apply_animation,
+                )
+                    .chain()
+                    .run_if(in_state(crate::AppState::InMatch)),
+            )
+            // Rollback registration lives next to the systems that write these
+            // components; a component simulated here but missing from this list
+            // is a desync waiting to happen.
+            .rollback_component_with_copy::<FighterECB>()
+            .rollback_component_with_copy::<ecb::FighterPreviousECB>()
+            .rollback_component_with_copy::<FighterVelocity>()
+            .rollback_component_with_copy::<FighterTranslation>()
+            .rollback_component_with_copy::<FighterPreviousTranslation>()
+            .rollback_component_with_copy::<animation::FighterAnimationFrame>()
+            .checksum_component_with_hash::<animation::FighterAnimationFrame>()
+            .rollback_component_with_copy::<Grounded>()
+            .rollback_component_with_copy::<FighterFacingDirection>()
+            .rollback_resource_with_reflect::<StageCollision>()
+            // Debug views.
+            .add_systems(
+                FixedPostUpdate,
+                debug::debug_draw_ecb.run_if(crate::debug_tools::ecb_enabled),
+            )
+            .add_systems(
+                EguiPrimaryContextPass,
+                debug::fighter_debug.run_if(crate::debug_tools::fighter_info_enabled),
+            )
+            .add_systems(
+                FixedPostUpdate,
+                debug::animation_debug.run_if(crate::debug_tools::animation_bones_enabled),
+            )
+            .add_systems(
+                FixedPostUpdate,
+                debug::attack_debug.run_if(crate::debug_tools::attack_hitboxes_enabled),
+            )
+            .rollback_component_with_clone::<FighterState>()
+            .rollback_component_with_clone::<FighterHitboxes>()
+            .checksum_component_with_hash::<FighterState>()
+            .checksum_component_with_hash::<FighterFacingDirection>()
+            .register_type::<FighterFacingDirection>();
     }
 }
 

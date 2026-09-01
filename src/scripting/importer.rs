@@ -1,7 +1,15 @@
-
 use std::io;
 
-use bevy::{asset::{AssetLoader, AssetPath, AsyncReadExt, AsyncWriteExt, LoadContext, io::{Reader, Writer}, processor::LoadTransformAndSave, saver::{AssetSaver, SavedAsset}, transformer::{AssetTransformer, TransformedAsset}}, prelude::*};
+use bevy::{
+    asset::{
+        AssetLoader, AssetPath, AsyncReadExt, AsyncWriteExt, LoadContext,
+        io::{Reader, Writer},
+        processor::LoadTransformAndSave,
+        saver::{AssetSaver, SavedAsset},
+        transformer::{AssetTransformer, TransformedAsset},
+    },
+    prelude::*,
+};
 
 use crate::scripting::{FighterAttackScript, move_compiler};
 
@@ -26,7 +34,7 @@ impl AssetLoader for FighterAttackScriptSourceLoader {
         reader.read_to_string(&mut contents).await?;
         Ok(FighterAttackScriptContents(contents))
     }
-    
+
     fn extensions(&self) -> &[&str] {
         &["attack.rhai"]
     }
@@ -41,7 +49,7 @@ impl AssetTransformer for FighterAttackScriptTransformer {
     type Settings = ();
     type Error = String;
 
-        async fn transform<'a>(
+    async fn transform<'a>(
         &'a self,
         source: TransformedAsset<Self::AssetInput>,
         _: &'a Self::Settings,
@@ -50,7 +58,6 @@ impl AssetTransformer for FighterAttackScriptTransformer {
         Ok(source.replace_asset(output))
     }
 }
-
 
 #[derive(Default, TypePath)]
 struct FighterAttackScriptLoader;

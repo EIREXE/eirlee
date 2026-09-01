@@ -7,9 +7,21 @@ use bevy_asset_loader::prelude::*;
 use bevy_ggrs::prelude::Session;
 
 use crate::{
-    AppState, args::Args, fighter::{
-        FighterId, animation::AnimKind, attack::{AttackKind, FighterAttackScriptAssets}, baked_animation::BakedFighterAnimations, manifest::{FighterManifest, FighterManifestRegistry}, spawn_fighter, visual::FighterAnimations,
-    }, math::{int::FGi32, vec::FGVec2}, netcode::{GGRSCfg, session::create_session}, scripting::FighterAttackScript, stage::{
+    AppState,
+    args::Args,
+    fighter::{
+        FighterId,
+        animation::AnimKind,
+        attack::{AttackKind, FighterAttackScriptAssets},
+        baked_animation::BakedFighterAnimations,
+        manifest::{FighterManifest, FighterManifestRegistry},
+        spawn_fighter,
+        visual::FighterAnimations,
+    },
+    math::{int::FGi32, vec::FGVec2},
+    netcode::{GGRSCfg, session::create_session},
+    scripting::FighterAttackScript,
+    stage::{
         self,
         manifest::{StageId, StageManifest, StageManifestRegistry},
     },
@@ -31,7 +43,7 @@ pub struct SelectedFighterAssets {
     pub fighter: FighterId,
     pub model: Handle<Gltf>,
     pub baked_animations: Handle<BakedFighterAnimations>,
-    pub attack_scripts: HashMap<AttackKind, Handle<FighterAttackScript>>
+    pub attack_scripts: HashMap<AttackKind, Handle<FighterAttackScript>>,
 }
 
 #[derive(Resource)]
@@ -73,7 +85,12 @@ impl MatchAssets {
                         fighter: player.fighter,
                         model: asset_server.load(manifest.model_path.clone()),
                         baked_animations: asset_server.load(manifest.baked_animation_path.clone()),
-                        attack_scripts: manifest.attack_scripts.clone().into_iter().map(|(kind, path)| (kind, asset_server.load(path))).collect()
+                        attack_scripts: manifest
+                            .attack_scripts
+                            .clone()
+                            .into_iter()
+                            .map(|(kind, path)| (kind, asset_server.load(path)))
+                            .collect(),
                     }
                 })
                 .collect(),
@@ -142,7 +159,6 @@ pub fn prepare_match(
     stage_registry: Res<StageManifestRegistry>,
     manifests: Res<Assets<FighterManifest>>,
     stage_manifests: Res<Assets<StageManifest>>,
-    mut graphs: ResMut<Assets<AnimationGraph>>,
     args: Res<Args>,
     mut next_state: ResMut<NextState<AppState>>,
 ) {
@@ -188,21 +204,7 @@ pub fn prepare_match(
             return;
         };
 
-        let mut graph = AnimationGraph::new();
-        let mut clips = HashMap::<AnimKind, AnimationNodeIndex>::new();
-
-        for (kind, clip_name) in &manifest.animations {
-            let Some(clip) = gltf.named_animations.get(clip_name.as_str()) else {
-                fail_match(
-                    &mut next_state,
-                    &format!(
-                        "{:?} animation manifest references missing clip '{clip_name}'",
-                        character.fighter
-                    ),
-                );
-                return;
-            };
-            clips.insert(*kind, graph.add_clip(clip.clone(), 1.0, graph.root));
+        for kind in manifest.animations.keys() {
             if baked.frame_count(*kind).is_none() {
                 fail_match(
                     &mut next_state,
@@ -215,27 +217,20 @@ pub fn prepare_match(
             }
         }
 
-        if !clips.contains_key(&AnimKind::Wait) {
+        if baked.frame_count(AnimKind::Wait).is_none() {
             fail_match(&mut next_state, "a character has no Wait animation");
             return;
         }
 
         let animations = FighterAnimations {
-            graph: graphs.add(graph),
-            clips,
             baked: character.baked_animations.clone(),
         };
 
         let attack_scripts = FighterAttackScriptAssets {
-            scripts: character.attack_scripts.clone()
+            scripts: character.attack_scripts.clone(),
         };
 
-        prepared.push((
-            scene,
-            animations,
-            attack_scripts,
-            manifest_handle,
-        ));
+        prepared.push((scene, animations, attack_scripts, manifest_handle));
     }
 
     let session = match create_session(&args, request.players.len()) {
@@ -265,10 +260,8 @@ pub fn prepare_match(
         stage_manifest.camera.clone(),
     );
 
-    for (
-        index,
-        (player, (scene, animations, attack_scripts, manifest_handle)),
-    ) in request.players.iter().zip(prepared).enumerate()
+    for (index, (player, (scene, animations, attack_scripts, manifest_handle))) in
+        request.players.iter().zip(prepared).enumerate()
     {
         let spawn_x = (index as i32 * 2 + 1 - request.players.len() as i32) * 5;
         spawn_fighter(

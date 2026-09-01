@@ -5,7 +5,7 @@
 use bevy::ecs::query::QueryData;
 use bevy::prelude::*;
 
-use crate::fighter::animation::{AnimKind, FighterAnimationFrame, FighterAnimationPlayerLink};
+use crate::fighter::animation::{AnimKind, FighterAnimationFrame};
 use crate::fighter::attack::FighterAttackScriptAssets;
 use crate::fighter::baked_animation::BakedFighterAnimations;
 use crate::fighter::ecb::FighterPreviousECB;
@@ -96,8 +96,6 @@ pub struct FighterStateContext<'a> {
     pub game_settings: &'a GameSettings,
     pub stage_collision: &'a StageCollision,
     pub animations: &'a FighterAnimations,
-    pub animation_player: &'a mut AnimationPlayer,
-    pub animation_transitions: &'a mut AnimationTransitions,
     pub animation_frame: &'a mut FighterAnimationFrame,
     pub baked_animations: &'a Assets<BakedFighterAnimations>,
     pub attack_scripts: &'a Assets<FighterAttackScript>,
@@ -107,14 +105,6 @@ pub struct FighterStateContext<'a> {
 
 impl FighterStateContext<'_> {
     pub fn play_animation(&mut self, kind: AnimKind, repeat: bool) {
-        let active = self.animation_transitions.play(
-            self.animation_player,
-            self.animations.clips[&kind],
-            std::time::Duration::ZERO,
-        );
-        if repeat {
-            active.repeat();
-        }
         self.animation_frame.reset(kind, repeat);
     }
 
@@ -169,8 +159,6 @@ impl<'w, 's> FighterFrameQueryItem<'w, 's> {
         game_settings: &'a GameSettings,
         stage_collision: &'a StageCollision,
         animations: &'a FighterAnimations,
-        animation_player: &'a mut AnimationPlayer,
-        animation_transitions: &'a mut AnimationTransitions,
         baked_animations: &'a Assets<BakedFighterAnimations>,
         attack_scripts: &'a Assets<FighterAttackScript>,
         attack_script_assets: &'a FighterAttackScriptAssets,
@@ -188,8 +176,6 @@ impl<'w, 's> FighterFrameQueryItem<'w, 's> {
             game_settings,
             stage_collision,
             animations,
-            animation_player,
-            animation_transitions,
             animation_frame: &mut self.animation_frame,
             baked_animations,
             attack_scripts,
@@ -206,7 +192,6 @@ pub struct StatefulFighterQuery {
     pub state: &'static mut FighterState,
     pub frame: FighterFrameQuery,
     pub animations: &'static FighterAnimations,
-    pub animation_player_link: &'static FighterAnimationPlayerLink,
     pub fighter: &'static Fighter,
     pub attack_script_assets: &'static FighterAttackScriptAssets,
 }
@@ -222,7 +207,6 @@ impl std::fmt::Display for StateNameDebug {
 
 pub fn state_update_system(
     mut query: Query<StatefulFighterQuery>,
-    mut animation_players: Query<(&mut AnimationPlayer, &mut AnimationTransitions)>,
     stage_collision: Res<StageCollision>,
     game_settings: Res<GameSettings>,
     baked_animations: Res<Assets<BakedFighterAnimations>>,
@@ -234,21 +218,13 @@ pub fn state_update_system(
             mut state,
             mut frame,
             animations,
-            animation_player_link,
             ..
         } = fighter;
-        let Ok((mut animation_player, mut animation_transitions)) =
-            animation_players.get_mut(animation_player_link.player())
-        else {
-            continue;
-        };
 
         let mut update_ctx = frame.context(
             &game_settings,
             &stage_collision,
             animations,
-            &mut animation_player,
-            &mut animation_transitions,
             &baked_animations,
             &attack_scripts,
             &fighter.attack_script_assets,
@@ -262,7 +238,6 @@ pub fn state_update_system(
 
 pub fn state_interrupt_system(
     mut query: Query<StatefulFighterQuery>,
-    mut animation_players: Query<(&mut AnimationPlayer, &mut AnimationTransitions)>,
     stage_collision: Res<StageCollision>,
     game_settings: Res<GameSettings>,
     baked_animations: Res<Assets<BakedFighterAnimations>>,
@@ -276,21 +251,13 @@ pub fn state_interrupt_system(
             mut state,
             mut frame,
             animations,
-            animation_player_link,
             fighter,
             attack_script_assets,
         } = fighter;
-        let Ok((mut animation_player, mut animation_transitions)) =
-            animation_players.get_mut(animation_player_link.player())
-        else {
-            continue;
-        };
         let mut state_context = frame.context(
             &game_settings,
             &stage_collision,
             animations,
-            &mut animation_player,
-            &mut animation_transitions,
             &baked_animations,
             &attack_scripts,
             attack_script_assets,
@@ -314,7 +281,6 @@ pub fn state_interrupt_system(
 
 pub fn state_collision_interrupt_system(
     mut query: Query<StatefulFighterQuery>,
-    mut animation_players: Query<(&mut AnimationPlayer, &mut AnimationTransitions)>,
     stage_collision: Res<StageCollision>,
     game_settings: Res<GameSettings>,
     baked_animations: Res<Assets<BakedFighterAnimations>>,
@@ -328,21 +294,13 @@ pub fn state_collision_interrupt_system(
             mut state,
             mut frame,
             animations,
-            animation_player_link,
             fighter,
             attack_script_assets,
         } = fighter;
-        let Ok((mut animation_player, mut animation_transitions)) =
-            animation_players.get_mut(animation_player_link.player())
-        else {
-            continue;
-        };
         let mut state_context = frame.context(
             &game_settings,
             &stage_collision,
             animations,
-            &mut animation_player,
-            &mut animation_transitions,
             &baked_animations,
             &attack_scripts,
             &attack_script_assets,
