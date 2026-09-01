@@ -1,4 +1,6 @@
-use crate::fighter::{attack::{AttackKind, update_active_hitbox_list}, state::{FighterState, FighterStateImpl, ground::GroundedStateCommon, wait::WaitState}};
+use fixed::types::I16F16;
+
+use crate::{fighter::{attack::{AttackKind, update_active_hitbox_list}, state::{FighterState, FighterStateImpl, ground::GroundedStateCommon, wait::WaitState}}, math::int::FGi32};
 
 #[derive(Clone, Debug, Hash)]
 pub struct GroundAttackState {
@@ -47,8 +49,15 @@ impl FighterStateImpl for GroundAttackState {
 
 pub fn check_interrupt(state_context: &super::FighterStateContext, grounded_common: &GroundedStateCommon) -> Option<FighterState> {
     if state_context.input.has_command(crate::input::FighterCommands::Attack) {
+
+        let attack_kind = if state_context.input.get_last_frame().movement.y > FGi32::ZERO {
+            AttackKind::UpTilt
+        } else {
+            AttackKind::Jab
+        };
+
         Some(FighterState::GroundAttack(GroundAttackState {
-            attack_kind: AttackKind::Jab,
+            attack_kind,
             grounded_common: grounded_common.clone()
         }))
     } else {

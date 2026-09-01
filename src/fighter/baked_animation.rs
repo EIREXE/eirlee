@@ -102,6 +102,10 @@ impl FixedMat4 {
         self.cols[3][2] = translation.z;
     }
 
+    pub fn get_translation(&self) -> FGVec3 {
+        FGVec3::new(self.cols[3][0], self.cols[3][1], self.cols[3][2])
+    }
+
     pub fn rotate_y(self, quarter_turns: u8) -> Self {
         let rotation = match quarter_turns % 4 {
             0 => Self {
@@ -187,10 +191,25 @@ impl BakedFighterAnimations {
 pub struct FighterBoneMatrices {
     bone_names: Vec<String>,
     matrices: Vec<FixedMat4>,
+    previous_frame_matrices: Vec<FixedMat4>,
 }
 
 impl FighterBoneMatrices {
-    pub fn get(&self, bone: &str) -> Option<FixedMat4> {
+    pub fn get(&self, bone: &str) -> Option<(FixedMat4, FixedMat4)> {
+        let index = self.bone_names.iter().position(|name| name == bone)?;
+        let curr = self.matrices.get(index).copied();
+        let prev = self.previous_frame_matrices.get(index).copied();
+
+        if let Some(prev) = prev {
+            if let Some(curr) = curr {
+                return Some((prev, curr));
+            }
+        }
+
+        None
+    }
+
+    pub fn get_current(&self, bone: &str) -> Option<FixedMat4> {
         let index = self.bone_names.iter().position(|name| name == bone)?;
         self.matrices.get(index).copied()
     }
@@ -213,6 +232,7 @@ impl FighterBoneMatrices {
         } else {
             assert_eq!(self.bone_names, bone_names, "baked bone names changed");
         }
+        std::mem::swap(&mut self.matrices, &mut self.previous_frame_matrices);
         self.matrices.clear();
         self.matrices.extend_from_slice(matrices);
     }
@@ -707,7 +727,7 @@ mod tests {
         let mut matrices = FighterBoneMatrices::default();
         matrices.set_pose(&["root".into(), "hand".into()], &[first, second]);
 
-        assert_eq!(matrices.get("hand"), Some(second));
+        assert_eq!(matrices.get_current("hand"), Some(second));
         assert_eq!(
             matrices.iter().collect::<Vec<_>>(),
             vec![("root", first), ("hand", second)]

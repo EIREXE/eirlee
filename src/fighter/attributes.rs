@@ -36,6 +36,7 @@ pub struct FighterAttributes {
     pub ground_friction: FGi32,
     pub terminal_velocity: FGi32,
     pub gravity: FGi32,
+    pub weight: FGi32,
     pub air_friction: FGi32,
 
     pub air_dodge_duration: u32,

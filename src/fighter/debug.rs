@@ -1,6 +1,7 @@
 //! Fighter debug views: gizmos and the egui inspector window.
 
 use bevy::color::palettes::css::ORANGE;
+use bevy::gizmos::primitives::dim3::Capsule3dBuilder;
 use bevy::{color::palettes::css::YELLOW, prelude::*};
 use bevy_egui::{EguiContexts, egui};
 
@@ -178,22 +179,35 @@ pub fn attack_debug(
                 let radius = script.hitboxes[*i].radius;
                 let bone = &script.hitboxes[*i].bone;
 
-                let trf = matrices.get(bone);
-                if let Some(trf) = trf {
-                    let trf = player_trf.mul(trf);
-                    let start = player_trf.transform_point(FGVec3::lit("0.0", "1.0", "0.0"));
-                    let end = player_trf.transform_point(FGVec3::lit("0.0", "1.0", "1.0"));
-                    let pos = trf.transform_point(offset);
-                    let pos_draw = Vec3::new(pos.x.to_num(), pos.y.to_num(), pos.z.to_num());
-                    //Primitive
-                    //gizmos.primitive_3d(, isometry, color)
-                    gizmos.sphere(pos_draw, radius.to_num(), bevy::color::palettes::css::RED);
+                let trfs = matrices.get(bone);
+                if let Some((prev_trf, curr_trf)) = trfs {
+                    let prev_trf = player_trf.mul(prev_trf);
+                    let curr_trf = player_trf.mul(curr_trf);
+                    
+                    let prev_pos = prev_trf.transform_point(offset);
+                    let curr_pos = curr_trf.transform_point(offset);
 
-                    gizmos.arrow(
-                        start.to_vec3(),
-                        end.to_vec3(),
-                        bevy::color::palettes::css::RED,
-                    );
+                    let prev_pos_draw = Vec3::new(prev_pos.x.to_num(), prev_pos.y.to_num(), prev_pos.z.to_num());
+                    let curr_pos_draw = Vec3::new(curr_pos.x.to_num(), curr_pos.y.to_num(), curr_pos.z.to_num());
+
+                    let dist = Dir3::new_and_length(curr_pos_draw - prev_pos_draw);
+
+                    if let Ok((aim_dir, dist)) = dist {
+                        let attack_capsule = Capsule3d {
+                            half_length: dist * 0.5,
+                            radius: radius.to_num()
+                        };
+                        let mut capsule_draw_trf = Transform::IDENTITY;
+                        capsule_draw_trf.align(Dir3::Y, aim_dir, Dir3::X, aim_dir.any_orthonormal_vector());
+                        capsule_draw_trf.translation = (prev_pos_draw + curr_pos_draw) * 0.5;
+                        gizmos.primitive_3d(&attack_capsule, capsule_draw_trf.to_isometry(), bevy::color::palettes::css::RED);
+                    }
+
+
+
+                    gizmos.sphere(prev_pos_draw, radius.to_num(), bevy::color::palettes::css::RED.darker(0.5));
+                    gizmos.sphere(curr_pos_draw, radius.to_num(), bevy::color::palettes::css::RED);
+
                 } else {
                     warn!("Bone not found required by attack script: {}", bone);
                 }

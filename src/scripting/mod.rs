@@ -13,5 +13,7 @@ pub enum MoveAngleKind {
 
 #[derive(Asset, Reflect, Serialize, Deserialize)]
 pub struct FighterAttackScript {
-    pub hitboxes: Vec<AttackHitbox>
+    pub hitboxes: Vec<AttackHitbox>,
+    pub iasa_frame: u32,
+    pub wont_autocancel_window: (u32, u32),
 }
