@@ -169,6 +169,10 @@ impl Plugin for FighterPlugin {
                 FixedPostUpdate,
                 debug::attack_debug.run_if(crate::debug_tools::attack_hitboxes_enabled),
             )
+            .add_systems(
+                FixedPostUpdate,
+                debug::hurtbox_debug
+            )
             .rollback_component_with_clone::<FighterState>()
             .rollback_component_with_clone::<FighterHitboxes>()
             .checksum_component_with_hash::<FighterState>()

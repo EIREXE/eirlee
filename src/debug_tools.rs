@@ -2,8 +2,14 @@
 
 use std::{collections::HashMap, time::Duration};
 
-use bevy::{prelude::*, settings::{SaveSettingsDeferred, SettingsGroup, ReflectSettingsGroup}};
+use bevy::{
+    prelude::*,
+    settings::{ReflectSettingsGroup, SaveSettingsDeferred, SettingsGroup},
+};
 use bevy_egui::{EguiContexts, EguiPrimaryContextPass, egui};
+use bevy_ggrs::RollbackFrameRate;
+use enum_cycling::EnumCycle;
+use enum_cycling_derive::EnumCycle;
 
 use crate::player::Player;
 
@@ -39,6 +45,31 @@ impl PresentationMotionMode {
             Self::Interpolation => Self::Extrapolation,
             Self::Extrapolation => Self::Interpolation,
         };
+    }
+}
+
+#[derive(EnumCycle, Reflect)]
+pub enum GameSpeedDebug {
+    Full,
+    Half,
+    Quarter,
+}
+
+impl GameSpeedDebug {
+    pub const fn label(&self) -> &'static str {
+        match self {
+            GameSpeedDebug::Full => "1.0x",
+            GameSpeedDebug::Half => "0.5x",
+            GameSpeedDebug::Quarter => "0.25x",
+        }
+    }
+
+    pub fn frame_rate(&self) -> usize {
+        match self {
+            GameSpeedDebug::Full => 60,
+            GameSpeedDebug::Half => 30,
+            GameSpeedDebug::Quarter => 15,
+        }
     }
 }
 
@@ -100,6 +131,9 @@ enum DebugMenuEntry {
     MotionSampling {
         label: &'static str,
     },
+    GameSpeed {
+        label: &'static str,
+    },
 }
 
 const FIGHTER_MENU: &[DebugMenuEntry] = &[
@@ -124,10 +158,15 @@ const FIGHTER_MENU: &[DebugMenuEntry] = &[
     },
 ];
 
-const WORLD_MENU: &[DebugMenuEntry] = &[DebugMenuEntry::Toggle {
-    label: "Stage collision",
-    flag: DebugFlag::StageCollision,
-}];
+const WORLD_MENU: &[DebugMenuEntry] = &[
+    DebugMenuEntry::Toggle {
+        label: "Stage collision",
+        flag: DebugFlag::StageCollision,
+    },
+    DebugMenuEntry::GameSpeed {
+        label: "Game speed",
+    },
+];
 
 const DIAGNOSTICS_MENU: &[DebugMenuEntry] = &[DebugMenuEntry::Toggle {
     label: "Network stats",
@@ -169,6 +208,7 @@ enum DebugMenuPage {
     PlayerList,
     PlayerRows(usize),
 }
+
 #[derive(Resource, SettingsGroup, Reflect)]
 #[reflect(Resource, SettingsGroup, Default)]
 pub struct DebugSettings {
@@ -190,6 +230,7 @@ pub struct DebugSettings {
     pub camera: bool,
     pub draw_through_geometry: bool,
     pub motion_sampling: PresentationMotionMode,
+    pub game_speed: GameSpeedDebug,
 }
 
 impl Default for DebugSettings {
@@ -208,6 +249,7 @@ impl Default for DebugSettings {
             camera: false,
             draw_through_geometry: false,
             motion_sampling: PresentationMotionMode::default(),
+            game_speed: GameSpeedDebug::Full,
         }
     }
 }
@@ -287,6 +329,10 @@ impl DebugSettings {
     }
 
     fn cycle_motion_sampling(&mut self) {
+        self.motion_sampling.cycle();
+    }
+
+    fn cycle_game_speed(&mut self) {
         self.motion_sampling.cycle();
     }
 
@@ -377,6 +423,50 @@ fn handle_palette_input(
         let selected = settings.selected_mut();
         *selected = (*selected + 1) % page_len;
     }
+
+    let direction = if gamepad.just_pressed(GamepadButton::DPadLeft) {
+        Some(-1)
+    } else if gamepad.just_pressed(GamepadButton::DPadRight) {
+        Some(1)
+    } else {
+        None
+    };
+
+    if let Some(direction) = direction {
+        match page {
+            DebugMenuPage::Static(entries) => {
+                if let Some(entry) = entries.get(settings.selected()) {
+                    match entry {
+                        DebugMenuEntry::MotionSampling { .. } => settings.cycle_motion_sampling(),
+                        DebugMenuEntry::GameSpeed { .. } => {
+                            if direction > 0 {
+                                settings.game_speed = settings.game_speed.up();
+                            } else {
+                                settings.game_speed = settings.game_speed.down();
+                            }
+
+                            commands.insert_resource(RollbackFrameRate(
+                                settings.game_speed.frame_rate(),
+                            ));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            DebugMenuPage::PlayerList => todo!(),
+            DebugMenuPage::PlayerRows(_) => {
+                let DebugMenuPage::PlayerRows(handle) = page else {
+                    unreachable!("player row navigation must have a player row page")
+                };
+                let selected = settings.selected();
+                let rows = settings.rows_mut(handle);
+                rows[selected] = rows[selected].cycle(direction);
+
+                commands.queue(SaveSettingsDeferred(Duration::from_secs_f32(0.1)));
+            }
+        }
+    }
+
     if matches!(page, DebugMenuPage::PlayerRows(_)) {
         let direction = if gamepad.just_pressed(GamepadButton::DPadLeft) {
             Some(-1)
@@ -385,26 +475,7 @@ fn handle_palette_input(
         } else {
             None
         };
-        if let Some(direction) = direction {
-            let DebugMenuPage::PlayerRows(handle) = page else {
-                unreachable!("player row navigation must have a player row page")
-            };
-            let selected = settings.selected();
-            let rows = settings.rows_mut(handle);
-            rows[selected] = rows[selected].cycle(direction);
-
-            commands.queue(SaveSettingsDeferred(Duration::from_secs_f32(0.1)));
-        }
-    }
-    if let DebugMenuPage::Static(entries) = page
-        && matches!(
-            entries.get(settings.selected()),
-            Some(DebugMenuEntry::MotionSampling { .. })
-        )
-        && (gamepad.just_pressed(GamepadButton::DPadLeft)
-            || gamepad.just_pressed(GamepadButton::DPadRight))
-    {
-        settings.cycle_motion_sampling();
+        if let Some(direction) = direction {}
     }
     if gamepad.just_pressed(GamepadButton::South) {
         match page {
@@ -412,12 +483,13 @@ fn handle_palette_input(
                 DebugMenuEntry::Toggle { flag, .. } => {
                     settings.toggle_flag(flag);
                     commands.queue(SaveSettingsDeferred(Duration::from_secs_f32(0.1)));
-                },
+                }
                 DebugMenuEntry::Submenu { entries, .. } => {
                     settings.push_page(DebugMenuPage::Static(entries));
                 }
                 DebugMenuEntry::PlayerSlots { .. } => settings.push_page(DebugMenuPage::PlayerList),
                 DebugMenuEntry::MotionSampling { .. } => settings.cycle_motion_sampling(),
+                DebugMenuEntry::GameSpeed { .. } => {}
             },
             DebugMenuPage::PlayerList if page_len != 0 => {
                 let handle = player_handles[settings.selected()];
@@ -481,6 +553,12 @@ fn draw_palette(
                                 ui.label(format!(
                                     "{marker} {label}: {}",
                                     settings.motion_sampling.label()
+                                ));
+                            }
+                            DebugMenuEntry::GameSpeed { label } => {
+                                ui.label(format!(
+                                    "{marker} {label}: {}",
+                                    settings.game_speed.label()
                                 ));
                             }
                         }

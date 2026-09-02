@@ -1,5 +1,7 @@
 //! Fighter debug views: gizmos and the egui inspector window.
 
+use std::ops::Mul;
+
 use bevy::color::palettes::css::ORANGE;
 use bevy::gizmos::primitives::dim3::Capsule3dBuilder;
 use bevy::{color::palettes::css::YELLOW, prelude::*};
@@ -9,10 +11,11 @@ use crate::debug_tools::{DebugSettings, FighterDebugRowKind};
 use crate::fighter::animation::FighterAnimationFrame;
 use crate::fighter::baked_animation::{BakedFighterAnimations, FighterBoneMatrices};
 use crate::fighter::ecb::FighterPreviousECB;
+use crate::fighter::manifest::FighterManifest;
 use crate::fighter::state::StateNameDebug;
 use crate::fighter::visual::FighterAnimations;
 use crate::fighter::{
-    FighterECB, FighterFacingDirection, FighterHitboxes, FighterPreviousTranslation,
+    Fighter, FighterECB, FighterFacingDirection, FighterHitboxes, FighterPreviousTranslation,
     FighterTranslation, FighterVelocity,
 };
 use crate::input::FighterInput;
@@ -157,6 +160,52 @@ pub fn animation_debug(query: Query<(&GlobalTransform, &FighterBoneMatrices)>, m
     }
 }
 
+pub fn hurtbox_debug(
+    query: Query<(
+        &FighterBoneMatrices,
+        &FighterTranslation,
+        &FighterFacingDirection,
+        &Fighter,
+    )>,
+    manifests: Res<Assets<FighterManifest>>,
+    mut gizmos: Gizmos,
+) {
+    for (matrices, translation, facing_direction, fighter) in query {
+        let manifest = manifests
+            .get(&fighter.manifest)
+            .expect("Manifest should be valid");
+        let fighter_trf = translation.get_3d_transform(facing_direction);
+        for hurtbox in manifest.hurtboxes.iter() {
+            let bone_matrix = matrices.get_current(&hurtbox.bone);
+
+            if let Some(bone_matrix) = bone_matrix {
+                let to_global = fighter_trf.mul(bone_matrix);
+                let capsule = Capsule3d {
+                    half_length: hurtbox.half_length.to_num(),
+                    radius: hurtbox.radius.to_num(),
+                };
+
+                let hurtbox_trf = Transform::IDENTITY
+                    .with_rotation(Quat::from_euler(
+                        EulerRot::XYZ,
+                        f32::to_radians(hurtbox.rotation.x.to_num()),
+                        f32::to_radians(hurtbox.rotation.y.to_num()),
+                        f32::to_radians(hurtbox.rotation.z.to_num()),
+                    ))
+                    .with_translation(hurtbox.offset.to_vec3());
+
+                let hurtbox_trf = Transform::from_matrix(to_global.to_mat4()).mul(hurtbox_trf);
+
+                gizmos.primitive_3d(
+                    &capsule,
+                    hurtbox_trf.to_isometry(),
+                    bevy::color::palettes::css::YELLOW,
+                );
+            }
+        }
+    }
+}
+
 pub fn attack_debug(
     query: Query<(
         &FighterHitboxes,
@@ -164,12 +213,11 @@ pub fn attack_debug(
         &FighterTranslation,
         &FighterFacingDirection,
         &FighterAnimationFrame,
-        &GlobalTransform
     )>,
     attack_scripts: Res<Assets<FighterAttackScript>>,
     mut gizmos: Gizmos,
 ) {
-    for (hitboxes, matrices, translation, facing_direction, frame, global_trf) in query {
+    for (hitboxes, matrices, translation, facing_direction, frame) in query {
         if let Some(script) = &hitboxes.attack_script {
             let script = attack_scripts
                 .get(script)
@@ -194,7 +242,11 @@ pub fn attack_debug(
                     );
 
                     if script.hitboxes[*i].start_frame == frame.frame {
-                        gizmos.sphere(curr_pos_draw, radius.to_num(), bevy::color::palettes::css::RED);
+                        gizmos.sphere(
+                            curr_pos_draw,
+                            radius.to_num(),
+                            bevy::color::palettes::css::RED,
+                        );
                         continue;
                     }
 
@@ -207,7 +259,6 @@ pub fn attack_debug(
                         prev_pos.y.to_num(),
                         prev_pos.z.to_num(),
                     );
-
 
                     let dist = Dir3::new_and_length(curr_pos_draw - prev_pos_draw);
 
@@ -231,9 +282,19 @@ pub fn attack_debug(
                         );
                     }
 
-                    gizmos.cross(curr_trf.transform_point(FGVec3::lit("0.0", "0.0", "0.0")).to_vec3(), 1.0, bevy::color::palettes::css::BLUE);
-                    gizmos.cross(curr_trf.to_mat4().transform_point(Vec3::ZERO), 1.0, bevy::color::palettes::css::HOT_PINK);
-                    
+                    gizmos.cross(
+                        curr_trf
+                            .transform_point(FGVec3::lit("0.0", "0.0", "0.0"))
+                            .to_vec3(),
+                        1.0,
+                        bevy::color::palettes::css::BLUE,
+                    );
+                    gizmos.cross(
+                        curr_trf.to_mat4().transform_point(Vec3::ZERO),
+                        1.0,
+                        bevy::color::palettes::css::HOT_PINK,
+                    );
+
                     gizmos.axes(curr_trf.to_mat4(), 1.0);
                 } else {
                     warn!("Bone not found required by attack script: {}", bone);

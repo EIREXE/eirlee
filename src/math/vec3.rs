@@ -33,3 +33,9 @@ impl FGVec3 {
         Vec3::new(self.x.to_num(), self.y.to_num(), self.z.to_num())
     }
 }
+
+impl From<(&str, &str, &str)> for FGVec3 {
+    fn from((x, y, z): (&str, &str, &str)) -> Self {
+        Self::lit(x, y, z)
+    }
+}

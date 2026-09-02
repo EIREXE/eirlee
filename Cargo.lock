@@ -3164,6 +3164,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "enum_cycling"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "946bc4ae524a5ca6b8f8d2fa284fc51943d1520410854e4630463217be6b2990"
+
+[[package]]
+name = "enum_cycling_derive"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "397cac860ca9b2ced0ff24d662806ad132471f12e371e8f579c1deb29de3a294"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "enumn"
 version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3532,6 +3549,8 @@ dependencies = [
  "bincode",
  "bitfields",
  "clap",
+ "enum_cycling",
+ "enum_cycling_derive",
  "fixed",
  "gc-adapter-neo",
  "gltf",

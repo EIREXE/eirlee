@@ -104,7 +104,7 @@ impl AttackHitbox {
     pub fn calculate_knockback(
         &self,
         attack: AttackKind,
-        
+
         receiver_attribs: &FighterAttributes,
         receiver_damage: FighterDamage,
         total_damage_received_this_frame: FighterDamage,
@@ -125,10 +125,10 @@ impl AttackHitbox {
         /// Knockback growth is authored in percent (110 means 1.1x).
         const KB_GROWTH_SCALE: FGi32 = FGi32::lit("0.01");
         const DAMAGE_TERM_DIVISOR: FGi32 = FGi32::lit("20.0");
-        const DAMAGE_BONUS: FGi32 = FGi32::lit("2.0");  // effective damage floor in the damage term
+        const DAMAGE_BONUS: FGi32 = FGi32::lit("2.0"); // effective damage floor in the damage term
         const CHARGE_SMASH_INTERRUPTION_MODIFIER: FGi32 = FGi32::lit("1.2");
         const CROUCH_CANCEL_MODIFIER: FGi32 = FGi32::lit("0.666667");
-        
+
         let attack_damage_unstalled = self.damage.0;
 
         let modifier = {
@@ -149,7 +149,7 @@ impl AttackHitbox {
         let scaled = damage_term * (FGi32::lit("2.0") * BASELINE_WEIGHT)
             / (receiver_attribs.weight + BASELINE_WEIGHT);
         let kb = (scaled * KB_GAIN + KB_OFFSET) * s + self.knockback.0;
-        
+
         Knockback(modifier * kb)
     }
 }
