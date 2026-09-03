@@ -120,7 +120,7 @@ impl FighterStateContext<'_> {
         anims_data
             .frame_count(self.animation_frame.kind)
             .expect("Current animation should have baked frames")
-            < self.animation_frame.frame
+            <= self.animation_frame.frame
     }
 }
 

@@ -119,6 +119,12 @@ impl FGVec2 {
     }
 
     #[inline]
+    #[must_use]
+    pub fn distance_squared(self, to: Self) -> FGWide {
+        (to - self).length_squared()
+    }
+
+    #[inline]
     pub fn normalize(&self) -> Option<Self> {
         let x = I32F32::from_num(self.x);
         let y = I32F32::from_num(self.y);

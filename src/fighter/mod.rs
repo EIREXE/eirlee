@@ -144,13 +144,19 @@ impl Plugin for FighterPlugin {
             // components; a component simulated here but missing from this list
             // is a desync waiting to happen.
             .rollback_component_with_copy::<FighterECB>()
+            .checksum_component_with_hash::<FighterECB>()
             .rollback_component_with_copy::<ecb::FighterPreviousECB>()
+            .checksum_component_with_hash::<ecb::FighterPreviousECB>()
             .rollback_component_with_copy::<FighterVelocity>()
+            .checksum_component_with_hash::<FighterVelocity>()
             .rollback_component_with_copy::<FighterTranslation>()
+            .checksum_component_with_hash::<FighterTranslation>()
             .rollback_component_with_copy::<FighterPreviousTranslation>()
+            .checksum_component_with_hash::<FighterPreviousTranslation>()
             .rollback_component_with_copy::<animation::FighterAnimationFrame>()
             .checksum_component_with_hash::<animation::FighterAnimationFrame>()
             .rollback_component_with_copy::<Grounded>()
+            .checksum_component_with_hash::<Grounded>()
             .rollback_component_with_copy::<FighterFacingDirection>()
             .rollback_resource_with_reflect::<StageCollision>()
             // Debug views.
@@ -176,14 +182,16 @@ impl Plugin for FighterPlugin {
             )
             .rollback_component_with_clone::<FighterState>()
             .rollback_component_with_clone::<FighterHitboxes>()
+            .checksum_component_with_hash::<FighterHitboxes>()
             .rollback_component_with_clone::<FighterSolvedHurtboxes>()
+            .checksum_component_with_hash::<FighterSolvedHurtboxes>()
             .checksum_component_with_hash::<FighterState>()
             .checksum_component_with_hash::<FighterFacingDirection>()
             .register_type::<FighterFacingDirection>();
     }
 }
 
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Hash)]
 pub struct FighterHitboxes {
     pub attack_script: Option<Handle<FighterAttackScript>>,
     pub active_hitboxes: Vec<usize>,

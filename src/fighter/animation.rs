@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use strum_macros::EnumIter;
 
 use crate::fighter::{FighterFacingDirection, FighterVisual};
 
@@ -63,7 +64,7 @@ pub fn apply_animation(
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, Reflect,
+    Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, Reflect, EnumIter
 )]
 pub enum AnimKind {
     Wait,

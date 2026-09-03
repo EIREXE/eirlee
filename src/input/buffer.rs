@@ -25,7 +25,7 @@ pub enum FighterCommands {
 
 /// Frames of life remaining for each buffered command. Indexed by
 /// [`FighterCommands`] so adding a command is a two-line change here.
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, Hash)]
 pub struct FighterCommandLifetimes {
     smash_move_left: u8,
     smash_move_right: u8,
@@ -60,7 +60,7 @@ impl IndexMut<FighterCommands> for FighterCommandLifetimes {
     }
 }
 
-#[derive(Component, Default, Clone, Copy)]
+#[derive(Component, Default, Clone, Copy, Hash)]
 #[require(Rollback)]
 pub struct FighterInput {
     command_lifetimes: FighterCommandLifetimes,

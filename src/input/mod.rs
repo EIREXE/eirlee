@@ -108,7 +108,8 @@ impl Plugin for FighterInputPlugin {
             GgrsSchedule,
             buffer::postprocess_input.in_set(GameplaySet::Input),
         )
-        .rollback_component_with_clone::<FighterInput>();
+        .rollback_component_with_clone::<FighterInput>()
+        .checksum_component_with_hash::<FighterInput>();
     }
 }
 

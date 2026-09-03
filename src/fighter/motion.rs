@@ -10,16 +10,16 @@ use crate::{
     math::{int::FGi32, vec::FGVec2, vec3::FGVec3},
 };
 
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, Hash)]
 pub struct Grounded;
 
-#[derive(Component, Deref, DerefMut, Default, Debug, Clone, Copy)]
+#[derive(Component, Deref, DerefMut, Default, Debug, Clone, Copy, Hash)]
 pub struct FighterVelocity(pub FGVec2);
 
-#[derive(Component, Deref, DerefMut, Default, Clone, Copy)]
+#[derive(Component, Deref, DerefMut, Default, Clone, Copy, Hash)]
 pub struct FighterPreviousTranslation(pub FGVec2);
 
-#[derive(Component, Deref, DerefMut, Default, Clone, Copy)]
+#[derive(Component, Deref, DerefMut, Default, Clone, Copy, Hash)]
 #[require(FighterPreviousTranslation)]
 pub struct FighterTranslation(pub FGVec2);
 

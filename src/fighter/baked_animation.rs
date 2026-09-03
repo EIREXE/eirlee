@@ -38,7 +38,7 @@ pub const BAKED_ANIMATION_FPS: u32 = 60;
 
 /// Parent transforms are composed after
 /// quantization, which makes every runtime sample platform-independent.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct FixedMat4 {
     pub cols: [[FGi32; 4]; 4],
 }

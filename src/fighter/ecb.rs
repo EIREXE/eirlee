@@ -5,14 +5,14 @@ use crate::math::{int::FGi32, vec::FGVec2};
 /// Environment collision box: the diamond used to resolve a fighter against
 /// the stage. Purely geometry — the collision response lives in
 /// [`super::collision`].
-#[derive(Component, Debug, Clone, Copy)]
+#[derive(Component, Debug, Clone, Copy, Hash)]
 #[require(FighterPreviousECB)]
 pub struct FighterECB {
     pub vertical_half: FGi32,
     pub horizontal_half: FGi32,
 }
 
-#[derive(Component, Debug, Clone, Copy, Default)]
+#[derive(Component, Debug, Clone, Copy, Default, Hash)]
 pub struct FighterPreviousECB {
     pub vertical_half: FGi32,
     pub horizontal_half: FGi32,

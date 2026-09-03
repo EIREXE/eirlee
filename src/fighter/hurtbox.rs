@@ -10,7 +10,7 @@ use crate::{
 
 /// A capsule after an arbitrary affine transform. Non-uniform scale turns the
 /// spherical caps and circular cylinder into ellipsoidal geometry.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub struct FixedAffineCapsule {
     pub transform: FixedMat4,
     pub half_length: FGi32,

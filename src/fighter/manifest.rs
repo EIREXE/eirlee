@@ -109,13 +109,17 @@ pub fn prepare_fighter_manifests(
             );
             return;
         }
-        if !manifest.animations.contains_key(&AnimKind::Wait) {
-            fail(
-                &mut next_state,
-                &format!("{:?} has no Wait animation", manifest.id),
-            );
-            return;
+
+        for anim_kind in AnimKind::iter() {
+            if !manifest.animations.contains_key(&anim_kind) {
+                fail(
+                    &mut next_state,
+                    &format!("{:?} has no {:?} animation", manifest.id, anim_kind),
+                );
+                return;
+            }
         }
+
         if !manifest.camera.is_valid() {
             fail(
                 &mut next_state,

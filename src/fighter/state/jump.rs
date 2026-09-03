@@ -221,11 +221,6 @@ impl FighterStateImpl for JumpState {
         };
 
         state_context.velocity.y = vertical_vel;
-        state_context.velocity.x += state_context
-            .fighter_manifest
-            .attributes
-            .jump_horizontal_velocity
-            * movement_stick_x;
     }
 
     fn check_collision_interrupt(

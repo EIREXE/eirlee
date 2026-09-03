@@ -30,7 +30,7 @@ pub fn collide_fighter_with_scene(
     }
 }
 */
-
+#[derive(Clone)]
 pub struct AirCollisionWithStageResult {
     pub line_id: StageLineID,
     pub hit_position: FGVec2,
@@ -45,9 +45,11 @@ pub fn air_collide_with_stage(
         state_context.translation.0 + state_context.ecb.get_bottom_point(),
     );
 
+    let mut intersect_results = vec![];
+
     for (poly_idx, poly) in state_context.stage_collision.stage_polys.iter().enumerate() {
         if let Some(intersect_result) = poly.intersect_ray(ray_segment) {
-            return Some(AirCollisionWithStageResult {
+            intersect_results.push((AirCollisionWithStageResult {
                 line_id: {
                     StageLineID {
                         polygon: poly_idx,
@@ -56,9 +58,14 @@ pub fn air_collide_with_stage(
                 },
                 hit_position: intersect_result.position,
                 hit_normal: intersect_result.normal,
-            });
+            }, intersect_result.position.distance_squared(ray_segment.point2())));
         }
     }
+    intersect_results.sort_by(| (_, a), (_, b) | {
+        a.cmp(b)
+    });
 
-    None
+    intersect_results.iter().last().map(|(val, _)| {
+        val.to_owned().clone()
+    })
 }

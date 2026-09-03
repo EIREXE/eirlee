@@ -175,7 +175,7 @@ pub fn update_active_hitbox_list(script: &FighterAttackScript, list: &mut Vec<us
         .collect()
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct FighterSolvedHurtbox {
     pub hurtbox_idx: usize,
     pub capsule: FixedAffineCapsule,
@@ -185,7 +185,7 @@ pub struct FighterSolvedHurtbox {
 pub struct FighterAttackScriptAssets {
     pub scripts: HashMap<AttackKind, Handle<FighterAttackScript>>,
 }
-#[derive(Component, Clone, Debug, Default)]
+#[derive(Component, Clone, Debug, Default, Hash)]
 pub struct FighterSolvedHurtboxes(pub Vec<FighterSolvedHurtbox>);
 
 pub fn solve_hurtboxes(
