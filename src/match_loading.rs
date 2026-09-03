@@ -96,6 +96,28 @@ impl MatchAssets {
                 .collect(),
         }
     }
+
+    fn into_loading_handles(self) -> Vec<UntypedHandle> {
+        let mut handles = Vec::with_capacity(
+            1 + self
+                .fighters
+                .iter()
+                .map(|fighter| 2 + fighter.attack_scripts.len())
+                .sum::<usize>(),
+        );
+        handles.push(self.stage.untyped());
+        for character in self.fighters {
+            handles.push(character.model.untyped());
+            handles.push(character.baked_animations.untyped());
+            handles.extend(
+                character
+                    .attack_scripts
+                    .into_values()
+                    .map(|handle| handle.untyped()),
+            );
+        }
+        handles
+    }
 }
 
 impl AssetCollection for MatchAssets {
@@ -104,14 +126,7 @@ impl AssetCollection for MatchAssets {
     }
 
     fn load(world: &mut World) -> Vec<UntypedHandle> {
-        let assets = Self::requested(world);
-        let mut handles = Vec::with_capacity(1 + assets.fighters.len());
-        handles.push(assets.stage.clone().untyped());
-        for character in assets.fighters {
-            handles.push(character.model.untyped());
-            handles.push(character.baked_animations.untyped());
-        }
-        handles
+        Self::requested(world).into_loading_handles()
     }
 }
 
@@ -350,5 +365,22 @@ mod tests {
         ];
 
         assert!(!valid_player_handles(&players));
+    }
+
+    #[test]
+    fn match_loading_waits_for_attack_scripts() {
+        let mut attack_scripts = HashMap::new();
+        attack_scripts.insert(AttackKind::Jab, Handle::default());
+        let assets = MatchAssets {
+            stage: Handle::default(),
+            fighters: vec![SelectedFighterAssets {
+                fighter: FighterId::TestFighter,
+                model: Handle::default(),
+                baked_animations: Handle::default(),
+                attack_scripts,
+            }],
+        };
+
+        assert_eq!(assets.into_loading_handles().len(), 4);
     }
 }
