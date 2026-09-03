@@ -111,6 +111,7 @@ enum DebugFlag {
     StageCollision,
     AnimationBones,
     AttackHitboxes,
+    Hurtboxes,
     Camera,
     DrawThroughGeometry,
 }
@@ -155,6 +156,10 @@ const FIGHTER_MENU: &[DebugMenuEntry] = &[
     DebugMenuEntry::Toggle {
         label: "Attack hitboxes",
         flag: DebugFlag::AttackHitboxes,
+    },
+    DebugMenuEntry::Toggle {
+        label: "Hurtboxes",
+        flag: DebugFlag::Hurtboxes,
     },
 ];
 
@@ -227,6 +232,7 @@ pub struct DebugSettings {
     pub stage_collision: bool,
     pub animation_bones: bool,
     pub attack_hitboxes: bool,
+    pub hurtboxes: bool,
     pub camera: bool,
     pub draw_through_geometry: bool,
     pub motion_sampling: PresentationMotionMode,
@@ -246,6 +252,7 @@ impl Default for DebugSettings {
             stage_collision: false,
             animation_bones: false,
             attack_hitboxes: false,
+            hurtboxes: false,
             camera: false,
             draw_through_geometry: false,
             motion_sampling: PresentationMotionMode::default(),
@@ -309,6 +316,7 @@ impl DebugSettings {
             DebugFlag::StageCollision => self.stage_collision,
             DebugFlag::AnimationBones => self.animation_bones,
             DebugFlag::AttackHitboxes => self.attack_hitboxes,
+            DebugFlag::Hurtboxes => self.hurtboxes,
             DebugFlag::DrawThroughGeometry => self.draw_through_geometry,
             DebugFlag::Camera => self.camera,
         }
@@ -321,6 +329,7 @@ impl DebugSettings {
             DebugFlag::StageCollision => self.stage_collision = !self.stage_collision,
             DebugFlag::AnimationBones => self.animation_bones = !self.animation_bones,
             DebugFlag::AttackHitboxes => self.attack_hitboxes = !self.attack_hitboxes,
+            DebugFlag::Hurtboxes => self.hurtboxes = !self.hurtboxes,
             DebugFlag::DrawThroughGeometry => {
                 self.draw_through_geometry = !self.draw_through_geometry
             }
@@ -621,6 +630,10 @@ pub fn animation_bones_enabled(settings: Res<DebugSettings>) -> bool {
 
 pub fn attack_hitboxes_enabled(settings: Res<DebugSettings>) -> bool {
     settings.attack_hitboxes
+}
+
+pub fn hurtboxes_enabled(settings: Res<DebugSettings>) -> bool {
+    settings.hurtboxes
 }
 
 pub fn camera_debug_enabled(settings: Res<DebugSettings>) -> bool {

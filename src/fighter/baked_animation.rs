@@ -28,7 +28,7 @@ use crate::{
         visual::FighterAnimations,
     },
     math::{
-        int::{FGWide, FGi32},
+        int::{FGWide, FGi32, FGi32Ext},
         vec3::FGVec3,
     },
     schedule::GameplaySet,
@@ -106,6 +106,28 @@ impl FixedMat4 {
         self.cols[3][0] = translation.x;
         self.cols[3][1] = translation.y;
         self.cols[3][2] = translation.z;
+    }
+
+    pub fn with_translation(mut self, translation: FGVec3) -> Self {
+        self.translate(translation);
+        self
+    }
+
+    /// Replaces the rotation with XYZ Euler angles expressed in radians.
+    pub fn with_rotation(mut self, rotation: FGVec3) -> Self {
+        let (sin_x, cos_x) = rotation.x.sin_cos();
+        let (sin_y, cos_y) = rotation.y.sin_cos();
+        let (sin_z, cos_z) = rotation.z.sin_cos();
+        self.cols[0][0] = cos_y * cos_z;
+        self.cols[0][1] = cos_x * sin_z + sin_x * sin_y * cos_z;
+        self.cols[0][2] = sin_x * sin_z - cos_x * sin_y * cos_z;
+        self.cols[1][0] = -cos_y * sin_z;
+        self.cols[1][1] = cos_x * cos_z - sin_x * sin_y * sin_z;
+        self.cols[1][2] = sin_x * cos_z + cos_x * sin_y * sin_z;
+        self.cols[2][0] = sin_y;
+        self.cols[2][1] = -sin_x * cos_y;
+        self.cols[2][2] = cos_x * cos_y;
+        self
     }
 
     pub fn get_translation(&self) -> FGVec3 {
@@ -948,5 +970,27 @@ mod tests {
                 .transform_point(FGVec3::lit("1", "0", "0")),
             FGVec3::lit("10", "2", "-4")
         );
+    }
+
+    #[test]
+    fn fixed_matrix_builders_set_euler_rotation_and_translation() {
+        let transform = FixedMat4::IDENTITY
+            .with_rotation(FGVec3::lit("0", "0", "1.5707963267948966"))
+            .with_translation(FGVec3::lit("10", "2", "-3"));
+
+        assert_eq!(
+            transform.transform_point(FGVec3::lit("1", "0", "0")),
+            FGVec3::lit("10", "3", "-3")
+        );
+        assert_eq!(transform.get_translation(), FGVec3::lit("10", "2", "-3"));
+    }
+
+    #[test]
+    fn fixed_matrix_rotation_builder_preserves_translation() {
+        let transform = FixedMat4::IDENTITY
+            .with_translation(FGVec3::lit("4", "5", "6"))
+            .with_rotation(FGVec3::lit("0", "0", "1.5707963267948966"));
+
+        assert_eq!(transform.get_translation(), FGVec3::lit("4", "5", "6"));
     }
 }

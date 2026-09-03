@@ -1,11 +1,22 @@
 use std::collections::{HashMap, VecDeque};
 
-use bevy::{asset::Handle, ecs::component::Component, reflect::Reflect};
+use bevy::prelude::*;
+use bevy_ggrs::prelude::GgrsSchedule;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    fighter::{FighterAttributes, animation::AnimKind},
-    math::{int::FGi32, vec3::FGVec3},
+    fighter::{
+        Fighter, FighterAttributes, FighterFacingDirection, FighterTranslation,
+        animation::AnimKind,
+        baked_animation::{FighterBoneMatrices, FixedMat4},
+        hurtbox::FixedAffineCapsule,
+        manifest::FighterManifest,
+    },
+    math::{
+        int::{FGi32, FGi32Ext},
+        vec3::FGVec3,
+    },
+    schedule::GameplaySet,
     scripting::FighterAttackScript,
 };
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -164,7 +175,69 @@ pub fn update_active_hitbox_list(script: &FighterAttackScript, list: &mut Vec<us
         .collect()
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct FighterSolvedHurtbox {
+    pub hurtbox_idx: usize,
+    pub capsule: FixedAffineCapsule,
+}
+
 #[derive(Component)]
 pub struct FighterAttackScriptAssets {
     pub scripts: HashMap<AttackKind, Handle<FighterAttackScript>>,
+}
+#[derive(Component, Clone, Debug, Default)]
+pub struct FighterSolvedHurtboxes(pub Vec<FighterSolvedHurtbox>);
+
+pub fn solve_hurtboxes(
+    mut query: Query<(
+        &FighterBoneMatrices,
+        &FighterTranslation,
+        &FighterFacingDirection,
+        &mut FighterSolvedHurtboxes,
+        &Fighter,
+    )>,
+    manifests: Res<Assets<FighterManifest>>,
+) {
+    for (matrices, translation, facing_direction, mut solved_hurtboxes, fighter) in &mut query {
+        let manifest = manifests
+            .get(&fighter.manifest)
+            .expect("Manifest should be valid");
+        let fighter_trf = translation.get_3d_transform(facing_direction);
+        solved_hurtboxes.0.clear();
+        for (hurtbox_idx, hurtbox) in manifest.hurtboxes.iter().enumerate() {
+            let bone_matrix = matrices.get_current(&hurtbox.bone);
+
+            if let Some(bone_matrix) = bone_matrix {
+                let to_global = fighter_trf.mul(bone_matrix);
+                let hurtbox_trf = FixedMat4::IDENTITY
+                    .with_rotation(FGVec3::new(
+                        hurtbox.rotation.x.to_radians(),
+                        hurtbox.rotation.y.to_radians(),
+                        hurtbox.rotation.z.to_radians(),
+                    ))
+                    .with_translation(hurtbox.offset);
+                solved_hurtboxes.0.push(FighterSolvedHurtbox {
+                    hurtbox_idx,
+                    capsule: FixedAffineCapsule::new(
+                        to_global.mul(hurtbox_trf),
+                        hurtbox.half_length,
+                        hurtbox.radius,
+                    ),
+                });
+            }
+        }
+    }
+}
+
+pub struct FighterAttackPlugin;
+
+impl Plugin for FighterAttackPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(
+            GgrsSchedule,
+            solve_hurtboxes
+                .after(crate::fighter::baked_animation::update_fighter_bone_matrices)
+                .in_set(GameplaySet::Animation),
+        );
+    }
 }

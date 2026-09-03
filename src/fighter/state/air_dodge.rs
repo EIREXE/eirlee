@@ -1,14 +1,10 @@
-
-
 use crate::{
     fighter::{
         animation::AnimKind,
         collision,
         state::{
-            FighterState, FighterStateContext, FighterStateImpl, air,
-            fall::FallState,
-            ground::GroundedStateCommon,
-            land::LandingState,
+            FighterState, FighterStateContext, FighterStateImpl, air, fall::FallState,
+            ground::GroundedStateCommon, land::LandingState,
         },
     },
     input,
@@ -51,9 +47,7 @@ impl FighterStateImpl for AirDodgeState {
             let grounded_common = GroundedStateCommon {
                 current_line_id: res.line_id,
             };
-            Some(FighterState::Land(LandingState {
-                grounded_common
-            }))
+            Some(FighterState::Land(LandingState { grounded_common }))
         } else {
             None
         }

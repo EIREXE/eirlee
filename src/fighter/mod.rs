@@ -13,6 +13,7 @@ pub mod baked_animation;
 pub mod collision;
 pub mod debug;
 pub mod ecb;
+pub mod hurtbox;
 pub mod manifest;
 pub mod motion;
 pub mod state;
@@ -29,7 +30,7 @@ pub use motion::{FighterPreviousTranslation, FighterTranslation, FighterVelocity
 
 use crate::{
     fighter::{
-        attack::FighterAttackScriptAssets,
+        attack::{FighterAttackPlugin, FighterAttackScriptAssets, FighterSolvedHurtboxes},
         manifest::FighterManifest,
         state::{FighterState, fall::FallState},
         visual::FighterAnimations,
@@ -105,7 +106,7 @@ pub struct Fighter {
 
 impl Plugin for FighterPlugin {
     fn build(&self, app: &mut App) {
-        app
+        app.add_plugins(FighterAttackPlugin)
             // Every state gets a chance to interrupt itself, in priority order.
             .add_systems(
                 GgrsSchedule,
@@ -171,10 +172,11 @@ impl Plugin for FighterPlugin {
             )
             .add_systems(
                 FixedPostUpdate,
-                debug::hurtbox_debug
+                debug::hurtbox_debug.run_if(crate::debug_tools::hurtboxes_enabled),
             )
             .rollback_component_with_clone::<FighterState>()
             .rollback_component_with_clone::<FighterHitboxes>()
+            .rollback_component_with_clone::<FighterSolvedHurtboxes>()
             .checksum_component_with_hash::<FighterState>()
             .checksum_component_with_hash::<FighterFacingDirection>()
             .register_type::<FighterFacingDirection>();
@@ -230,9 +232,12 @@ pub fn spawn_fighter(
         attack_scripts,
         FighterState::Fall(FallState),
         animation::FighterAnimationFrame::new(animation::AnimKind::Wait, true),
-        baked_animation::FighterBoneMatrices::default(),
-        FighterVisual,
-        FighterInput::default(),
-        crate::camera::FighterCameraExtents::default(),
+        (
+            baked_animation::FighterBoneMatrices::default(),
+            FighterSolvedHurtboxes::default(),
+            FighterVisual,
+            FighterInput::default(),
+            crate::camera::FighterCameraExtents::default(),
+        ),
     ));
 }

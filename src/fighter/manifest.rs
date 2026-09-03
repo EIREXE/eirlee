@@ -7,7 +7,10 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use crate::{
-    AppState, fighter::{FighterAttributes, FighterCameraProfile, animation::AnimKind, attack::AttackKind}, game_settings::GameSettings, math::{int::FGi32, vec3::FGVec3},
+    AppState,
+    fighter::{FighterAttributes, FighterCameraProfile, animation::AnimKind, attack::AttackKind},
+    game_settings::GameSettings,
+    math::{int::FGi32, vec3::FGVec3},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Reflect, EnumIter)]
@@ -23,7 +26,7 @@ pub struct FighterHurtbox {
     #[reflect(ignore)]
     pub half_length: FGi32,
     #[reflect(ignore)]
-    pub radius: FGi32
+    pub radius: FGi32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Asset, Reflect)]

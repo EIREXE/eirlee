@@ -1,12 +1,8 @@
-
-
 use super::{FighterStateContext, FighterStateImpl, ground};
 use crate::fighter::animation::AnimKind;
-use crate::fighter::state::fall::FallState;
-use crate::fighter::state::ground::{
-    GroundedMotionResult, GroundedStateCommon,
-};
 use crate::fighter::state::FighterState;
+use crate::fighter::state::fall::FallState;
+use crate::fighter::state::ground::{GroundedMotionResult, GroundedStateCommon};
 
 #[derive(Debug, Clone, Hash)]
 pub struct WaitState {
@@ -16,12 +12,14 @@ pub struct WaitState {
 impl FighterStateImpl for WaitState {
     const NAME: &'static str = "Wait";
     fn check_interrupt(&self, state_context: &mut FighterStateContext) -> Option<FighterState> {
-        if let Some(state) = ground::grounded_movement_common_interrupts(state_context, &self.grounded_common) {
+        if let Some(state) =
+            ground::grounded_movement_common_interrupts(state_context, &self.grounded_common)
+        {
             Some(state)
         } else if let Some(state) = ground::grounded_movement_standstill_common_interrupts(
             state_context,
-            &self.grounded_common)
-        {
+            &self.grounded_common,
+        ) {
             // Don't transition into yourself
             if let FighterState::Wait(_) = state {
                 None

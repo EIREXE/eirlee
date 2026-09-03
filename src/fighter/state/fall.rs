@@ -45,9 +45,7 @@ impl FighterStateImpl for FallState {
             let grounded_common = GroundedStateCommon {
                 current_line_id: res.line_id,
             };
-            Some(FighterState::Land(LandingState {
-                grounded_common
-            }))
+            Some(FighterState::Land(LandingState { grounded_common }))
         } else {
             None
         }

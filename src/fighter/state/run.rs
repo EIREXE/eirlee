@@ -1,4 +1,3 @@
-
 use bevy::prelude::*;
 
 use super::{FighterStateContext, FighterStateImpl, ground, wait, walk};

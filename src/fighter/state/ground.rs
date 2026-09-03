@@ -2,7 +2,9 @@
 //! ECS types so it stays cheap to reason about and to unit-test — it has to be
 //! bit-for-bit deterministic for rollback.
 
-use crate::fighter::state::{FighterState, FighterStateContext, dash, ground_attack, turn, wait, walk};
+use crate::fighter::state::{
+    FighterState, FighterStateContext, dash, ground_attack, turn, wait, walk,
+};
 use crate::fighter::{
     FighterAttributes, FighterPreviousTranslation, FighterTranslation, FighterVelocity,
 };

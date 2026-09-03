@@ -1,21 +1,21 @@
 //! Fighter debug views: gizmos and the egui inspector window.
 
-use std::ops::Mul;
+use std::sync::OnceLock;
 
 use bevy::color::palettes::css::ORANGE;
-use bevy::gizmos::primitives::dim3::Capsule3dBuilder;
 use bevy::{color::palettes::css::YELLOW, prelude::*};
 use bevy_egui::{EguiContexts, egui};
 
 use crate::debug_tools::{DebugSettings, FighterDebugRowKind};
 use crate::fighter::animation::FighterAnimationFrame;
+use crate::fighter::attack::FighterSolvedHurtboxes;
 use crate::fighter::baked_animation::{BakedFighterAnimations, FighterBoneMatrices};
 use crate::fighter::ecb::FighterPreviousECB;
-use crate::fighter::manifest::FighterManifest;
+use crate::fighter::hurtbox::FixedAffineCapsule;
 use crate::fighter::state::StateNameDebug;
 use crate::fighter::visual::FighterAnimations;
 use crate::fighter::{
-    Fighter, FighterECB, FighterFacingDirection, FighterHitboxes, FighterPreviousTranslation,
+    FighterECB, FighterFacingDirection, FighterHitboxes, FighterPreviousTranslation,
     FighterTranslation, FighterVelocity,
 };
 use crate::input::FighterInput;
@@ -160,49 +160,154 @@ pub fn animation_debug(query: Query<(&GlobalTransform, &FighterBoneMatrices)>, m
     }
 }
 
-pub fn hurtbox_debug(
-    query: Query<(
-        &FighterBoneMatrices,
-        &FighterTranslation,
-        &FighterFacingDirection,
-        &Fighter,
-    )>,
-    manifests: Res<Assets<FighterManifest>>,
-    mut gizmos: Gizmos,
-) {
-    for (matrices, translation, facing_direction, fighter) in query {
-        let manifest = manifests
-            .get(&fighter.manifest)
-            .expect("Manifest should be valid");
-        let fighter_trf = translation.get_3d_transform(facing_direction);
-        for hurtbox in manifest.hurtboxes.iter() {
-            let bone_matrix = matrices.get_current(&hurtbox.bone);
-
-            if let Some(bone_matrix) = bone_matrix {
-                let to_global = fighter_trf.mul(bone_matrix);
-                let capsule = Capsule3d {
-                    half_length: hurtbox.half_length.to_num(),
-                    radius: hurtbox.radius.to_num(),
-                };
-
-                let hurtbox_trf = Transform::IDENTITY
-                    .with_rotation(Quat::from_euler(
-                        EulerRot::XYZ,
-                        f32::to_radians(hurtbox.rotation.x.to_num()),
-                        f32::to_radians(hurtbox.rotation.y.to_num()),
-                        f32::to_radians(hurtbox.rotation.z.to_num()),
-                    ))
-                    .with_translation(hurtbox.offset.to_vec3());
-
-                let hurtbox_trf = Transform::from_matrix(to_global.to_mat4()).mul(hurtbox_trf);
-
-                gizmos.primitive_3d(
-                    &capsule,
-                    hurtbox_trf.to_isometry(),
-                    bevy::color::palettes::css::YELLOW,
-                );
-            }
+pub fn hurtbox_debug(query: Query<&FighterSolvedHurtboxes>, mut gizmos: Gizmos) {
+    for hurtboxes in &query {
+        for hurtbox in &hurtboxes.0 {
+            draw_affine_capsule(&mut gizmos, hurtbox.capsule, YELLOW);
         }
+    }
+}
+
+fn draw_affine_capsule(
+    gizmos: &mut Gizmos,
+    capsule: FixedAffineCapsule,
+    color: impl Into<Color> + Copy,
+) {
+    let color = color.into();
+    let wireframe = capsule_wireframe();
+    let transform = capsule.transform.to_mat4();
+    let radius = capsule.radius.to_num::<f32>();
+    let half_length = capsule.half_length.to_num::<f32>();
+    let vertices: Vec<_> = wireframe
+        .vertices
+        .iter()
+        .map(|vertex| {
+            transform.transform_point3(
+                vertex.direction * radius + Vec3::Y * vertex.center_sign * half_length,
+            )
+        })
+        .collect();
+    for &(start, end) in &wireframe.lines {
+        gizmos.line(vertices[start], vertices[end], color);
+    }
+}
+
+struct CapsuleWireVertex {
+    direction: Vec3,
+    center_sign: f32,
+}
+
+struct CapsuleWireframe {
+    vertices: Vec<CapsuleWireVertex>,
+    lines: Vec<(usize, usize)>,
+}
+
+fn capsule_wireframe() -> &'static CapsuleWireframe {
+    const RESOLUTION: usize = 16;
+    const HEMISPHERE_STEPS: usize = 4;
+    static WIREFRAME: OnceLock<CapsuleWireframe> = OnceLock::new();
+
+    WIREFRAME.get_or_init(|| {
+        let mut vertices = Vec::new();
+        let mut lines = Vec::new();
+        let mut lower_ring = Vec::with_capacity(RESOLUTION);
+        let mut upper_ring = Vec::with_capacity(RESOLUTION);
+
+        for index in 0..RESOLUTION {
+            let angle = index as f32 * std::f32::consts::TAU / RESOLUTION as f32;
+            let (sin, cos) = angle.sin_cos();
+            lower_ring.push(vertices.len());
+            vertices.push(CapsuleWireVertex {
+                direction: Vec3::new(cos, 0.0, sin),
+                center_sign: -1.0,
+            });
+            upper_ring.push(vertices.len());
+            vertices.push(CapsuleWireVertex {
+                direction: Vec3::new(cos, 0.0, sin),
+                center_sign: 1.0,
+            });
+        }
+
+        let lower_pole = vertices.len();
+        vertices.push(CapsuleWireVertex {
+            direction: Vec3::NEG_Y,
+            center_sign: -1.0,
+        });
+        let upper_pole = vertices.len();
+        vertices.push(CapsuleWireVertex {
+            direction: Vec3::Y,
+            center_sign: 1.0,
+        });
+
+        for index in 0..RESOLUTION {
+            let next = (index + 1) % RESOLUTION;
+            lines.push((lower_ring[index], lower_ring[next]));
+            lines.push((upper_ring[index], upper_ring[next]));
+            lines.push((lower_ring[index], upper_ring[index]));
+
+            let angle = index as f32 * std::f32::consts::TAU / RESOLUTION as f32;
+            let (sin_azimuth, cos_azimuth) = angle.sin_cos();
+            let mut lower_previous = lower_ring[index];
+            let mut upper_previous = upper_ring[index];
+            for step in 1..HEMISPHERE_STEPS {
+                let latitude = step as f32 * std::f32::consts::FRAC_PI_2
+                    / HEMISPHERE_STEPS as f32;
+                let (sin_latitude, cos_latitude) = latitude.sin_cos();
+
+                let lower = vertices.len();
+                vertices.push(CapsuleWireVertex {
+                    direction: Vec3::new(
+                        cos_azimuth * cos_latitude,
+                        -sin_latitude,
+                        sin_azimuth * cos_latitude,
+                    ),
+                    center_sign: -1.0,
+                });
+                lines.push((lower_previous, lower));
+                lower_previous = lower;
+
+                let upper = vertices.len();
+                vertices.push(CapsuleWireVertex {
+                    direction: Vec3::new(
+                        cos_azimuth * cos_latitude,
+                        sin_latitude,
+                        sin_azimuth * cos_latitude,
+                    ),
+                    center_sign: 1.0,
+                });
+                lines.push((upper_previous, upper));
+                upper_previous = upper;
+            }
+            lines.push((lower_previous, lower_pole));
+            lines.push((upper_previous, upper_pole));
+        }
+
+        CapsuleWireframe { vertices, lines }
+    })
+}
+
+#[cfg(test)]
+mod capsule_debug_tests {
+    use super::*;
+
+    #[test]
+    fn capsule_wireframe_caps_extend_in_opposite_directions() {
+        let wireframe = capsule_wireframe();
+        let lower: Vec<_> = wireframe
+            .vertices
+            .iter()
+            .filter(|vertex| vertex.center_sign < 0.0)
+            .collect();
+        let upper: Vec<_> = wireframe
+            .vertices
+            .iter()
+            .filter(|vertex| vertex.center_sign > 0.0)
+            .collect();
+
+        assert!(lower.iter().all(|vertex| vertex.direction.y <= 0.0));
+        assert!(upper.iter().all(|vertex| vertex.direction.y >= 0.0));
+        assert!(lower.iter().any(|vertex| vertex.direction == Vec3::NEG_Y));
+        assert!(upper.iter().any(|vertex| vertex.direction == Vec3::Y));
     }
 }
 

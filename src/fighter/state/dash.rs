@@ -1,4 +1,4 @@
-use std::hash::{Hasher};
+use std::hash::Hasher;
 
 use super::{FighterStateContext, FighterStateImpl, ground, run, wait, walk};
 use crate::fighter::FighterFacingDirection;
