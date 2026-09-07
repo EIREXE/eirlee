@@ -11,7 +11,7 @@ use bevy_ggrs::RollbackFrameRate;
 use enum_cycling::EnumCycle;
 use enum_cycling_derive::EnumCycle;
 
-use crate::player::Player;
+use crate::{player::Player, replay::StopReplayRecording};
 
 pub const PLAYER_DEBUG_ROW_COUNT: usize = 6;
 
@@ -118,6 +118,9 @@ enum DebugFlag {
 
 #[derive(Clone, Copy)]
 enum DebugMenuEntry {
+    StopRecording {
+        label: &'static str,
+    },
     Toggle {
         label: &'static str,
         flag: DebugFlag,
@@ -189,6 +192,9 @@ const RENDERING_MENU: &[DebugMenuEntry] = &[
 ];
 
 const ROOT_MENU: &[DebugMenuEntry] = &[
+    DebugMenuEntry::StopRecording {
+        label: "Stop replay recording",
+    },
     DebugMenuEntry::Submenu {
         label: "Fighter",
         entries: FIGHTER_MENU,
@@ -446,6 +452,7 @@ fn handle_palette_input(
             DebugMenuPage::Static(entries) => {
                 if let Some(entry) = entries.get(settings.selected()) {
                     match entry {
+                        DebugMenuEntry::StopRecording { .. } => {}
                         DebugMenuEntry::MotionSampling { .. } => settings.cycle_motion_sampling(),
                         DebugMenuEntry::GameSpeed { .. } => {
                             if direction > 0 {
@@ -489,6 +496,9 @@ fn handle_palette_input(
     if gamepad.just_pressed(GamepadButton::South) {
         match page {
             DebugMenuPage::Static(entries) if page_len != 0 => match entries[settings.selected()] {
+                DebugMenuEntry::StopRecording { .. } => {
+                    commands.insert_resource(StopReplayRecording);
+                }
                 DebugMenuEntry::Toggle { flag, .. } => {
                     settings.toggle_flag(flag);
                     commands.queue(SaveSettingsDeferred(Duration::from_secs_f32(0.1)));
@@ -550,6 +560,9 @@ fn draw_palette(
                     for (index, entry) in entries.iter().enumerate() {
                         let marker = if index == selected { ">" } else { " " };
                         match entry {
+                            DebugMenuEntry::StopRecording { label } => {
+                                ui.label(format!("{marker} {label}"));
+                            }
                             DebugMenuEntry::Toggle { label, flag } => {
                                 let state = if settings.flag(*flag) { "on" } else { "off" };
                                 ui.label(format!("{marker} {label}: {state}"));

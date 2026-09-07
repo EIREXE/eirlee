@@ -44,6 +44,7 @@ pub mod match_loading;
 mod math;
 pub mod netcode;
 pub mod player;
+pub mod replay;
 pub mod schedule;
 pub mod scripting;
 pub mod stage;
@@ -84,6 +85,7 @@ impl Plugin for GamePlugin {
                 netcode::FighterNetcodePlugin::default(),
                 GameplaySchedulePlugin,
                 input::FighterInputPlugin,
+                replay::ReplayPlugin,
                 debug_tools::DebugToolsPlugin,
                 fighter::FighterPlugin,
                 fighter::baked_animation::BakedAnimationPlugin,

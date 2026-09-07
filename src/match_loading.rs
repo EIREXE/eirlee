@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use bevy::{asset::UntypedHandle, gltf::Gltf, prelude::*};
 use bevy_asset_loader::prelude::*;
 use bevy_ggrs::prelude::Session;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     AppState,
@@ -27,7 +28,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MatchPlayer {
     pub handle: usize,
     pub fighter: FighterId,
@@ -146,7 +147,28 @@ pub fn initiate_default_match(
     mut commands: Commands,
     args: Res<Args>,
     mut next_state: ResMut<NextState<AppState>>,
+    completed: Option<Res<crate::replay::ReplayComplete>>,
 ) {
+    if completed.is_some() {
+        return;
+    }
+    if let Some(path) = &args.play_replay {
+        match crate::replay::load(path) {
+            Ok(replay) => {
+                let request = PendingMatch {
+                    stage: replay.match_config.stage,
+                    players: replay.match_config.players.clone(),
+                };
+                commands.insert_resource(crate::replay::LoadedReplay(replay));
+                initiate_match(&mut commands, &mut next_state, request);
+            }
+            Err(error) => {
+                error!("Replay load failed: {error}");
+                next_state.set(AppState::MatchLoadFailed);
+            }
+        }
+        return;
+    }
     let players = (0..args.players)
         .map(|handle| MatchPlayer {
             handle,
