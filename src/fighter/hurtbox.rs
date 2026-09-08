@@ -18,7 +18,7 @@ pub struct FixedAffineCapsule {
 }
 
 /// An ordinary world-space capsule, used for swept attack volumes.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub struct FixedCapsule {
     pub start: FGVec3,
     pub end: FGVec3,

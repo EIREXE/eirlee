@@ -30,17 +30,8 @@ pub use motion::{FighterPreviousTranslation, FighterTranslation, FighterVelocity
 
 use crate::{
     fighter::{
-        attack::{FighterAttackPlugin, FighterAttackScriptAssets, FighterSolvedHurtboxes},
-        manifest::FighterManifest,
-        state::{FighterState, fall::FallState},
-        visual::FighterAnimations,
-    },
-    input::FighterInput,
-    math::{int::FGi32, vec::FGVec2},
-    player::Player,
-    schedule::GameplaySet,
-    scripting::FighterAttackScript,
-    stage::line::StageCollision,
+        attack::{FighterAttackPlugin, FighterAttackScriptAssets, FighterSolvedHurtboxes}, baked_animation::FighterBoneMatrices, hurtbox::FixedCapsule, manifest::FighterManifest, state::{FighterState, fall::FallState}, visual::FighterAnimations,
+    }, input::FighterInput, math::{int::FGi32, vec::FGVec2}, player::Player, schedule::GameplaySet, scripting::FighterAttackScript, stage::line::StageCollision,
 };
 use state::state_interrupt_system;
 
@@ -182,6 +173,7 @@ impl Plugin for FighterPlugin {
             )
             .rollback_component_with_clone::<FighterState>()
             .rollback_component_with_clone::<FighterHitboxes>()
+            .rollback_component_with_clone::<FighterBoneMatrices>()
             .checksum_component_with_hash::<FighterHitboxes>()
             .rollback_component_with_clone::<FighterSolvedHurtboxes>()
             .checksum_component_with_hash::<FighterSolvedHurtboxes>()
@@ -195,6 +187,7 @@ impl Plugin for FighterPlugin {
 pub struct FighterHitboxes {
     pub attack_script: Option<Handle<FighterAttackScript>>,
     pub active_hitboxes: Vec<usize>,
+    pub active_hitboxes_solved: Vec<FixedCapsule>,
 }
 
 impl FighterHitboxes {
@@ -228,6 +221,7 @@ pub fn spawn_fighter(
             FighterHitboxes {
                 attack_script: None,
                 active_hitboxes: vec![],
+                active_hitboxes_solved: vec![]
             },
         ),
         (

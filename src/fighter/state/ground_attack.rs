@@ -71,12 +71,7 @@ pub fn check_interrupt(
         .input
         .has_command(crate::input::FighterCommands::Attack)
     {
-        let attack_kind = if state_context.input.get_last_frame().movement.y > FGi32::ZERO {
-            AttackKind::UpTilt
-        } else {
-            AttackKind::Jab
-        };
-
+        let attack_kind = state_context.input.get_attack_command_type().to_attack_kind_grounded();
         Some(FighterState::GroundAttack(GroundAttackState {
             attack_kind,
             grounded_common: grounded_common.clone(),

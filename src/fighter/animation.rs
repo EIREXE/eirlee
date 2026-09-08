@@ -83,4 +83,6 @@ pub enum AnimKind {
     // Attacks
     AttackJab1,
     AttackUpTilt,
+    AttackForwardTilt,
+    AttackDownTilt,
 }

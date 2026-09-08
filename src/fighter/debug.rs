@@ -19,6 +19,7 @@ use crate::fighter::{
     FighterTranslation, FighterVelocity,
 };
 use crate::input::FighterInput;
+use crate::math::int::FGi32;
 use crate::math::vec3::FGVec3;
 use crate::player::Player;
 use crate::scripting::FighterAttackScript;
@@ -250,8 +251,7 @@ fn capsule_wireframe() -> &'static CapsuleWireframe {
             let mut lower_previous = lower_ring[index];
             let mut upper_previous = upper_ring[index];
             for step in 1..HEMISPHERE_STEPS {
-                let latitude = step as f32 * std::f32::consts::FRAC_PI_2
-                    / HEMISPHERE_STEPS as f32;
+                let latitude = step as f32 * std::f32::consts::FRAC_PI_2 / HEMISPHERE_STEPS as f32;
                 let (sin_latitude, cos_latitude) = latitude.sin_cos();
 
                 let lower = vertices.len();
@@ -324,86 +324,31 @@ pub fn attack_debug(
 ) {
     for (hitboxes, matrices, translation, facing_direction, frame) in query {
         if let Some(script) = &hitboxes.attack_script {
-            let script = attack_scripts
-                .get(script)
-                .expect("Script ref should be valid");
-            let player_trf = translation.get_3d_transform(facing_direction);
+            for solved_hitbox in hitboxes.active_hitboxes_solved.iter() {
+                let start = solved_hitbox.start.to_vec3();
+                let end = solved_hitbox.end.to_vec3();
+                let center = (solved_hitbox.start + solved_hitbox.end) * FGi32::lit("0.5");
+                let length = (start - end).length();
 
-            for i in hitboxes.active_hitboxes.iter() {
-                let offset = script.hitboxes[*i].offset;
-                let radius = script.hitboxes[*i].radius;
-                let bone = &script.hitboxes[*i].bone;
+                let attack_capsule = Capsule3d {
+                    half_length: length * 0.5,
+                    radius: solved_hitbox.radius.to_num(),
+                };
 
-                let trfs = matrices.get(bone);
+                let aim_dir = (end - start).normalize_or(Vec3::Y);
 
-                if let Some((prev_trf, curr_trf)) = trfs {
-                    let curr_trf = player_trf.mul(curr_trf);
-                    let curr_pos = curr_trf.transform_point(offset);
+                let mut capsule_draw_trf = Transform::IDENTITY;
+                capsule_draw_trf.translation = center.to_vec3();
+                capsule_draw_trf.align(Dir3::Y, aim_dir, Dir3::X, aim_dir.any_orthonormal_vector());
 
-                    let curr_pos_draw = Vec3::new(
-                        curr_pos.x.to_num(),
-                        curr_pos.y.to_num(),
-                        curr_pos.z.to_num(),
-                    );
+                gizmos.primitive_3d(
+                    &attack_capsule,
+                    capsule_draw_trf.to_isometry(),
+                    bevy::color::palettes::css::RED,
+                );
 
-                    if script.hitboxes[*i].start_frame == frame.frame {
-                        gizmos.sphere(
-                            curr_pos_draw,
-                            radius.to_num(),
-                            bevy::color::palettes::css::RED,
-                        );
-                        continue;
-                    }
-
-                    let prev_trf = player_trf.mul(prev_trf);
-
-                    let prev_pos = prev_trf.transform_point(offset);
-
-                    let prev_pos_draw = Vec3::new(
-                        prev_pos.x.to_num(),
-                        prev_pos.y.to_num(),
-                        prev_pos.z.to_num(),
-                    );
-
-                    let dist = Dir3::new_and_length(curr_pos_draw - prev_pos_draw);
-
-                    if let Ok((aim_dir, dist)) = dist {
-                        let attack_capsule = Capsule3d {
-                            half_length: dist * 0.5,
-                            radius: radius.to_num(),
-                        };
-                        let mut capsule_draw_trf = Transform::IDENTITY;
-                        capsule_draw_trf.align(
-                            Dir3::Y,
-                            aim_dir,
-                            Dir3::X,
-                            aim_dir.any_orthonormal_vector(),
-                        );
-                        capsule_draw_trf.translation = (prev_pos_draw + curr_pos_draw) * 0.5;
-                        gizmos.primitive_3d(
-                            &attack_capsule,
-                            capsule_draw_trf.to_isometry(),
-                            bevy::color::palettes::css::RED,
-                        );
-                    }
-
-                    gizmos.cross(
-                        curr_trf
-                            .transform_point(FGVec3::lit("0.0", "0.0", "0.0"))
-                            .to_vec3(),
-                        1.0,
-                        bevy::color::palettes::css::BLUE,
-                    );
-                    gizmos.cross(
-                        curr_trf.to_mat4().transform_point(Vec3::ZERO),
-                        1.0,
-                        bevy::color::palettes::css::HOT_PINK,
-                    );
-
-                    gizmos.axes(curr_trf.to_mat4(), 1.0);
-                } else {
-                    warn!("Bone not found required by attack script: {}", bone);
-                }
+                gizmos.cross(start, 1.0, bevy::color::palettes::css::GREEN);
+                gizmos.cross(end, 1.0, bevy::color::palettes::css::GREEN);
             }
         }
     }
