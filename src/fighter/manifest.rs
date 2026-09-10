@@ -73,8 +73,8 @@ impl AssetCollection for FighterManifestAssets {
     }
 }
 
-#[derive(Resource)]
-pub struct FighterManifestRegistry(HashMap<FighterId, Handle<FighterManifest>>);
+#[derive(Resource, Deref)]
+pub struct FighterManifestRegistry(pub HashMap<FighterId, Handle<FighterManifest>>);
 
 impl FighterManifestRegistry {
     pub fn get(&self, fighter: FighterId) -> Option<&Handle<FighterManifest>> {

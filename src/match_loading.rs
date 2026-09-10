@@ -169,6 +169,9 @@ pub fn initiate_default_match(
         }
         return;
     }
+    if !args.synctest {
+        return;
+    }
     let players = (0..args.players)
         .map(|handle| MatchPlayer {
             handle,

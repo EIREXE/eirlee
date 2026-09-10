@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_asset_loader::asset_collection::AssetCollection;
 use serde::{Deserialize, Serialize};
 
-use crate::math::int::FGi32;
+use crate::{math::int::FGi32, menus::style::FGUiStyle};
 
 #[derive(Reflect, Serialize, Deserialize, Clone)]
 #[reflect(opaque)]
@@ -34,7 +34,9 @@ pub struct GameSettings {
 #[derive(AssetCollection, Resource)]
 pub struct CommonAssets {
     #[asset(path = "game_settings.ron")]
-    game_settings: Handle<GameSettings>,
+    pub game_settings: Handle<GameSettings>,
+    #[asset(path = "game.stylesheet.ron")]
+    pub ui_style: Handle<FGUiStyle>,
 }
 
 impl FromWorld for GameSettings {

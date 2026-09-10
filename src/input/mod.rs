@@ -21,6 +21,27 @@ pub use map::{
     KeyboardInputMapElement,
 };
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LocalInputSource {
+    Keyboard,
+    Gamepad(Entity),
+}
+
+/// Maps an input source to a player index
+#[derive(Resource, Clone, Debug, Default, Deref, DerefMut)]
+pub struct LocalInputAssignments(pub Vec<(usize, LocalInputSource)>);
+
+impl LocalInputAssignments {
+    pub fn get_free_player_index(&self) -> Option<usize> {
+        for i in 0..16 {
+            if let None = self.iter().find(|(idx, _)| *idx == i) {
+                return Some(i);
+            }
+        }
+        None
+    }
+}
+
 use crate::game_settings::GameSettings;
 use crate::math::int::FGi32;
 use crate::netcode::GGRSCfg;
@@ -102,6 +123,7 @@ impl Plugin for FighterInputPlugin {
                 },
             ],
         })
+        .init_resource::<LocalInputAssignments>()
         .add_plugins(gamecube::GamecubeAdapterPlugin)
         .add_systems(ReadInputs, read_local_inputs)
         .add_systems(
@@ -128,22 +150,29 @@ fn read_local_inputs(
     input_map: Res<BaseInputMap>,
     gc_ports: Res<gamecube::GcPorts>,
     gamepads: Query<&Gamepad>,
+    assignments: Res<LocalInputAssignments>,
     local_players: Res<LocalPlayers>,
     game_settings: Res<GameSettings>
 ) {
     let mut local_inputs = HashMap::new();
 
     for handle in &local_players.0 {
-        let gamepad = gc_ports
-            .entities
-            .get(*handle)
-            .copied()
-            .flatten()
-            .and_then(|entity| gamepads.get(entity).ok());
+        let assigned = assignments.0.iter().find(|(player_handle, _)| player_handle == handle);
+        let gamepad = match assigned {
+            Some((_, LocalInputSource::Gamepad(entity))) => gamepads.get(*entity).ok(),
+            Some((_, LocalInputSource::Keyboard)) => None,
+            None => gc_ports.entities.get(*handle).copied().flatten().and_then(|entity| gamepads.get(entity).ok()),
+        };
 
-        let mut input_frame = match gamepad {
+        let mut input_frame = match assigned {
+            Some((_, LocalInputSource::Keyboard)) => keyboard::sample_keyboard(&key, &input_map),
+            Some((_, LocalInputSource::Gamepad(_))) => gamepad
+                .map(|pad| gamepad::sample_gamepad(pad, &input_map))
+                .unwrap_or_default(),
+            None => match gamepad {
             Some(pad) => gamepad::sample_gamepad(pad, &input_map),
             None => keyboard::sample_keyboard(&key, &input_map),
+            },
         };
 
         // preprocess frame

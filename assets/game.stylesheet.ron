@@ -1,0 +1,47 @@
+(
+    button_styles: {
+        MainMenu: (
+            focus_outline_width_px: 4,
+            focus_outline_offset_px: 2,
+            focus_outline_color: Srgba((red: 1.0, green: 1.0, blue: 0.0, alpha: 1.0)),
+            normal: (
+                background_color: Srgba((red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)),
+                border_color: Srgba((red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)),
+                text_color: Srgba((red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)),
+                box_shadow: (),
+            ),
+            press: (
+                background_color: Srgba((red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)),
+                border_color: Srgba((red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)),
+                text_color: Srgba((red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)),
+                box_shadow: (),
+            ),
+            hover: (
+                background_color: Srgba((red: 0.0, green: 1.0, blue: 0.0, alpha: 1.0)),
+                border_color: Srgba((red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)),
+                text_color: Srgba((red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)),
+                box_shadow: (),
+            )
+        ),
+        CharacterSelectCharacter: (
+            focus_outline_width_px: 4,
+            focus_outline_offset_px: 2,
+            focus_outline_color: Srgba((red: 1.0, green: 1.0, blue: 0.0, alpha: 1.0)),
+            normal: (
+                background_color: Srgba((red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)),
+                text_color: Srgba((red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)),
+                box_shadow: (),
+            ),
+            press: (
+                background_color: Srgba((red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)),
+                text_color: Srgba((red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)),
+                box_shadow: (),
+            ),
+            hover: (
+                background_color: Srgba((red: 0.0, green: 1.0, blue: 0.0, alpha: 1.0)),
+                text_color: Srgba((red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)),
+                box_shadow: (),
+            )
+        )
+    }
+)

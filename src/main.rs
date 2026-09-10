@@ -30,7 +30,6 @@ fn main() -> AppExit {
     App::new()
         .add_plugins(default_plugins)
         .add_plugins(avian3d::prelude::PhysicsPlugins::default())
-        .add_plugins(jackdaw_runtime::JackdawPlugin)
         .add_plugins(game_test::GamePlugin)
         .add_plugins(FreeCameraPlugin)
         .add_plugins(EguiPlugin::default())

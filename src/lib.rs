@@ -48,6 +48,7 @@ pub mod replay;
 pub mod schedule;
 pub mod scripting;
 pub mod stage;
+pub mod menus;
 
 #[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
 pub enum AppState {
@@ -59,7 +60,9 @@ pub enum AppState {
     LoadStageManifests,
     PrepareStageManifests,
     CommonAssetLoadFailed,
-    Idle,
+    MainMenu,
+    CharacterSelect,
+    StageSelect,
     LoadingMatch,
     PreparingMatch,
     InMatch,
@@ -96,6 +99,7 @@ impl Plugin for GamePlugin {
                 bevy_common_assets::ron::RonAssetPlugin::<StageManifest>::new(&["stage.ron"]),
                 bevy_common_assets::ron::RonAssetPlugin::<GameSettings>::new(&["ron"]),
             ))
+            .add_plugins(menus::MenuPlugin)
             .add_loading_state(
                 LoadingState::new(AppState::LoadingMatch)
                     .continue_to_state(AppState::PreparingMatch)
@@ -134,7 +138,7 @@ impl Plugin for GamePlugin {
                 stage::manifest::prepare_stage_manifests,
             )
             .add_systems(
-                OnEnter(AppState::Idle),
+                OnEnter(AppState::MainMenu),
                 match_loading::initiate_default_match,
             )
             .add_systems(
@@ -142,7 +146,6 @@ impl Plugin for GamePlugin {
                 match_loading::prepare_match,
             )
             .add_systems(OnExit(AppState::InMatch), match_loading::cleanup_match)
-            .add_systems(Update, spin_cubes)
             .insert_resource(args::Args::parse());
     }
 }
@@ -155,28 +158,4 @@ fn wait_for_asset_processor(
     {
         next_state.set(AppState::LoadCommonAssets);
     }
-}
-
-/// Spin-rate in radians per second. Attach it in the inspector; the
-/// editor sees this component with no registration code because Bevy's
-/// `reflect_auto_register` picks up the `Reflect` derive. `Default` +
-/// `#[reflect(Default)]` let the editor add it and the game reconstruct
-/// it with sensible starting values.
-#[derive(Component, Reflect, Default)]
-#[reflect(Component, Default, @EditorCategory::new("Actor"))]
-pub struct SpinningCube {
-    pub speed: f32,
-}
-
-fn spin_cubes(time: Res<Time>, mut cubes: Query<(&SpinningCube, &mut Transform)>) {
-    let dt = time.delta_secs();
-    for (cube, mut transform) in &mut cubes {
-        transform.rotate_y(cube.speed * dt);
-    }
-}
-
-#[derive(Component, Reflect, Default)]
-#[reflect(Component, Default, @EditorCategory::new("Actor"))]
-pub struct TestCube {
-    pub frog: f32,
 }

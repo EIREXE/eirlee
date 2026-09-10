@@ -11,7 +11,7 @@ use bevy_ggrs::RollbackFrameRate;
 use enum_cycling::EnumCycle;
 use enum_cycling_derive::EnumCycle;
 
-use crate::{player::Player, replay::StopReplayRecording};
+use crate::{player::Player, replay::StopReplayRecording, AppState};
 
 pub const PLAYER_DEBUG_ROW_COUNT: usize = 6;
 
@@ -365,7 +365,9 @@ impl Plugin for DebugToolsPlugin {
         app.init_resource::<DebugSettings>()
             .add_systems(
                 Update,
-                (handle_palette_input, sync_gizmo_depth_bias).chain(),
+                (handle_palette_input, sync_gizmo_depth_bias)
+                    .chain()
+                    .run_if(in_state(AppState::InMatch)),
             )
             .add_systems(EguiPrimaryContextPass, draw_palette);
     }

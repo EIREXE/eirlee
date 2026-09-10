@@ -173,7 +173,7 @@ pub fn prepare_stage_manifests(
     }
 
     commands.insert_resource(StageManifestRegistry(registry));
-    next_state.set(AppState::Idle);
+    next_state.set(AppState::MainMenu);
 }
 
 impl StageManifest {

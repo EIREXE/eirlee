@@ -239,7 +239,7 @@ fn finish_playback(mut commands: Commands, mut next_state: ResMut<NextState<AppS
         commands.remove_resource::<ReplayRuntime>();
         commands.remove_resource::<LoadedReplay>();
         commands.insert_resource(ReplayComplete);
-        next_state.set(AppState::Idle);
+        next_state.set(AppState::MainMenu);
     }
 }
 
