@@ -177,7 +177,8 @@ pub fn postprocess_input(
             {
                 input.frames_in_x_flick_deadzone = 1;
             } else {
-                input.frames_in_x_flick_deadzone = input.frames_in_x_flick_deadzone.saturating_add(1);
+                input.frames_in_x_flick_deadzone =
+                    input.frames_in_x_flick_deadzone.saturating_add(1);
             }
         }
 
@@ -190,7 +191,8 @@ pub fn postprocess_input(
             {
                 input.frames_in_y_flick_deadzone = 1;
             } else {
-                input.frames_in_y_flick_deadzone = input.frames_in_y_flick_deadzone.saturating_add(1);
+                input.frames_in_y_flick_deadzone =
+                    input.frames_in_y_flick_deadzone.saturating_add(1);
             }
         }
 
@@ -228,9 +230,11 @@ pub fn postprocess_input(
             input.set_lifetime(command_to_set, game_settings.input_common.input_buffer_size);
         }
 
-        let mut y_flick_detected = y_abs >= axis_threshold && input.frames_in_y_flick_deadzone <= frame_threshold;
-        let mut x_flick_detected = x_abs >= axis_threshold && input.frames_in_x_flick_deadzone <= frame_threshold;
-        
+        let mut y_flick_detected =
+            y_abs >= axis_threshold && input.frames_in_y_flick_deadzone <= frame_threshold;
+        let mut x_flick_detected =
+            x_abs >= axis_threshold && input.frames_in_x_flick_deadzone <= frame_threshold;
+
         // if both flicks are detected, only one wins
 
         if x_flick_detected && y_flick_detected {
@@ -239,7 +243,7 @@ pub fn postprocess_input(
         }
 
         let attack_detected = input.current_frame.attack && !input.prev_frame.attack;
-        
+
         // Tilt/smash up/down
         if attack_detected {
             let attack_type = if y_flick_detected {
@@ -270,10 +274,12 @@ pub fn postprocess_input(
                 FighterAttackCommandType::Neutral
             };
 
-            input.set_lifetime(FighterCommands::Attack, game_settings.input_common.input_buffer_size);
+            input.set_lifetime(
+                FighterCommands::Attack,
+                game_settings.input_common.input_buffer_size,
+            );
             input.set_attack_command_type(attack_type);
         }
-
 
         if x_flick_detected {
             input.clear_command(FighterCommands::SmashMoveLeft);

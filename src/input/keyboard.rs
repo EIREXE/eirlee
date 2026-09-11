@@ -33,7 +33,6 @@ pub fn sample_keyboard(key: &ButtonInput<KeyCode>, input_map: &BaseInputMap) -> 
             InputMapAction::Jump => input_frame.jump = action_strength != FGi32::ZERO,
             InputMapAction::Shield => input_frame.shield = action_strength != FGi32::ZERO,
             InputMapAction::Attack => input_frame.attack = action_strength != FGi32::ZERO,
-
         }
     }
 

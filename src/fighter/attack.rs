@@ -6,11 +6,18 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     fighter::{
-        Fighter, FighterAttributes, FighterFacingDirection, FighterHitboxes, FighterTranslation, animation::{AnimKind, FighterAnimationFrame}, baked_animation::{FighterBoneMatrices, FixedMat4}, hurtbox::{FixedAffineCapsule, FixedCapsule}, manifest::FighterManifest,
-    }, math::{
+        Fighter, FighterAttributes, FighterFacingDirection, FighterHitboxes, FighterTranslation,
+        animation::{AnimKind, FighterAnimationFrame},
+        baked_animation::{FighterBoneMatrices, FixedMat4},
+        hurtbox::{FixedAffineCapsule, FixedCapsule},
+        manifest::FighterManifest,
+    },
+    math::{
         int::{FGi32, FGi32Ext},
         vec3::FGVec3,
-    }, schedule::GameplaySet, scripting::FighterAttackScript,
+    },
+    schedule::GameplaySet,
+    scripting::FighterAttackScript,
 };
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct FighterDamage(FGi32);
@@ -207,18 +214,23 @@ pub fn solve_hitboxes(
         &FighterTranslation,
         &FighterFacingDirection,
         &mut FighterHitboxes,
-        &FighterAnimationFrame
+        &FighterAnimationFrame,
     )>,
     attack_scripts: Res<Assets<FighterAttackScript>>,
 ) {
     for (matrices, translation, facing_direction, mut hitboxes, animation_frame) in &mut query {
         hitboxes.active_hitboxes_solved.clear();
         if let Some(ref attack_script) = hitboxes.attack_script {
-            let attack_script = attack_scripts.get(attack_script).expect("Attack script should be valid");
+            let attack_script = attack_scripts
+                .get(attack_script)
+                .expect("Attack script should be valid");
             let fighter_trf = translation.get_3d_transform(facing_direction);
             let active_hitboxes = hitboxes.active_hitboxes.clone();
             for hitbox_idx in active_hitboxes {
-                let hitbox = attack_script.hitboxes.get(hitbox_idx).expect("Hitbox IDX should be valid");
+                let hitbox = attack_script
+                    .hitboxes
+                    .get(hitbox_idx)
+                    .expect("Hitbox IDX should be valid");
                 let matrices = matrices.get(&hitbox.bone);
 
                 if let None = matrices {
@@ -233,23 +245,19 @@ pub fn solve_hitboxes(
 
                 if hitbox.start_frame == animation_frame.frame {
                     // Sphere only
-                    hitboxes.active_hitboxes_solved.push(
-                        FixedCapsule {
-                            start: curr_hbox_pos,
-                            end: curr_hbox_pos,
-                            radius: hitbox.radius
-                        }
-                    )
+                    hitboxes.active_hitboxes_solved.push(FixedCapsule {
+                        start: curr_hbox_pos,
+                        end: curr_hbox_pos,
+                        radius: hitbox.radius,
+                    })
                 } else {
                     let prev_hbox_matrix = fighter_trf.mul(prev_bone_matrix);
                     let prev_hbox_pos = prev_hbox_matrix.transform_point(hitbox.offset);
-                    hitboxes.active_hitboxes_solved.push(
-                        FixedCapsule {
-                            start: prev_hbox_pos,
-                            end: curr_hbox_pos,
-                            radius: hitbox.radius
-                        }
-                    );
+                    hitboxes.active_hitboxes_solved.push(FixedCapsule {
+                        start: prev_hbox_pos,
+                        end: curr_hbox_pos,
+                        radius: hitbox.radius,
+                    });
                 }
             }
         }
@@ -303,7 +311,10 @@ pub fn solve_hurtboxes(
     }
 }
 
-pub fn intersect_attacks_with_hurtboxes(query: Query<(Entity, &FighterSolvedHurtboxes, &FighterHitboxes)>, attack_scripts: Res<Assets<FighterAttackScript>>) {
+pub fn intersect_attacks_with_hurtboxes(
+    query: Query<(Entity, &FighterSolvedHurtboxes, &FighterHitboxes)>,
+    attack_scripts: Res<Assets<FighterAttackScript>>,
+) {
     /*for (entity_hurting, _, hitboxes) in query {
         if hitboxes.attack_script.is_none() {
             continue;
@@ -338,7 +349,8 @@ impl Plugin for FighterAttackPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             GgrsSchedule,
-            (solve_hurtboxes, solve_hitboxes).chain()
+            (solve_hurtboxes, solve_hitboxes)
+                .chain()
                 .after(crate::fighter::baked_animation::update_fighter_bone_matrices)
                 .in_set(GameplaySet::Animation),
         );

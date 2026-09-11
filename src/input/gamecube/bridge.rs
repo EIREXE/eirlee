@@ -149,19 +149,19 @@ pub fn gc_event_system(
             send_axis!(GamepadAxis::LeftStickY, now.left_stick.1);
         }
         if prev.right_stick != now.right_stick {
-            send_axis!(
-                GamepadAxis::RightStickX,
-                now.right_stick.0
-            );
-            send_axis!(
-                GamepadAxis::RightStickY,
-                now.right_stick.1
-            );
+            send_axis!(GamepadAxis::RightStickX, now.right_stick.0);
+            send_axis!(GamepadAxis::RightStickY, now.right_stick.1);
         }
         if prev.triggers != now.triggers {
             // The analog triggers are represented as button-axis values, as we have no GamepadAxis to use.
-            send_button!(GamepadButton::LeftTrigger2, unsigned_axis_float(now.triggers.0));
-            send_button!(GamepadButton::RightTrigger2, unsigned_axis_float(now.triggers.1));
+            send_button!(
+                GamepadButton::LeftTrigger2,
+                unsigned_axis_float(now.triggers.0)
+            );
+            send_button!(
+                GamepadButton::RightTrigger2,
+                unsigned_axis_float(now.triggers.1)
+            );
         }
 
         macro_rules! digital {

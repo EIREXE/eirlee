@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_asset_loader::asset_collection::AssetCollection;
+use ron_asset_manager::prelude::RonAsset;
 use serde::{Deserialize, Serialize};
 
 use crate::{math::int::FGi32, menus::style::FGUiStyle};
@@ -23,7 +24,7 @@ pub struct InputSettingsCommon {
     pub input_buffer_size: u8,
 }
 
-#[derive(Reflect, Serialize, Deserialize, Resource, Asset, Clone)]
+#[derive(Reflect, Serialize, Deserialize, Resource, Asset, Clone, RonAsset)]
 pub struct GameSettings {
     pub fighter_common: FighterSettingsCommon,
     pub input_common: InputSettingsCommon,

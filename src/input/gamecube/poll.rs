@@ -98,12 +98,9 @@ pub fn spawn_poll_thread() -> Result<GcAdapterSnapshot, gc_adapter_neo::UsbError
         .name("gc-adapter-poll".into())
         .spawn(move || {
             // Flush whatever the adapter had buffered before we started
-            if let Err(payload) =
-                panic::catch_unwind(AssertUnwindSafe(|| adapter.refresh_inputs()))
+            if let Err(payload) = panic::catch_unwind(AssertUnwindSafe(|| adapter.refresh_inputs()))
             {
-                error!(
-                    "GameCube Controller Adapter USB refresh panicked on startup: {payload:?}"
-                );
+                error!("GameCube Controller Adapter USB refresh panicked on startup: {payload:?}");
             }
 
             #[cfg(debug_assertions)]
@@ -112,8 +109,7 @@ pub fn spawn_poll_thread() -> Result<GcAdapterSnapshot, gc_adapter_neo::UsbError
             let mut rate_window_count: u32 = 0;
 
             while !thread_shutdown.load(Ordering::Relaxed) {
-                let result =
-                    panic::catch_unwind(AssertUnwindSafe(|| adapter.read_controllers()));
+                let result = panic::catch_unwind(AssertUnwindSafe(|| adapter.read_controllers()));
 
                 let controllers = match result {
                     Ok(Ok(controllers)) => controllers,
@@ -142,7 +138,8 @@ pub fn spawn_poll_thread() -> Result<GcAdapterSnapshot, gc_adapter_neo::UsbError
 
                 let mut states = [GcPortState::default(); 4];
                 for i in 0..4 {
-                    states[i] = GcPortState::make_port_state(&controllers[i], adapter.calibration(i));
+                    states[i] =
+                        GcPortState::make_port_state(&controllers[i], adapter.calibration(i));
                 }
                 *thread_ports.lock().unwrap_or_else(|e| e.into_inner()) = states;
 

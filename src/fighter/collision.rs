@@ -49,23 +49,27 @@ pub fn air_collide_with_stage(
 
     for (poly_idx, poly) in state_context.stage_collision.stage_polys.iter().enumerate() {
         if let Some(intersect_result) = poly.intersect_ray(ray_segment) {
-            intersect_results.push((AirCollisionWithStageResult {
-                line_id: {
-                    StageLineID {
-                        polygon: poly_idx,
-                        segment: intersect_result.segment_idx,
-                    }
+            intersect_results.push((
+                AirCollisionWithStageResult {
+                    line_id: {
+                        StageLineID {
+                            polygon: poly_idx,
+                            segment: intersect_result.segment_idx,
+                        }
+                    },
+                    hit_position: intersect_result.position,
+                    hit_normal: intersect_result.normal,
                 },
-                hit_position: intersect_result.position,
-                hit_normal: intersect_result.normal,
-            }, intersect_result.position.distance_squared(ray_segment.point2())));
+                intersect_result
+                    .position
+                    .distance_squared(ray_segment.point2()),
+            ));
         }
     }
-    intersect_results.sort_by(| (_, a), (_, b) | {
-        a.cmp(b)
-    });
+    intersect_results.sort_by(|(_, a), (_, b)| a.cmp(b));
 
-    intersect_results.iter().last().map(|(val, _)| {
-        val.to_owned().clone()
-    })
+    intersect_results
+        .iter()
+        .last()
+        .map(|(val, _)| val.to_owned().clone())
 }

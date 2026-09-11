@@ -30,8 +30,19 @@ pub use motion::{FighterPreviousTranslation, FighterTranslation, FighterVelocity
 
 use crate::{
     fighter::{
-        attack::{FighterAttackPlugin, FighterAttackScriptAssets, FighterSolvedHurtboxes}, baked_animation::FighterBoneMatrices, hurtbox::FixedCapsule, manifest::FighterManifest, state::{FighterState, fall::FallState}, visual::FighterAnimations,
-    }, input::FighterInput, math::{int::FGi32, vec::FGVec2}, player::Player, schedule::GameplaySet, scripting::FighterAttackScript, stage::line::StageCollision,
+        attack::{FighterAttackPlugin, FighterAttackScriptAssets, FighterSolvedHurtboxes},
+        baked_animation::FighterBoneMatrices,
+        hurtbox::FixedCapsule,
+        manifest::FighterManifest,
+        state::{FighterState, fall::FallState},
+        visual::FighterAnimations,
+    },
+    input::FighterInput,
+    math::{int::FGi32, vec::FGVec2},
+    player::Player,
+    schedule::GameplaySet,
+    scripting::FighterAttackScript,
+    stage::line::StageCollision,
 };
 use state::state_interrupt_system;
 
@@ -221,7 +232,7 @@ pub fn spawn_fighter(
             FighterHitboxes {
                 attack_script: None,
                 active_hitboxes: vec![],
-                active_hitboxes_solved: vec![]
+                active_hitboxes_solved: vec![],
             },
         ),
         (

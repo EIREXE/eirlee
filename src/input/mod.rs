@@ -41,6 +41,10 @@ impl LocalInputAssignments {
         }
         None
     }
+
+    pub fn get_from_slot(&self, slot: usize) -> Option<&LocalInputSource> {
+        self.0.iter().find(|(c_slot, _)| slot == *c_slot).map(|(_, source)| source)
+    }
 }
 
 use crate::game_settings::GameSettings;
@@ -92,8 +96,6 @@ impl Plugin for FighterInputPlugin {
                     key: KeyCode::KeyJ,
                     action: InputMapAction::Attack,
                 },
-
-
                 // Menu
             ],
             gamepad: vec![
@@ -125,33 +127,92 @@ impl Plugin for FighterInputPlugin {
                     binding: GamepadBinding::Button(GamepadButton::East),
                     action: InputMapAction::Attack,
                 },
-
             ],
         })
         .insert_resource(MenuInputMap {
             keyboard: vec![
-                MenuKeyboardInputMapElement { key: KeyCode::ArrowUp, action: MenuInputMapAction::MovementYDir(1) },
-                MenuKeyboardInputMapElement { key: KeyCode::ArrowDown, action: MenuInputMapAction::MovementYDir(-1) },
-                MenuKeyboardInputMapElement { key: KeyCode::ArrowLeft, action: MenuInputMapAction::MovementXDir(-1) },
-                MenuKeyboardInputMapElement { key: KeyCode::ArrowRight, action: MenuInputMapAction::MovementXDir(1) },
-                MenuKeyboardInputMapElement { key: KeyCode::Enter, action: MenuInputMapAction::Accept },
-                MenuKeyboardInputMapElement { key: KeyCode::Escape, action: MenuInputMapAction::Back },
-                MenuKeyboardInputMapElement { key: KeyCode::Space, action: MenuInputMapAction::Start },
-                MenuKeyboardInputMapElement { key: KeyCode::KeyW, action: MenuInputMapAction::MovementYDir(1) },
-                MenuKeyboardInputMapElement { key: KeyCode::KeyS, action: MenuInputMapAction::MovementYDir(-1) },
-                MenuKeyboardInputMapElement { key: KeyCode::KeyA, action: MenuInputMapAction::MovementXDir(-1) },
-                MenuKeyboardInputMapElement { key: KeyCode::KeyD, action: MenuInputMapAction::MovementXDir(1) },
+                MenuKeyboardInputMapElement {
+                    key: KeyCode::ArrowUp,
+                    action: MenuInputMapAction::MovementYDir(1),
+                },
+                MenuKeyboardInputMapElement {
+                    key: KeyCode::ArrowDown,
+                    action: MenuInputMapAction::MovementYDir(-1),
+                },
+                MenuKeyboardInputMapElement {
+                    key: KeyCode::ArrowLeft,
+                    action: MenuInputMapAction::MovementXDir(-1),
+                },
+                MenuKeyboardInputMapElement {
+                    key: KeyCode::ArrowRight,
+                    action: MenuInputMapAction::MovementXDir(1),
+                },
+                MenuKeyboardInputMapElement {
+                    key: KeyCode::Enter,
+                    action: MenuInputMapAction::Accept,
+                },
+                MenuKeyboardInputMapElement {
+                    key: KeyCode::Escape,
+                    action: MenuInputMapAction::Back,
+                },
+                MenuKeyboardInputMapElement {
+                    key: KeyCode::Space,
+                    action: MenuInputMapAction::Start,
+                },
+                MenuKeyboardInputMapElement {
+                    key: KeyCode::KeyW,
+                    action: MenuInputMapAction::MovementYDir(1),
+                },
+                MenuKeyboardInputMapElement {
+                    key: KeyCode::KeyS,
+                    action: MenuInputMapAction::MovementYDir(-1),
+                },
+                MenuKeyboardInputMapElement {
+                    key: KeyCode::KeyA,
+                    action: MenuInputMapAction::MovementXDir(-1),
+                },
+                MenuKeyboardInputMapElement {
+                    key: KeyCode::KeyD,
+                    action: MenuInputMapAction::MovementXDir(1),
+                },
             ],
             gamepad: vec![
-                MenuGamepadInputMapElement { binding: GamepadBinding::Button(GamepadButton::DPadUp), action: MenuInputMapAction::MovementYDir(1) },
-                MenuGamepadInputMapElement { binding: GamepadBinding::Button(GamepadButton::DPadDown), action: MenuInputMapAction::MovementYDir(-1) },
-                MenuGamepadInputMapElement { binding: GamepadBinding::Button(GamepadButton::DPadLeft), action: MenuInputMapAction::MovementXDir(-1) },
-                MenuGamepadInputMapElement { binding: GamepadBinding::Button(GamepadButton::DPadRight), action: MenuInputMapAction::MovementXDir(1) },
-                MenuGamepadInputMapElement { binding: GamepadBinding::Axis(GamepadAxis::LeftStickX, 1), action: MenuInputMapAction::MovementXDir(1) },
-                MenuGamepadInputMapElement { binding: GamepadBinding::Axis(GamepadAxis::LeftStickY, 1), action: MenuInputMapAction::MovementYDir(1) },
-                MenuGamepadInputMapElement { binding: GamepadBinding::Button(GamepadButton::South), action: MenuInputMapAction::Accept },
-                MenuGamepadInputMapElement { binding: GamepadBinding::Button(GamepadButton::West), action: MenuInputMapAction::Back },
-                MenuGamepadInputMapElement { binding: GamepadBinding::Button(GamepadButton::Start), action: MenuInputMapAction::Start },
+                MenuGamepadInputMapElement {
+                    binding: GamepadBinding::Button(GamepadButton::DPadUp),
+                    action: MenuInputMapAction::MovementYDir(1),
+                },
+                MenuGamepadInputMapElement {
+                    binding: GamepadBinding::Button(GamepadButton::DPadDown),
+                    action: MenuInputMapAction::MovementYDir(-1),
+                },
+                MenuGamepadInputMapElement {
+                    binding: GamepadBinding::Button(GamepadButton::DPadLeft),
+                    action: MenuInputMapAction::MovementXDir(-1),
+                },
+                MenuGamepadInputMapElement {
+                    binding: GamepadBinding::Button(GamepadButton::DPadRight),
+                    action: MenuInputMapAction::MovementXDir(1),
+                },
+                MenuGamepadInputMapElement {
+                    binding: GamepadBinding::Axis(GamepadAxis::LeftStickX, 1),
+                    action: MenuInputMapAction::MovementXDir(1),
+                },
+                MenuGamepadInputMapElement {
+                    binding: GamepadBinding::Axis(GamepadAxis::LeftStickY, 1),
+                    action: MenuInputMapAction::MovementYDir(1),
+                },
+                MenuGamepadInputMapElement {
+                    binding: GamepadBinding::Button(GamepadButton::South),
+                    action: MenuInputMapAction::Accept,
+                },
+                MenuGamepadInputMapElement {
+                    binding: GamepadBinding::Button(GamepadButton::West),
+                    action: MenuInputMapAction::Back,
+                },
+                MenuGamepadInputMapElement {
+                    binding: GamepadBinding::Button(GamepadButton::Start),
+                    action: MenuInputMapAction::Start,
+                },
             ],
         })
         .init_resource::<LocalInputAssignments>()
@@ -183,16 +244,24 @@ fn read_local_inputs(
     gamepads: Query<&Gamepad>,
     assignments: Res<LocalInputAssignments>,
     local_players: Res<LocalPlayers>,
-    game_settings: Res<GameSettings>
+    game_settings: Res<GameSettings>,
 ) {
     let mut local_inputs = HashMap::new();
 
     for handle in &local_players.0 {
-        let assigned = assignments.0.iter().find(|(player_handle, _)| player_handle == handle);
+        let assigned = assignments
+            .0
+            .iter()
+            .find(|(player_handle, _)| player_handle == handle);
         let gamepad = match assigned {
             Some((_, LocalInputSource::Gamepad(entity))) => gamepads.get(*entity).ok(),
             Some((_, LocalInputSource::Keyboard)) => None,
-            None => gc_ports.entities.get(*handle).copied().flatten().and_then(|entity| gamepads.get(entity).ok()),
+            None => gc_ports
+                .entities
+                .get(*handle)
+                .copied()
+                .flatten()
+                .and_then(|entity| gamepads.get(entity).ok()),
         };
 
         let mut input_frame = match assigned {
@@ -201,8 +270,8 @@ fn read_local_inputs(
                 .map(|pad| gamepad::sample_gamepad(pad, &input_map))
                 .unwrap_or_default(),
             None => match gamepad {
-            Some(pad) => gamepad::sample_gamepad(pad, &input_map),
-            None => keyboard::sample_keyboard(&key, &input_map),
+                Some(pad) => gamepad::sample_gamepad(pad, &input_map),
+                None => keyboard::sample_keyboard(&key, &input_map),
             },
         };
 

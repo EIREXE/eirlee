@@ -73,7 +73,6 @@ impl FixedAffineCapsule {
         // current simplex to fixed-point precision, so conservatively collide.
         true
     }
-
 }
 
 trait SupportMap {
@@ -243,18 +242,10 @@ mod tests {
 
     #[test]
     fn affine_scale_changes_capsule_intersection() {
-        let sphere = FixedAffineCapsule::new(
-            FixedMat4::IDENTITY,
-            FGi32::ZERO,
-            FGi32::lit("1"),
-        );
+        let sphere = FixedAffineCapsule::new(FixedMat4::IDENTITY, FGi32::ZERO, FGi32::lit("1"));
         let mut squashed_transform = FixedMat4::IDENTITY;
         squashed_transform.cols[1][1] = FGi32::lit("0.5");
-        let squashed = FixedAffineCapsule::new(
-            squashed_transform,
-            FGi32::ZERO,
-            FGi32::lit("1"),
-        );
+        let squashed = FixedAffineCapsule::new(squashed_transform, FGi32::ZERO, FGi32::lit("1"));
         let target = FixedCapsule::new(
             FGVec3::lit("0", "1.4", "0"),
             FGVec3::lit("0", "1.4", "0"),

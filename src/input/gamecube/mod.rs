@@ -1,11 +1,11 @@
 pub mod bridge;
 pub mod poll;
 
-pub use bridge::{GcPort, GcPorts, GC_PORT_COUNT};
+pub use bridge::{GC_PORT_COUNT, GcPort, GcPorts};
 pub use poll::{GcAdapterSnapshot, GcPortState};
 
-use bevy::input::gamepad::{gamepad_connection_system, gamepad_event_processing_system};
 use bevy::input::InputSystems;
+use bevy::input::gamepad::{gamepad_connection_system, gamepad_event_processing_system};
 use bevy::prelude::*;
 
 #[derive(Default)]

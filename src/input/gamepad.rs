@@ -21,8 +21,16 @@ pub fn sample_gamepad(pad: &Gamepad, input_map: &BaseInputMap) -> FighterInputFr
                     // Digital buttons driving movement isn't used by the
                     // default bindings (the stick covers that), but stay
                     // consistent with the keyboard backend if one is added.
-                    InputMapAction::MovementXDir(sign) => if pressed { movement.x += sign as f32 },
-                    InputMapAction::MovementYDir(sign) => if pressed { movement.y += sign as f32 },
+                    InputMapAction::MovementXDir(sign) => {
+                        if pressed {
+                            movement.x += sign as f32
+                        }
+                    }
+                    InputMapAction::MovementYDir(sign) => {
+                        if pressed {
+                            movement.y += sign as f32
+                        }
+                    }
                 }
             }
             // gamepad does not have a separate axis for left and right, so sign here should be 1
@@ -32,7 +40,7 @@ pub fn sample_gamepad(pad: &Gamepad, input_map: &BaseInputMap) -> FighterInputFr
                     InputMapAction::MovementXDir(_) => movement.x += value,
                     InputMapAction::MovementYDir(_) => movement.y += value,
                     _ => {}
-                    }
+                }
             }
         }
     }

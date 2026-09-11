@@ -11,7 +11,7 @@ use bevy_ggrs::RollbackFrameRate;
 use enum_cycling::EnumCycle;
 use enum_cycling_derive::EnumCycle;
 
-use crate::{player::Player, replay::StopReplayRecording, AppState};
+use crate::{AppState, player::Player, replay::StopReplayRecording};
 
 pub const PLAYER_DEBUG_ROW_COUNT: usize = 6;
 

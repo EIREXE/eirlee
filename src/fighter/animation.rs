@@ -64,7 +64,7 @@ pub fn apply_animation(
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, Reflect, EnumIter
+    Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, Reflect, EnumIter,
 )]
 pub enum AnimKind {
     Wait,
