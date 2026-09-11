@@ -2,6 +2,9 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
+use ron_asset_manager::prelude::*;
+
+use crate::texture_reference::TextureReference;
 
 pub const H1_SIZE: i32 = 72;
 pub const H2_SIZE: i32 = 54;
@@ -15,7 +18,7 @@ pub struct BoxShadowStyle {
     offset_px_x: i32,
     offset_px_y: i32,
     spread_radius: f32,
-    blur_radius: f32
+    blur_radius: f32,
 }
 
 #[derive(Serialize, Deserialize, Reflect, Default)]
@@ -25,7 +28,7 @@ pub struct ButtonStyle {
     border_color: Color,
     text_color: Color,
     box_shadow: BoxShadowStyle,
-    border_size: i32
+    border_size: i32,
 }
 
 #[derive(Serialize, Deserialize, Reflect)]
@@ -44,7 +47,13 @@ impl ButtonStyle {
         commands.entity(entity).insert((
             BackgroundColor(self.background_color),
             BorderColor::all(self.background_color),
-            BoxShadow::new(self.box_shadow.color, px(self.box_shadow.offset_px_x), px(self.box_shadow.offset_px_y), px(self.box_shadow.spread_radius), px(self.box_shadow.blur_radius))
+            BoxShadow::new(
+                self.box_shadow.color,
+                px(self.box_shadow.offset_px_x),
+                px(self.box_shadow.offset_px_y),
+                px(self.box_shadow.spread_radius),
+                px(self.box_shadow.blur_radius),
+            ),
         ));
     }
 }
@@ -53,10 +62,19 @@ impl ButtonStyle {
 pub enum FGUiButtonType {
     #[default]
     MainMenu,
-    CharacterSelectCharacter
+    CharacterSelectCharacter,
+    CharacterSelectStartBanner,
 }
 
-#[derive(Asset, Resource, Reflect, Deserialize, Serialize)]
+#[derive(Asset, Resource, Reflect, Deserialize, RonAsset)]
 pub struct FGUiStyle {
-    pub button_styles: HashMap<FGUiButtonType, ButtonStyles>
+    pub button_styles: HashMap<FGUiButtonType, ButtonStyles>,
+    #[asset]
+    #[dependency]
+    #[reflect(ignore)]
+    pub cursor: TextureReference,
+    #[asset]
+    #[dependency]
+    #[reflect(ignore)]
+    pub css_token: TextureReference,
 }

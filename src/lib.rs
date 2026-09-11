@@ -25,9 +25,9 @@ use bevy::{
     asset::processor::{AssetProcessor, ProcessorState}, prelude::*, settings::SettingsPlugin, tasks::block_on,
 };
 use bevy_asset_loader::prelude::*;
+use ron_asset_manager::RonAssetPlugin;
 use bevy_wind_waker_shader::prelude::*;
 use clap::Parser;
-use jackdaw_runtime::EditorCategory;
 
 use crate::{
     camera::MatchCameraPlugin, fighter::manifest::FighterManifest, game_settings::GameSettings,
@@ -49,6 +49,7 @@ pub mod schedule;
 pub mod scripting;
 pub mod stage;
 pub mod menus;
+pub mod texture_reference;
 
 #[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
 pub enum AppState {
@@ -95,9 +96,9 @@ impl Plugin for GamePlugin {
                 scripting::importer::FighterScriptImportPlugin,
                 stage::StagePlugin,
                 MatchCameraPlugin,
-                bevy_common_assets::ron::RonAssetPlugin::<FighterManifest>::new(&["fighter.ron"]),
-                bevy_common_assets::ron::RonAssetPlugin::<StageManifest>::new(&["stage.ron"]),
-                bevy_common_assets::ron::RonAssetPlugin::<GameSettings>::new(&["ron"]),
+                RonAssetPlugin::<FighterManifest>::create("fighter.ron"),
+                RonAssetPlugin::<StageManifest>::create("stage.ron"),
+                RonAssetPlugin::<GameSettings>::create("ron"),
             ))
             .add_plugins(menus::MenuPlugin)
             .add_loading_state(

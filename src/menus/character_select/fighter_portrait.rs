@@ -1,7 +1,6 @@
-
 use bevy::prelude::*;
 pub struct FighterPortrait {
-    pub player_slot: usize
+    pub player_slot: usize,
 }
 
 impl FighterPortrait {

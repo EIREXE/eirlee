@@ -1,20 +1,22 @@
 use std::collections::HashMap;
 
-use bevy::{asset::UntypedHandle, prelude::*};
+use bevy::{
+    asset::UntypedHandle,
+    prelude::*,
+};
 use bevy_asset_loader::asset_collection::AssetCollection;
+use ron_asset_manager::prelude::RonAsset;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use crate::{
-    AppState,
-    fighter::{FighterAttributes, FighterCameraProfile, animation::AnimKind, attack::AttackKind},
-    game_settings::GameSettings,
-    math::{int::FGi32, vec3::FGVec3},
+    AppState, fighter::{FighterAttributes, FighterCameraProfile, animation::AnimKind, attack::AttackKind}, game_settings::GameSettings, math::{int::FGi32, vec3::FGVec3}, texture_reference::TextureReference,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Reflect, EnumIter)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Reflect, EnumIter, Default)]
 pub enum FighterId {
+    #[default]
     TestFighter,
 }
 
@@ -29,11 +31,15 @@ pub struct FighterHurtbox {
     pub radius: FGi32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Asset, Reflect)]
+#[derive(Clone, Asset, Deserialize, Reflect, RonAsset)]
 pub struct FighterManifest {
     pub id: FighterId,
     pub model_path: String,
     pub baked_animation_path: String,
+    #[asset]
+    #[dependency]
+    #[reflect(ignore)]
+    pub icon: TextureReference,
     pub attributes: FighterAttributes,
     pub camera: FighterCameraProfile,
     pub animations: HashMap<AnimKind, String>,

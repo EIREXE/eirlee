@@ -1,6 +1,17 @@
-use std::collections::HashSet;
-use bevy::{camera::NormalizedRenderTarget, input_focus::{InputFocus, InputFocusVisible}, math::CompassOctant, picking::{backend::HitData, pointer::{Location, PointerId}}, prelude::*, ui::auto_directional_navigation::AutoDirectionalNavigator};
 use super::input::MenuInputState;
+use bevy::{
+    camera::NormalizedRenderTarget,
+    input_focus::{InputFocus, InputFocusVisible},
+    math::CompassOctant,
+    picking::{
+        backend::HitData,
+        pointer::{Location, PointerId},
+    },
+    prelude::*,
+    ui::auto_directional_navigation::AutoDirectionalNavigator,
+};
+use bevy_egui::egui::IntoAtoms;
+use std::collections::HashSet;
 
 // Action state and input handling
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -12,8 +23,7 @@ enum DirectionalNavigationAction {
     Select,
 }
 
-impl DirectionalNavigationAction {
-}
+impl DirectionalNavigationAction {}
 
 #[derive(Default, Resource)]
 pub struct UINavigationActionState {
@@ -37,7 +47,21 @@ pub fn process_inputs(
 ) {
     action_state.pressed_actions.clear();
     let input = menu_inputs.aggregate();
-    /*let repeat_press = if has_direction && !initial_press {
+    let has_direction = input.movement.length() != 0.0;
+    
+    let mut dir_distances = [
+        (input.movement_digital_up, input.movement.dot(Vec2::Y)),
+        (input.movement_digital_down, input.movement.dot(Vec2::NEG_Y)),
+        (input.movement_digital_left, input.movement.dot(Vec2::NEG_X)),
+        (input.movement_digital_right, input.movement.dot(Vec2::X)),
+    ];
+
+    let dir_distances_slice = dir_distances.as_mut_slice();
+    dir_distances_slice.sort_by(|a, b| a.1.total_cmp(&b.1));
+
+    let (curr_dir, _) = dir_distances_slice.last().copied().unwrap();
+
+    let repeat_press = if has_direction && !curr_dir.is_just_pressed() {
         repeat.held_for += time.delta_secs();
         if !repeat.repeating && repeat.held_for >= 0.3 {
             repeat.repeating = true;
@@ -51,19 +75,19 @@ pub fn process_inputs(
         if !has_direction {
             repeat.held_for = 0.0;
             repeat.repeating = false;
-        } else if initial_press {
+        } else if curr_dir.is_just_pressed() {
             repeat.held_for = 0.0;
             repeat.repeating = false;
         }
         false
     };
-    if initial_press || repeat_press {
+    if curr_dir.is_just_pressed() || repeat_press {
         if input.movement.y > 0.0 { action_state.pressed_actions.insert(DirectionalNavigationAction::Up); }
         if input.movement.y < 0.0 { action_state.pressed_actions.insert(DirectionalNavigationAction::Down); }
         if input.movement.x < 0.0 { action_state.pressed_actions.insert(DirectionalNavigationAction::Left); }
         if input.movement.x > 0.0 { action_state.pressed_actions.insert(DirectionalNavigationAction::Right); }
     }
-    if input.accept { action_state.pressed_actions.insert(DirectionalNavigationAction::Select); }*/
+    if input.accept.is_pressed() { action_state.pressed_actions.insert(DirectionalNavigationAction::Select); }
 }
 
 const FOCUSED_BORDER: Srgba = bevy::color::palettes::tailwind::BLUE_50;
@@ -117,7 +141,10 @@ pub fn navigate(
     }
 }
 
-pub fn give_default_focus(query: Query<Entity, Added<NavigationDefaultFocus>>, mut input_focus: ResMut<InputFocus>) {
+pub fn give_default_focus(
+    query: Query<Entity, Added<NavigationDefaultFocus>>,
+    mut input_focus: ResMut<InputFocus>,
+) {
     for entity in query {
         input_focus.set(entity, bevy::input_focus::FocusCause::Navigated);
     }

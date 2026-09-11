@@ -1,15 +1,25 @@
-use bevy::{picking::Pickable, prelude::*, text::FontSourceTemplate};
+use bevy::{picking::Pickable, prelude::*, text::FontSourceTemplate, ui::widget::ImageNodeSize};
 
-use crate::{fighter::manifest::FighterManifest, menus::{button::FGUiButton, style::FGUiButtonType}};
+use crate::{
+    fighter::{FighterId, manifest::FighterManifest}, menus::{button::FGUiButton, style::FGUiButtonType},
+};
 
-#[derive(Component, Clone, Default, FromTemplate)]
+#[derive(Component, Clone, FromTemplate)]
 pub struct CharacterBox {
-    fighter_manifest: Handle<FighterManifest>,
+    pub fighter_manifest: Handle<FighterManifest>,
+    pub fighter_id: FighterId
 }
 
 impl CharacterBox {
-    pub fn scene(manifest_handle: Handle<FighterManifest>, manifests: &Res<Assets<FighterManifest>>) -> impl Scene {
-        let manifest = manifests.get(&manifest_handle).expect("Fighter manifest should be valid");
+    pub fn scene(
+        manifest_handle: Handle<FighterManifest>,
+        manifests: &Res<Assets<FighterManifest>>,
+    ) -> impl Scene {
+        let manifest = manifests
+            .get(&manifest_handle)
+            .expect("Fighter manifest should be valid");
+        let fighter_icon = manifest.icon.handle().clone();
+        let fighter_id = manifest.id;
         bsn! {
             Node {
                 width: px(128),
@@ -17,11 +27,15 @@ impl CharacterBox {
                 flex_direction: FlexDirection::Column,
                 justify_content: JustifyContent::FlexEnd
             }
+            ImageNode {
+                image: fighter_icon
+            }
             FGUiButton {
                 button_type: FGUiButtonType::CharacterSelectCharacter
             }
             CharacterBox {
-                fighter_manifest: manifest_handle
+                fighter_manifest: manifest_handle,
+                fighter_id: fighter_id
             }
             BackgroundColor(Color::srgb(1.0, 1.0, 1.0))
             Children [

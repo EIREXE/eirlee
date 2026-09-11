@@ -3,7 +3,10 @@ use bevy::{
     ui::auto_directional_navigation::AutoDirectionalNavigation,
 };
 
-use crate::{AppState, menus::{MenuMarker, button::menu_button, navigation::NavigationDefaultFocus}};
+use crate::{
+    AppState,
+    menus::{MenuMarker, button::menu_button, navigation::NavigationDefaultFocus},
+};
 
 #[derive(SceneComponent, Default, Clone)]
 pub struct MainMenu;
@@ -44,6 +47,10 @@ impl MainMenu {
                                 on(|_event: On<Pointer<Press>>, mut next_state: ResMut<NextState<AppState>>,| next_state.set(AppState::CharacterSelect))
                                 NavigationDefaultFocus
                             ),
+                            (
+                                menu_button("Versus2")
+                                on(|_event: On<Pointer<Press>>, mut next_state: ResMut<NextState<AppState>>,| next_state.set(AppState::CharacterSelect))
+                            ),
                         ]
                     ),
                 ]
@@ -51,5 +58,4 @@ impl MainMenu {
     }
 }
 
-pub fn setup_main_menu(mut commands: Commands) {
-}
+pub fn setup_main_menu(mut commands: Commands) {}

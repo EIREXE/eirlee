@@ -1,11 +1,16 @@
 use bevy::{
     asset::uuid::Uuid,
-    picking::{pointer::{Location, PointerAction, PointerId, PointerInput, PointerLocation}, Pickable},
+    picking::{
+        Pickable,
+        pointer::{Location, PointerAction, PointerId, PointerInput, PointerLocation},
+    },
     prelude::*,
     window::WindowRef,
 };
 
-use crate::{input::LocalInputAssignments, menus::input::{MenuInput, MenuInputState}};
+use crate::{
+    input::{LocalInputAssignments, LocalInputSource}, menus::{input::{MenuInput, MenuInputState}, scaling, style::FGUiStyle},
+};
 
 #[derive(Default)]
 pub enum MenuCursorInputSource {
@@ -24,22 +29,27 @@ pub struct FGMenuCursor {
 impl FGMenuCursor {
     pub fn create_cursor(
         player_slot: usize,
-        meshes: &mut Assets<Mesh>,
-        materials: &mut Assets<ColorMaterial>,
+        style: &FGUiStyle,
+        input_source: &LocalInputSource,
     ) -> impl Bundle {
-        let material = materials.add(ColorMaterial::from_color(
-            bevy::color::palettes::tailwind::ROSE_600,
-        ));
-        let circle_mesh = meshes.add(Circle::new(25.0));
-        let pointer_id = PointerId::Custom(Uuid::new_v4());
+        let pointer_id = if matches!(input_source, LocalInputSource::Keyboard) {PointerId::Mouse} else {PointerId::Custom(Uuid::new_v4())};
+        let circle_icon = style.cursor.handle().clone();
         (
             FGMenuCursor {
                 input_source: super::cursor::MenuCursorInputSource::Player(player_slot),
                 ..default()
             },
+            Node {
+                width: px(64),
+                height: px(64),
+                position_type: PositionType::Absolute,
+                ..default()
+            },
+            ImageNode {
+                image: circle_icon,
+                ..default()
+            },
             pointer_id,
-            MeshMaterial2d(material),
-            Mesh2d(circle_mesh),
             Transform::IDENTITY,
             GlobalZIndex(1000),
             Pickable::IGNORE,
@@ -47,13 +57,36 @@ impl FGMenuCursor {
     }
 }
 
+/// The player using the keyboard can input things with the mouse, so we should copy their movement input
+pub fn copy_mouse_input(
+    mut query: Query<(&FGMenuCursor, &mut PointerLocation, &PointerId)>,
+    assignments: Res<LocalInputAssignments>,
+    mut input_events: MessageReader<Pointer<Move>>
+) {
+
+    for event in input_events.read() {
+        if let PointerId::Mouse = event.pointer_id {
+            for (cursor, mut location, _) in query.iter_mut() {
+                let is_mouse = match cursor.input_source {
+                    MenuCursorInputSource::Any => true,
+                    MenuCursorInputSource::Player(slot) => {
+                        assignments.get(slot).map(|(_, source)| {
+                            matches!(source, LocalInputSource::Keyboard)
+                        }).unwrap_or_default()
+                    },
+                };
+
+                if is_mouse {
+                    location.location = Some(event.pointer_location.clone());
+                }
+            }
+        }
+    }
+}
+
 pub fn cursor_input(
     window: Single<(Entity, &Window), With<bevy::window::PrimaryWindow>>,
-    query: Query<(
-        &mut FGMenuCursor,
-        &PointerLocation,
-        &PointerId,
-    )>,
+    query: Query<(&mut FGMenuCursor, &PointerLocation, &PointerId)>,
     assignments: Res<LocalInputAssignments>,
     menu_inputs: Res<MenuInputState>,
     time: Res<Time>,
@@ -109,12 +142,12 @@ pub fn cursor_input(
             });
         }
 
-        if input.accept != cursor.accepting {
-            cursor.accepting = input.accept;
+        if input.accept.is_pressed() != cursor.accepting {
+            cursor.accepting = input.accept.is_pressed();
             pointer_writer.write(PointerInput {
                 pointer_id: *pointer_id,
                 location: pointer_location,
-                action: if input.accept {
+                action: if input.accept.is_pressed() {
                     PointerAction::Press(PointerButton::Primary)
                 } else {
                     PointerAction::Release(PointerButton::Primary)
@@ -125,25 +158,15 @@ pub fn cursor_input(
 }
 
 pub fn update_cursor_transform(
-    camera: Single<(&Camera, &GlobalTransform), With<IsDefaultUiCamera>>,
-    query: Query<(&mut Transform, &PointerLocation), With<FGMenuCursor>>,
+    camera: Single<&Camera, With<IsDefaultUiCamera>>,
+    query: Query<(&mut UiTransform, &PointerLocation), With<FGMenuCursor>>,
+    ui_scale: Res<UiScale>,
 ) {
-    let (camera, camera_transform) = camera.into_inner();
+    let camera = camera.into_inner();
 
-    for (mut trf, location) in query {
-        let cursor_pos_viewport = camera
-            .viewport_to_world_2d(
-                camera_transform,
-                location
-                    .clone()
-                    .location
-                    .map(|d| d.position)
-                    .unwrap_or_default(),
-            )
-            .ok()
-            .unwrap_or_default();
-
-        trf.translation = Vec3::new(cursor_pos_viewport.x, cursor_pos_viewport.y, 0.0);
+    for (mut ui_trf, location) in query {
+        let ui_pos = scaling::logical_to_ui_position(location.location.as_ref().map(|d| d.position).unwrap_or_default(), camera, &ui_scale);
+        ui_trf.translation = Val2::new(px(ui_pos.x), px(ui_pos.y));
     }
 }
 

@@ -7,6 +7,7 @@ use bevy::{
 };
 
 use bevy::prelude::*;
+use ron_asset_manager::RonAssetPlugin;
 
 use crate::{
     AppState,
@@ -21,6 +22,9 @@ pub mod main_menu;
 pub mod navigation;
 pub mod scaling;
 pub mod style;
+pub mod match_config;
+pub mod errors;
+pub mod stage_select;
 
 #[derive(Component, Clone, Default)]
 pub struct MenuMarker {}
@@ -54,7 +58,7 @@ pub fn wrap_menu(menu: impl Scene) -> impl Scene {
                     justify_content: JustifyContent::Center,
                     column_gap: vmin(5.0),
                     flex_direction: FlexDirection::Column,
-                    padding: UiRect { left: vmin(5.0), right: vmin(5.0), top: vmin(5.0), bottom: vmin(5.0) }
+                    //padding: UiRect { left: vmin(5.0), right: vmin(5.0), top: vmin(5.0), bottom: vmin(5.0) }
                 }
                 menu
             )
@@ -161,15 +165,21 @@ impl Plugin for MenuPlugin {
         )
         .add_systems(
             PostUpdate,
-            (character_select::css_input, cursor::update_cursor_transform)
+            (
+                character_select::css_auto_assign_slots,
+                cursor::copy_mouse_input,
+                cursor::update_cursor_transform,
+                character_select::copy_cursor_transform_to_token,
+            )
+                .chain()
                 .run_if(in_state(AppState::CharacterSelect))
                 .run_if(any_with_component::<CharacterSelectScreen>),
         )
         .add_systems(OnExit(AppState::CharacterSelect), cursor::despawn_cursors)
         .add_observer(character_select::handle_fighter_slot_addition)
-        .add_plugins(bevy_common_assets::ron::RonAssetPlugin::<FGUiStyle>::new(
-            &["stylesheet.ron"],
-        ))
+        .add_observer(character_select::select_fighter.run_if(in_state(AppState::CharacterSelect)))
+        .add_observer(character_select::update_start_banner_visibility.run_if(in_state(AppState::CharacterSelect)))
+        .add_plugins(RonAssetPlugin::<FGUiStyle>::create("stylesheet.ron"))
         .add_systems(
             Update,
             (
