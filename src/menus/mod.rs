@@ -117,6 +117,8 @@ impl Plugin for MenuPlugin {
             character_select::setup_character_select,
         )
         .init_resource::<navigation::UINavigationActionState>()
+        .init_resource::<navigation::UINavigationRepeat>()
+        .init_resource::<input::MenuInputState>()
         .insert_resource(InputFocusVisible(true))
         .insert_resource(GlobalUiDebugOptions {
             enabled: true,
@@ -138,18 +140,32 @@ impl Plugin for MenuPlugin {
                 navigation::give_default_focus,
                 scaling::ui_scaling_system,
                 button::button_setup,
-                button::button_style_system,
+                button::button_style_system.after(bevy::picking::PickingSystems::Hover),
                 button::button_focus_style_system,
             )
                 .run_if(resource_exists::<CommonAssets>),
         )
         .add_systems(Startup, scaling::ui_update_scale_on_startup)
         .add_systems(
-            PostUpdate,
-            (character_select::css_input, (cursor::cursor_input, cursor::update_cursor_transform).chain())
+            PreUpdate,
+            input::sample_menu_inputs
+                .before(cursor::cursor_input)
+                .run_if(resource_exists::<crate::input::MenuInputMap>),
+        )
+        .add_systems(
+            PreUpdate,
+            cursor::cursor_input
+                .before(bevy::picking::PickingSystems::ProcessInput)
                 .run_if(in_state(AppState::CharacterSelect))
                 .run_if(any_with_component::<CharacterSelectScreen>),
         )
+        .add_systems(
+            PostUpdate,
+            (character_select::css_input, cursor::update_cursor_transform)
+                .run_if(in_state(AppState::CharacterSelect))
+                .run_if(any_with_component::<CharacterSelectScreen>),
+        )
+        .add_systems(OnExit(AppState::CharacterSelect), cursor::despawn_cursors)
         .add_observer(character_select::handle_fighter_slot_addition)
         .add_plugins(bevy_common_assets::ron::RonAssetPlugin::<FGUiStyle>::new(
             &["stylesheet.ron"],

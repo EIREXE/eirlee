@@ -1,5 +1,6 @@
-use std::{collections::HashSet, time::Duration};
+use std::collections::HashSet;
 use bevy::{camera::NormalizedRenderTarget, input_focus::{InputFocus, InputFocusVisible}, math::CompassOctant, picking::{backend::HitData, pointer::{Location, PointerId}}, prelude::*, ui::auto_directional_navigation::AutoDirectionalNavigator};
+use super::input::MenuInputState;
 
 // Action state and input handling
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -12,35 +13,6 @@ enum DirectionalNavigationAction {
 }
 
 impl DirectionalNavigationAction {
-    fn variants() -> Vec<Self> {
-        vec![
-            DirectionalNavigationAction::Up,
-            DirectionalNavigationAction::Down,
-            DirectionalNavigationAction::Left,
-            DirectionalNavigationAction::Right,
-            DirectionalNavigationAction::Select,
-        ]
-    }
-
-    fn keycode(&self) -> KeyCode {
-        match self {
-            DirectionalNavigationAction::Up => KeyCode::ArrowUp,
-            DirectionalNavigationAction::Down => KeyCode::ArrowDown,
-            DirectionalNavigationAction::Left => KeyCode::ArrowLeft,
-            DirectionalNavigationAction::Right => KeyCode::ArrowRight,
-            DirectionalNavigationAction::Select => KeyCode::Enter,
-        }
-    }
-
-    fn gamepad_button(&self) -> GamepadButton {
-        match self {
-            DirectionalNavigationAction::Up => GamepadButton::DPadUp,
-            DirectionalNavigationAction::Down => GamepadButton::DPadDown,
-            DirectionalNavigationAction::Left => GamepadButton::DPadLeft,
-            DirectionalNavigationAction::Right => GamepadButton::DPadRight,
-            DirectionalNavigationAction::Select => GamepadButton::South,
-        }
-    }
 }
 
 #[derive(Default, Resource)]
@@ -48,29 +20,50 @@ pub struct UINavigationActionState {
     pressed_actions: HashSet<DirectionalNavigationAction>,
 }
 
+#[derive(Default, Resource)]
+pub struct UINavigationRepeat {
+    held_for: f32,
+    repeating: bool,
+}
+
 #[derive(Default, Component, Clone)]
 pub struct NavigationDefaultFocus;
 
 pub fn process_inputs(
     mut action_state: ResMut<UINavigationActionState>,
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    gamepad_input: Query<&Gamepad>,
+    mut repeat: ResMut<UINavigationRepeat>,
+    menu_inputs: Res<MenuInputState>,
+    time: Res<Time>,
 ) {
     action_state.pressed_actions.clear();
-
-    for action in DirectionalNavigationAction::variants() {
-        if keyboard_input.just_pressed(action.keycode()) {
-            action_state.pressed_actions.insert(action);
+    let input = menu_inputs.aggregate();
+    /*let repeat_press = if has_direction && !initial_press {
+        repeat.held_for += time.delta_secs();
+        if !repeat.repeating && repeat.held_for >= 0.3 {
+            repeat.repeating = true;
+            true
+        } else if repeat.repeating && (repeat.held_for - 0.3) % 0.08 < time.delta_secs() {
+            true
+        } else {
+            false
         }
-    }
-
-    for gamepad in gamepad_input.iter() {
-        for action in DirectionalNavigationAction::variants() {
-            if gamepad.just_pressed(action.gamepad_button()) {
-                action_state.pressed_actions.insert(action);
-            }
+    } else {
+        if !has_direction {
+            repeat.held_for = 0.0;
+            repeat.repeating = false;
+        } else if initial_press {
+            repeat.held_for = 0.0;
+            repeat.repeating = false;
         }
+        false
+    };
+    if initial_press || repeat_press {
+        if input.movement.y > 0.0 { action_state.pressed_actions.insert(DirectionalNavigationAction::Up); }
+        if input.movement.y < 0.0 { action_state.pressed_actions.insert(DirectionalNavigationAction::Down); }
+        if input.movement.x < 0.0 { action_state.pressed_actions.insert(DirectionalNavigationAction::Left); }
+        if input.movement.x > 0.0 { action_state.pressed_actions.insert(DirectionalNavigationAction::Right); }
     }
+    if input.accept { action_state.pressed_actions.insert(DirectionalNavigationAction::Select); }*/
 }
 
 const FOCUSED_BORDER: Srgba = bevy::color::palettes::tailwind::BLUE_50;

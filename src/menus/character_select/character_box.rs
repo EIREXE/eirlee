@@ -1,4 +1,4 @@
-use bevy::{prelude::*, text::FontSourceTemplate};
+use bevy::{picking::Pickable, prelude::*, text::FontSourceTemplate};
 
 use crate::{fighter::manifest::FighterManifest, menus::{button::FGUiButton, style::FGUiButtonType}};
 
@@ -25,6 +25,7 @@ impl CharacterBox {
             }
             BackgroundColor(Color::srgb(1.0, 1.0, 1.0))
             Children [
+                Pickable::IGNORE
                 Node {
                     width: percent(100)
                 }

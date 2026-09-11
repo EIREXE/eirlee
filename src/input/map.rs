@@ -20,6 +20,15 @@ pub enum InputMapAction {
 }
 
 #[derive(Debug)]
+pub enum MenuInputMapAction {
+    MovementXDir(i32),
+    MovementYDir(i32),
+    Accept,
+    Back,
+    Start,
+}
+
+#[derive(Debug)]
 pub struct KeyboardInputMapElement {
     pub key: KeyCode,
     pub action: InputMapAction,
@@ -37,8 +46,26 @@ pub struct GamepadInputMapElement {
     pub action: InputMapAction,
 }
 
+#[derive(Debug)]
+pub struct MenuKeyboardInputMapElement {
+    pub key: KeyCode,
+    pub action: MenuInputMapAction,
+}
+
+#[derive(Debug)]
+pub struct MenuGamepadInputMapElement {
+    pub binding: GamepadBinding,
+    pub action: MenuInputMapAction,
+}
+
 #[derive(Resource)]
 pub struct BaseInputMap {
     pub keyboard: Vec<KeyboardInputMapElement>,
     pub gamepad: Vec<GamepadInputMapElement>,
+}
+
+#[derive(Resource)]
+pub struct MenuInputMap {
+    pub keyboard: Vec<MenuKeyboardInputMapElement>,
+    pub gamepad: Vec<MenuGamepadInputMapElement>,
 }

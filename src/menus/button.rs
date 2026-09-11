@@ -1,4 +1,4 @@
-use bevy::{input_focus::InputFocus, prelude::*, text::FontSourceTemplate, ui::auto_directional_navigation::AutoDirectionalNavigation};
+use bevy::{input_focus::InputFocus, picking::{hover::PickingInteraction, Pickable}, prelude::*, text::FontSourceTemplate, ui::auto_directional_navigation::AutoDirectionalNavigation};
 
 use crate::{game_settings::CommonAssets, menus::style::{FGUiButtonType, FGUiStyle}};
 
@@ -24,6 +24,7 @@ pub fn menu_button(label: &str) -> impl Scene {
         BackgroundColor(Color::srgb(0.15, 0.15, 0.15))
         AutoDirectionalNavigation::default()
         Children [(
+            Pickable::IGNORE
             Text(label)
             TextFont {
                 font: FontSourceTemplate::Handle("fonts/roboto.ttf"),
@@ -43,14 +44,14 @@ pub fn button_setup(query: Query<(Entity, &FGUiButton, &mut Node), Added<FGUiBut
     }
 }
 
-pub fn button_style_system(query: Query<(Entity, &FGUiButton, &Interaction, &mut Node), Changed<Interaction>>, common_assets: Res<CommonAssets>, styles: Res<Assets<FGUiStyle>>, mut commands: Commands) {
+pub fn button_style_system(query: Query<(Entity, &FGUiButton, &PickingInteraction, &mut Node), Changed<PickingInteraction>>, common_assets: Res<CommonAssets>, styles: Res<Assets<FGUiStyle>>, mut commands: Commands) {
     let styles = styles.get(&common_assets.ui_style).expect("UI styles should be loaded");
     
     for (entity, button, interaction, mut node) in query {
         let button_style_to_use = match interaction {
-            Interaction::Pressed => &styles.button_styles[&button.button_type].press,
-            Interaction::Hovered => &styles.button_styles[&button.button_type].hover,
-            Interaction::None => &styles.button_styles[&button.button_type].normal,
+            PickingInteraction::Pressed => &styles.button_styles[&button.button_type].press,
+            PickingInteraction::Hovered => &styles.button_styles[&button.button_type].hover,
+            PickingInteraction::None => &styles.button_styles[&button.button_type].normal,
         };
         button_style_to_use.apply(&mut commands, entity, &mut node);
     }

@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::{
     fighter::manifest::{FighterManifest, FighterManifestRegistry},
-    input::{LocalInputAssignments, LocalInputSource},
+    input::LocalInputAssignments,
     menus::{MenuMarker, build_menu_with_props, cursor::FGMenuCursor, spawn_menu, wrap_menu},
 };
 
@@ -16,10 +16,12 @@ pub struct CharacterSelectScreen {
 
 pub fn setup_character_select(
     existing_menu: Option<Single<Entity, With<MenuMarker>>>,
-    commands: Commands,
+    mut commands: Commands,
     manifest_registry: Res<FighterManifestRegistry>,
     assignments: Res<LocalInputAssignments>,
     manifests: Res<Assets<FighterManifest>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     let character_boxes = manifest_registry
         .iter()
@@ -31,6 +33,10 @@ pub fn setup_character_select(
         .iter()
         .map(|(slot, _)| fighter_portrait::FighterPortrait::create(*slot))
         .collect::<Vec<_>>();
+
+    for (slot, _) in assignments.iter() {
+        commands.spawn(FGMenuCursor::create_cursor(*slot, &mut meshes, &mut materials));
+    }
 
     let menu = bsn! {
         // Characters
@@ -75,7 +81,6 @@ pub fn create_portrait(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    mapping: Res<LocalInputAssignments>,
 ) {
     let entity = commands
         .spawn_scene(fighter_portrait::FighterPortrait::create(player_slot))
@@ -83,7 +88,7 @@ pub fn create_portrait(
     commands.entity(container).add_child(entity);
 
     commands.spawn(
-        FGMenuCursor::create_cursor(player_slot, meshes, materials, mapping)
+        FGMenuCursor::create_cursor(player_slot, &mut meshes, &mut materials)
     );
 }
 
@@ -98,7 +103,6 @@ pub fn handle_fighter_slot_addition(
     commands: Commands,
     meshes: ResMut<Assets<Mesh>>,
     materials: ResMut<Assets<ColorMaterial>>,
-    mapping: Res<LocalInputAssignments>,
 ) {
     let slot = addition.slot;
     create_portrait(
@@ -107,43 +111,20 @@ pub fn handle_fighter_slot_addition(
         commands,
         meshes,
         materials,
-        mapping,
     );
 }
 
 pub fn css_input(
-    key: Res<ButtonInput<KeyCode>>,
-    pads: Query<(Entity, &Gamepad)>,
+    menu_inputs: Res<crate::menus::input::MenuInputState>,
     mut assignments: ResMut<LocalInputAssignments>,
     mut commands: Commands,
 ) {
-    if key.get_pressed().len() != 0 {
-        if let None = assignments
-            .iter()
-            .find(|(_, source)| matches!(source, LocalInputSource::Keyboard))
-        {
-            if let Some(free_idx) = assignments.get_free_player_index() {
-                assignments.push((free_idx, LocalInputSource::Keyboard));
-                info!("New keyboard assignment");
-                commands.trigger(FighterSlotAssigned { slot: free_idx });
-            }
-        }
-    }
-
-    for (entity, pad) in pads {
-        if pad.any_pressed(GamepadButton::all()) {
-            let existed = assignments
-                .iter()
-                .find(|(_, assignment)| {
-                    if let LocalInputSource::Gamepad(assignment_entity) = assignment {
-                        return entity == *assignment_entity;
-                    }
-                    false
-                })
-                .is_some();
-
+    for (source, input) in &menu_inputs.inputs {
+        if input.movement != Vec2::ZERO {
+            let existed = assignments.iter().any(|(_, assigned)| assigned == source);
             if !existed && let Some(free_idx) = assignments.get_free_player_index() {
-                assignments.push((free_idx, LocalInputSource::Gamepad(entity)));
+                assignments.push((free_idx, *source));
+                info!("New input assignment");
                 commands.trigger(FighterSlotAssigned { slot: free_idx });
             }
         }

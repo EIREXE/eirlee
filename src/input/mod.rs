@@ -18,7 +18,8 @@ pub use buffer::{FighterCommands, FighterInput};
 pub use frame::FighterInputFrame;
 pub use map::{
     BaseInputMap, GamepadBinding, GamepadInputMapElement, InputActionState, InputMapAction,
-    KeyboardInputMapElement,
+    KeyboardInputMapElement, MenuGamepadInputMapElement, MenuInputMap, MenuInputMapAction,
+    MenuKeyboardInputMapElement,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -91,6 +92,9 @@ impl Plugin for FighterInputPlugin {
                     key: KeyCode::KeyJ,
                     action: InputMapAction::Attack,
                 },
+
+
+                // Menu
             ],
             gamepad: vec![
                 // left stick
@@ -121,6 +125,33 @@ impl Plugin for FighterInputPlugin {
                     binding: GamepadBinding::Button(GamepadButton::East),
                     action: InputMapAction::Attack,
                 },
+
+            ],
+        })
+        .insert_resource(MenuInputMap {
+            keyboard: vec![
+                MenuKeyboardInputMapElement { key: KeyCode::ArrowUp, action: MenuInputMapAction::MovementYDir(1) },
+                MenuKeyboardInputMapElement { key: KeyCode::ArrowDown, action: MenuInputMapAction::MovementYDir(-1) },
+                MenuKeyboardInputMapElement { key: KeyCode::ArrowLeft, action: MenuInputMapAction::MovementXDir(-1) },
+                MenuKeyboardInputMapElement { key: KeyCode::ArrowRight, action: MenuInputMapAction::MovementXDir(1) },
+                MenuKeyboardInputMapElement { key: KeyCode::Enter, action: MenuInputMapAction::Accept },
+                MenuKeyboardInputMapElement { key: KeyCode::Escape, action: MenuInputMapAction::Back },
+                MenuKeyboardInputMapElement { key: KeyCode::Space, action: MenuInputMapAction::Start },
+                MenuKeyboardInputMapElement { key: KeyCode::KeyW, action: MenuInputMapAction::MovementYDir(1) },
+                MenuKeyboardInputMapElement { key: KeyCode::KeyS, action: MenuInputMapAction::MovementYDir(-1) },
+                MenuKeyboardInputMapElement { key: KeyCode::KeyA, action: MenuInputMapAction::MovementXDir(-1) },
+                MenuKeyboardInputMapElement { key: KeyCode::KeyD, action: MenuInputMapAction::MovementXDir(1) },
+            ],
+            gamepad: vec![
+                MenuGamepadInputMapElement { binding: GamepadBinding::Button(GamepadButton::DPadUp), action: MenuInputMapAction::MovementYDir(1) },
+                MenuGamepadInputMapElement { binding: GamepadBinding::Button(GamepadButton::DPadDown), action: MenuInputMapAction::MovementYDir(-1) },
+                MenuGamepadInputMapElement { binding: GamepadBinding::Button(GamepadButton::DPadLeft), action: MenuInputMapAction::MovementXDir(-1) },
+                MenuGamepadInputMapElement { binding: GamepadBinding::Button(GamepadButton::DPadRight), action: MenuInputMapAction::MovementXDir(1) },
+                MenuGamepadInputMapElement { binding: GamepadBinding::Axis(GamepadAxis::LeftStickX, 1), action: MenuInputMapAction::MovementXDir(1) },
+                MenuGamepadInputMapElement { binding: GamepadBinding::Axis(GamepadAxis::LeftStickY, 1), action: MenuInputMapAction::MovementYDir(1) },
+                MenuGamepadInputMapElement { binding: GamepadBinding::Button(GamepadButton::South), action: MenuInputMapAction::Accept },
+                MenuGamepadInputMapElement { binding: GamepadBinding::Button(GamepadButton::West), action: MenuInputMapAction::Back },
+                MenuGamepadInputMapElement { binding: GamepadBinding::Button(GamepadButton::Start), action: MenuInputMapAction::Start },
             ],
         })
         .init_resource::<LocalInputAssignments>()
