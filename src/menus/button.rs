@@ -1,11 +1,20 @@
-use bevy::{input_focus::InputFocus, picking::{hover::PickingInteraction, Pickable}, prelude::*, text::FontSourceTemplate, ui::auto_directional_navigation::AutoDirectionalNavigation};
+use bevy::{
+    input_focus::InputFocus,
+    picking::{Pickable, hover::PickingInteraction},
+    prelude::*,
+    text::FontSourceTemplate,
+    ui::auto_directional_navigation::AutoDirectionalNavigation,
+};
 
-use crate::{game_settings::CommonAssets, menus::style::{FGUiButtonType, FGUiStyle}};
+use crate::{
+    game_settings::CommonAssets,
+    menus::style::{FGUiButtonType, FGUiStyle},
+};
 
 #[derive(Component, Default, Clone)]
 #[require(Button)]
 pub struct FGUiButton {
-    pub button_type: FGUiButtonType
+    pub button_type: FGUiButtonType,
 }
 
 pub fn menu_button(label: &str) -> impl Scene {
@@ -37,16 +46,35 @@ pub fn menu_button(label: &str) -> impl Scene {
     }
 }
 
-pub fn button_setup(query: Query<(Entity, &FGUiButton, &mut Node), Added<FGUiButton>>, common_assets: Res<CommonAssets>, styles: Res<Assets<FGUiStyle>>, mut commands: Commands) {
-    let styles = styles.get(&common_assets.ui_style).expect("UI styles should be loaded");
+pub fn button_setup(
+    query: Query<(Entity, &FGUiButton, &mut Node), Added<FGUiButton>>,
+    common_assets: Res<CommonAssets>,
+    styles: Res<Assets<FGUiStyle>>,
+    mut commands: Commands,
+) {
+    let styles = styles
+        .get(&common_assets.ui_style)
+        .expect("UI styles should be loaded");
     for (entity, button, mut node) in query {
-        styles.button_styles[&button.button_type].normal.apply(&mut commands, entity, &mut node);
+        styles.button_styles[&button.button_type]
+            .normal
+            .apply(&mut commands, entity, &mut node);
     }
 }
 
-pub fn button_style_system(query: Query<(Entity, &FGUiButton, &PickingInteraction, &mut Node), Changed<PickingInteraction>>, common_assets: Res<CommonAssets>, styles: Res<Assets<FGUiStyle>>, mut commands: Commands) {
-    let styles = styles.get(&common_assets.ui_style).expect("UI styles should be loaded");
-    
+pub fn button_style_system(
+    query: Query<
+        (Entity, &FGUiButton, &PickingInteraction, &mut Node),
+        Changed<PickingInteraction>,
+    >,
+    common_assets: Res<CommonAssets>,
+    styles: Res<Assets<FGUiStyle>>,
+    mut commands: Commands,
+) {
+    let styles = styles
+        .get(&common_assets.ui_style)
+        .expect("UI styles should be loaded");
+
     for (entity, button, interaction, mut node) in query {
         let button_style_to_use = match interaction {
             PickingInteraction::Pressed => &styles.button_styles[&button.button_type].press,
@@ -57,14 +85,21 @@ pub fn button_style_system(query: Query<(Entity, &FGUiButton, &PickingInteractio
     }
 }
 
-pub fn button_focus_style_system(query: Query<(Entity, &FGUiButton)>, focus: Res<InputFocus>, mut commands: Commands, common_assets: Res<CommonAssets>, styles: Res<Assets<FGUiStyle>>) {
+pub fn button_focus_style_system(
+    query: Query<(Entity, &FGUiButton)>,
+    focus: Res<InputFocus>,
+    mut commands: Commands,
+    common_assets: Res<CommonAssets>,
+    styles: Res<Assets<FGUiStyle>>,
+) {
     if let Some(focused_entity) = focus.get() {
-        
         if !query.contains(focused_entity) {
             return;
         }
-        
-        let styles = styles.get(&common_assets.ui_style).expect("UI styles should be loaded");
+
+        let styles = styles
+            .get(&common_assets.ui_style)
+            .expect("UI styles should be loaded");
 
         for (entity, button) in query {
             if focused_entity == entity {
@@ -72,7 +107,7 @@ pub fn button_focus_style_system(query: Query<(Entity, &FGUiButton)>, focus: Res
                 commands.entity(focused_entity).insert(Outline {
                     width: px(style.focus_outline_width_px),
                     offset: px(style.focus_outline_offset_px),
-                    color: style.focus_outline_color
+                    color: style.focus_outline_color,
                 });
             } else {
                 commands.entity(entity).remove::<Outline>();

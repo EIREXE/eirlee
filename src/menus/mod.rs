@@ -17,14 +17,14 @@ use crate::{
 pub mod button;
 pub mod character_select;
 pub mod cursor;
+pub mod errors;
 pub mod input;
 pub mod main_menu;
+pub mod match_config;
 pub mod navigation;
 pub mod scaling;
-pub mod style;
-pub mod match_config;
-pub mod errors;
 pub mod stage_select;
+pub mod style;
 
 #[derive(Component, Clone, Default)]
 pub struct MenuMarker {}
@@ -63,6 +63,19 @@ pub fn wrap_menu(menu: impl Scene) -> impl Scene {
                 menu
             )
         ]
+    }
+}
+
+pub fn despawn_menu(
+    existing_menu: Option<Single<Entity, With<MenuMarker>>>,
+    mut commands: Commands,
+) {
+    if let Some(entity) = existing_menu {
+        commands
+            .entity(entity.into_inner())
+            .remove::<Camera2d>()
+            .remove::<Camera>()
+            .despawn();
     }
 }
 
@@ -116,10 +129,7 @@ impl Plugin for MenuPlugin {
                 ));
             }),
         )
-        .add_systems(
-            OnEnter(AppState::CharacterSelect),
-            character_select::setup_character_select,
-        )
+        .add_message::<character_select::PlayerSlotAssigned>()
         .init_resource::<navigation::UINavigationActionState>()
         .init_resource::<navigation::UINavigationRepeat>()
         .init_resource::<input::MenuInputState>()
@@ -150,35 +160,71 @@ impl Plugin for MenuPlugin {
                 .run_if(resource_exists::<CommonAssets>),
         )
         .add_systems(Startup, scaling::ui_update_scale_on_startup)
+        // CURSOR
+        .add_systems(
+            PreUpdate,
+            (cursor::cursor_input).before(bevy::picking::PickingSystems::ProcessInput),
+        )
+        .add_systems(
+            Update,
+            (cursor::copy_mouse_input, cursor::update_cursor_transform),
+        )
         .add_systems(
             PreUpdate,
             input::sample_menu_inputs
                 .before(cursor::cursor_input)
                 .run_if(resource_exists::<crate::input::MenuInputMap>),
         )
+        //---------
+        // CHARACTER SELECT START
+        //---------
         .add_systems(
-            PreUpdate,
-            cursor::cursor_input
-                .before(bevy::picking::PickingSystems::ProcessInput)
+            OnEnter(AppState::CharacterSelect),
+            character_select::setup_character_select,
+        )
+        .add_systems(
+            PostUpdate,
+            character_select::copy_cursor_transform_to_token
                 .run_if(in_state(AppState::CharacterSelect))
                 .run_if(any_with_component::<CharacterSelectScreen>),
         )
         .add_systems(
-            PostUpdate,
-            (
-                character_select::css_auto_assign_slots,
-                cursor::copy_mouse_input,
-                cursor::update_cursor_transform,
-                character_select::copy_cursor_transform_to_token,
-            )
+            PreUpdate,
+            (character_select::css_auto_assign_slots, character_select::handle_fighter_slot_addition)
                 .chain()
                 .run_if(in_state(AppState::CharacterSelect))
                 .run_if(any_with_component::<CharacterSelectScreen>),
         )
-        .add_systems(OnExit(AppState::CharacterSelect), cursor::despawn_cursors)
-        .add_observer(character_select::handle_fighter_slot_addition)
+        .add_systems(
+            OnExit(AppState::CharacterSelect),
+            (cursor::despawn_cursors, character_select::despawn_tokens),
+        )
         .add_observer(character_select::select_fighter.run_if(in_state(AppState::CharacterSelect)))
-        .add_observer(character_select::update_start_banner_visibility.run_if(in_state(AppState::CharacterSelect)))
+        .add_observer(
+            character_select::update_start_banner_visibility
+                .run_if(in_state(AppState::CharacterSelect)),
+        )
+        //---------
+        // CHARACTER SELECT END
+        //---------
+        //---------
+        // STAGE SELECT START
+        //---------
+        .add_systems(
+            OnEnter(AppState::StageSelect),
+            stage_select::setup_stage_select,
+        )
+        .add_observer(stage_select::stage_selected.run_if(in_state(AppState::StageSelect)),
+        )
+
+        .add_systems(
+            OnExit(AppState::StageSelect),
+            (cursor::despawn_cursors, despawn_menu),
+        )
+
+        //---------
+        // STAGE SELECT END
+        //---------
         .add_plugins(RonAssetPlugin::<FGUiStyle>::create("stylesheet.ron"))
         .add_systems(
             Update,

@@ -28,20 +28,21 @@ pub struct FGMenuCursor {
 
 impl FGMenuCursor {
     pub fn create_cursor(
-        player_slot: usize,
+        input_source: MenuCursorInputSource,
         style: &FGUiStyle,
-        input_source: &LocalInputSource,
+        pointer_id: PointerId
     ) -> impl Bundle {
-        let pointer_id = if matches!(input_source, LocalInputSource::Keyboard) {PointerId::Mouse} else {PointerId::Custom(Uuid::new_v4())};
         let circle_icon = style.cursor.handle().clone();
         (
             FGMenuCursor {
-                input_source: super::cursor::MenuCursorInputSource::Player(player_slot),
+                input_source: input_source,
                 ..default()
             },
             Node {
                 width: px(64),
                 height: px(64),
+                left: percent(50),
+                top: percent(50),
                 position_type: PositionType::Absolute,
                 ..default()
             },
@@ -53,6 +54,25 @@ impl FGMenuCursor {
             Transform::IDENTITY,
             GlobalZIndex(1000),
             Pickable::IGNORE,
+        )
+    }
+    pub fn create_shared_cursor(style: &FGUiStyle) -> impl Bundle {
+        Self::create_cursor(
+            MenuCursorInputSource::Any,
+            style,
+            PointerId::Mouse
+        )
+    }
+    pub fn create_player_cursor(
+        player_slot: usize,
+        style: &FGUiStyle,
+        input_source: &LocalInputSource,
+    ) -> impl Bundle {
+        let pointer_id = if matches!(input_source, LocalInputSource::Keyboard) {PointerId::Mouse} else {PointerId::Custom(Uuid::new_v4())};
+        Self::create_cursor(
+            MenuCursorInputSource::Player(player_slot),
+            style,
+            pointer_id
         )
     }
 }
@@ -159,14 +179,15 @@ pub fn cursor_input(
 
 pub fn update_cursor_transform(
     camera: Single<&Camera, With<IsDefaultUiCamera>>,
-    query: Query<(&mut UiTransform, &PointerLocation), With<FGMenuCursor>>,
+    query: Query<(&mut Node, &PointerLocation), With<FGMenuCursor>>,
     ui_scale: Res<UiScale>,
 ) {
     let camera = camera.into_inner();
 
-    for (mut ui_trf, location) in query {
+    for (mut node, location) in query {
         let ui_pos = scaling::logical_to_ui_position(location.location.as_ref().map(|d| d.position).unwrap_or_default(), camera, &ui_scale);
-        ui_trf.translation = Val2::new(px(ui_pos.x), px(ui_pos.y));
+        node.left = px(ui_pos.x);
+        node.top = px(ui_pos.y);
     }
 }
 

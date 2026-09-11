@@ -26,6 +26,7 @@ pub struct BoxShadowStyle {
 pub struct ButtonStyle {
     background_color: Color,
     border_color: Color,
+    border_radius: f32,
     text_color: Color,
     box_shadow: BoxShadowStyle,
     border_size: i32,
@@ -44,9 +45,10 @@ pub struct ButtonStyles {
 impl ButtonStyle {
     pub fn apply(&self, commands: &mut Commands, entity: Entity, node: &mut Node) {
         node.border = UiRect::all(px(self.border_size));
+        node.border_radius = BorderRadius::all(px(self.border_radius));
         commands.entity(entity).insert((
             BackgroundColor(self.background_color),
-            BorderColor::all(self.background_color),
+            BorderColor::all(self.border_color),
             BoxShadow::new(
                 self.box_shadow.color,
                 px(self.box_shadow.offset_px_x),
@@ -64,6 +66,7 @@ pub enum FGUiButtonType {
     MainMenu,
     CharacterSelectCharacter,
     CharacterSelectStartBanner,
+    StageSelectIcon,
 }
 
 #[derive(Asset, Resource, Reflect, Deserialize, RonAsset)]
@@ -77,4 +80,5 @@ pub struct FGUiStyle {
     #[dependency]
     #[reflect(ignore)]
     pub css_token: TextureReference,
+    pub player_colors: Vec<Color>,
 }

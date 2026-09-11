@@ -26,6 +26,7 @@ impl CharacterSelectToken {
             },
             ImageNode {
                 image: style.css_token.handle.handle.clone(),
+                color: style.player_colors.get(slot).copied().unwrap_or(Color::WHITE),
                 ..default()
             }
         )

@@ -5,12 +5,12 @@ use bevy::prelude::*;
 
 pub mod debug;
 pub mod line;
-pub mod scene;
 pub mod manifest;
+pub mod scene;
 
 pub use line::{StagePlaneIntersectResult, StagePoly};
 
-use crate::{stage::{line::StageCollision, manifest::StageCameraProfile}};
+use crate::stage::{line::StageCollision, manifest::StageCameraProfile};
 
 /// Owns the stage geometry: which scene gets spawned and how it is drawn.
 #[derive(Default)]

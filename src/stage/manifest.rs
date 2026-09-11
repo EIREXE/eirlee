@@ -1,18 +1,16 @@
 use std::collections::HashMap;
 
 use bevy_asset_loader::asset_collection::AssetCollection;
+use ron_asset_manager::prelude::RonAsset;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use crate::{
-    AppState,
-    game_settings::GameSettings,
-    math::vec::FGVec2,
-    stage::{
+    AppState, game_settings::GameSettings, math::vec::FGVec2, stage::{
         StagePoly,
         line::{StageCollision, StagePolyLineSegmentType, StagePolyType},
-    },
+    }, texture_reference::TextureReference,
 };
 use bevy::prelude::*;
 
@@ -60,8 +58,9 @@ pub struct StageCameraProfile {
     pub max_downward_pan_degrees: f32,
 }
 
-#[derive(Reflect, Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Hash, Debug, EnumIter)]
+#[derive(Reflect, Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Hash, Debug, EnumIter, Default)]
 pub enum StageId {
+    #[default]
     TestStage,
 }
 
@@ -72,10 +71,14 @@ pub struct StagePolyDefinition {
     lines: Vec<(FGVec2, StagePolyLineSegmentType)>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Asset, Reflect)]
+#[derive(Deserialize, Clone, Asset, Reflect, RonAsset)]
 pub struct StageManifest {
     pub id: StageId,
     pub model_path: String,
+    #[asset]
+    #[dependency]
+    #[reflect(ignore)]
+    pub icon: TextureReference,
     pub camera: StageCameraProfile,
     pub polygons: Vec<StagePolyDefinition>,
 }
@@ -112,7 +115,7 @@ impl AssetCollection for StageManifestAssets {
     }
 }
 
-#[derive(Resource)]
+#[derive(Resource, Deref)]
 pub struct StageManifestRegistry(HashMap<StageId, Handle<StageManifest>>);
 
 impl StageManifestRegistry {

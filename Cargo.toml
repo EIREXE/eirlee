@@ -4,14 +4,6 @@ version = "0.1.0"
 edition = "2024"
 authors = [""]
 
-# A normal Bevy project. jackdaw builds its own editor artifacts in
-# .jackdaw/ and never changes this manifest; `cargo run` works with or
-# without the editor installed.
-
-# Stand this project on its own even when it is created inside another
-# cargo workspace, which would otherwise adopt it and refuse to build
-# ("current package believes it's in a workspace when it's not").
-# Delete this to make it a member of the surrounding workspace instead.
 [workspace]
 
 [dependencies]
@@ -19,7 +11,7 @@ bevy = { version = "0.19", features = ["asset_processor", "dynamic_linking", "fr
 # Loads the scenes you author in the editor (assets/*.bsn) and builds
 # physics colliders from them. An ordinary dependency; remove it if you
 # stop using authored scenes.
-jackdaw_runtime = { version = "0.19", features = ["physics"], path="../jackdaw/crates/jackdaw_runtime" }
+thiserror = "2"
 avian3d = "0.7"
 arrayvec = "0.7.8"
 bevy-inspector-egui = "0.37.0"
@@ -36,8 +28,8 @@ bevy_wind_waker_shader = { git = "https://github.com/lavaeater/bevy_wind_waker_s
 fixed = { version = "1.31.0", features = ["serde", "serde-str"] }
 strum = "0.28.0"
 strum_macros = "0.28.0"
-bevy_common_assets = { version = "0.17.0", features = ["ron"] }
 bevy_asset_loader = "0.27.0"
+ron_asset_manager = "0.9.0"
 gc-adapter-neo = { version = "1.0.0", features = ["libusb"] }
 rhai = "1.26.0"
 enum_cycling = "0.2.1"

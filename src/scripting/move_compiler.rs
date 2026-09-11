@@ -3,7 +3,9 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use rhai::EvalAltResult;
 
 use crate::{
-    fighter::attack::{self, AttackAngle, FighterDamage, Knockback, KnockbackType}, math::{int::FGi32, vec::FGVec2, vec3::FGVec3}, scripting::FighterAttackScript,
+    fighter::attack::{self, AttackAngle, FighterDamage, Knockback, KnockbackType},
+    math::{int::FGi32, vec::FGVec2, vec3::FGVec3},
+    scripting::FighterAttackScript,
 };
 
 #[derive(Debug, Default)]
@@ -61,9 +63,17 @@ impl MoveCompiler {
         Ok(())
     }
 
-    fn set_wont_autocancel_window(&mut self, start: u32, end: u32) -> Result<(), Box<EvalAltResult>> {
+    fn set_wont_autocancel_window(
+        &mut self,
+        start: u32,
+        end: u32,
+    ) -> Result<(), Box<EvalAltResult>> {
         if end < start {
-            return Err(format!("Couldn't set won't autocancel window, end frame {} is smaller than start frame {}", end, start).into());
+            return Err(format!(
+                "Couldn't set won't autocancel window, end frame {} is smaller than start frame {}",
+                end, start
+            )
+            .into());
         }
 
         self.wont_autocancel_window = Some((start, end));
@@ -77,13 +87,17 @@ impl MoveCompiler {
 
     fn into_attack_script(mut self) -> Result<FighterAttackScript, String> {
         self.remove_all_hitboxes().map_err(|err| err.to_string())?;
-        let hitboxes = self.hitboxes.into_iter().map(|(_, hitbox)| hitbox).collect();
+        let hitboxes = self
+            .hitboxes
+            .into_iter()
+            .map(|(_, hitbox)| hitbox)
+            .collect();
         let iasa_frame = self.iasa_frame.unwrap_or(100000);
         let wont_autocancel_window = self.wont_autocancel_window.unwrap_or((0, 100000));
         Ok(FighterAttackScript {
             hitboxes,
             iasa_frame,
-            wont_autocancel_window
+            wont_autocancel_window,
         })
     }
 }
@@ -166,13 +180,10 @@ pub fn compile_script(text: &str) -> Result<FighterAttackScript, String> {
 
         {
             let mc = mc.clone();
-            engine.register_fn(
-                "set_iasa_frame",
-                move |frame: i64| {
-                    let mut b = mc.borrow_mut();
-                    b.set_iasa_frame(frame as u32);
-                },
-            );
+            engine.register_fn("set_iasa_frame", move |frame: i64| {
+                let mut b = mc.borrow_mut();
+                b.set_iasa_frame(frame as u32);
+            });
         }
 
         {
@@ -180,15 +191,15 @@ pub fn compile_script(text: &str) -> Result<FighterAttackScript, String> {
             engine.register_fn(
                 "hitbox",
                 move |id: i64,
-                    bone: &str,
-                    damage: FighterDamage,
-                    offset: FGVec3,
-                    radius: FGi32,
-                    angle: AttackAngle,
-                    knockback_type: KnockbackType,
-                    knockback: Knockback,
-                    knockback_growth: FGi32|
-                    -> Result<(), Box<EvalAltResult>> {
+                      bone: &str,
+                      damage: FighterDamage,
+                      offset: FGVec3,
+                      radius: FGi32,
+                      angle: AttackAngle,
+                      knockback_type: KnockbackType,
+                      knockback: Knockback,
+                      knockback_growth: FGi32|
+                      -> Result<(), Box<EvalAltResult>> {
                     let mut b = mc.borrow_mut();
 
                     // Rhai does not have first class u32 support, so we have to do this.
@@ -222,7 +233,12 @@ pub fn compile_script(text: &str) -> Result<FighterAttackScript, String> {
         engine.run(&text)
     };
 
-
-    result.map(|_| Rc::into_inner(mc).unwrap().into_inner().into_attack_script())
+    result
+        .map(|_| {
+            Rc::into_inner(mc)
+                .unwrap()
+                .into_inner()
+                .into_attack_script()
+        })
         .map_err(|err| err.to_string())?
 }

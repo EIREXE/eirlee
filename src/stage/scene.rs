@@ -4,9 +4,7 @@ use std::f32::consts::PI;
 
 use bevy::prelude::*;
 
-use crate::{
-    camera::MatchCamera, stage::line::StageCollision,
-};
+use crate::{camera::MatchCamera, stage::line::StageCollision};
 
 pub fn spawn_stage_support(
     commands: &mut Commands,

@@ -6,15 +6,7 @@ use bevy_egui::egui::accesskit::TextAlign;
 
 use crate::{
     AppState, fighter::manifest::{FighterManifest, FighterManifestRegistry}, game_settings::CommonAssets, input::{LocalInputAssignments, LocalInputSource}, menus::{
-        MenuMarker, build_menu_with_props,
-        button::FGUiButton,
-        character_select::character_box::CharacterBox,
-        cursor::{FGMenuCursor, MenuCursorInputSource},
-        errors::MenuErrors::{self, FighterManifestNotFound},
-        match_config::{MenuMatchConfig, MenuMatchPlayerSlot},
-        scaling, spawn_menu,
-        style::{FGUiButtonType, FGUiStyle},
-        wrap_menu,
+        MenuMarker, build_menu_with_props, button::FGUiButton, character_select::{character_box::CharacterBox, token::CharacterSelectToken}, cursor::{FGMenuCursor, MenuCursorInputSource}, errors::MenuErrors::{self, FighterManifestNotFound}, match_config::{MenuMatchConfig, MenuMatchPlayerSlot}, scaling, spawn_menu, style::{FGUiButtonType, FGUiStyle}, wrap_menu,
     },
 };
 
@@ -67,31 +59,6 @@ pub fn setup_character_select(
             }
             Children [
                 {character_boxes},
-                (
-                    // Start banner thingy
-                    StartButtonBanner
-                    Node {
-                        position_type: PositionType::Absolute,
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        width: percent(100),
-                    }
-                    FGUiButton {
-                        button_type: FGUiButtonType::CharacterSelectStartBanner
-                    }
-                    Text::new("Peenids")
-                    Visibility::Hidden
-                    TextLayout {
-                        justify: Justify::Center
-                    }
-                    TextFont {
-                        font_size: FontSize::Px(48.0),
-                    }
-                    TextColor(Color::WHITE)
-                    BackgroundColor(Color::BLACK)
-                    GlobalZIndex(500)
-                    on(|_ev: On<Pointer<Press>>, mut next_state: ResMut<NextState<AppState>>| next_state.set(AppState::StageSelect))
-                )
             ]
         ),
         (
@@ -99,9 +66,34 @@ pub fn setup_character_select(
             Node {
                 flex_direction: FlexDirection::Row,
                 width: percent(100),
-                height: px(400),
+                min_height: px(400),
                 justify_content: JustifyContent::Center
             }
+        ),
+        (
+            // Start banner thingy
+            StartButtonBanner
+            Node {
+                position_type: PositionType::Absolute,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                width: percent(100),
+            }
+            FGUiButton {
+                button_type: FGUiButtonType::CharacterSelectStartBanner
+            }
+            Text::new("Start poetry")
+            Visibility::Hidden
+            TextLayout {
+                justify: Justify::Center
+            }
+            TextFont {
+                font_size: FontSize::Px(48.0),
+            }
+            TextColor(Color::WHITE)
+            BackgroundColor(Color::BLACK)
+            GlobalZIndex(500)
+            on(|_ev: On<Pointer<Press>>, mut next_state: ResMut<NextState<AppState>>| next_state.set(AppState::StageSelect))
         )
         ]
     };
@@ -113,7 +105,7 @@ pub fn setup_character_select(
 pub fn create_portrait(
     player_slot: usize,
     container: Entity,
-    mut commands: Commands,
+    commands: &mut Commands,
     style: &FGUiStyle,
     input_source: &LocalInputSource,
 ) {
@@ -123,7 +115,7 @@ pub fn create_portrait(
     commands.entity(container).add_child(entity);
 
     let cursor = commands
-        .spawn(FGMenuCursor::create_cursor(
+        .spawn(FGMenuCursor::create_player_cursor(
             player_slot,
             style,
             input_source,
@@ -137,36 +129,40 @@ pub fn create_portrait(
     commands.entity(container).add_child(entity);
 }
 
-#[derive(Event)]
+#[derive(Message)]
 pub struct PlayerSlotAssigned {
     pub slot: usize,
     pub input_source: LocalInputSource,
 }
 
 pub fn handle_fighter_slot_addition(
-    addition: On<PlayerSlotAssigned>,
+    mut addition: MessageReader<PlayerSlotAssigned>,
     query: Single<&CharacterSelectScreen>,
-    commands: Commands,
+    mut commands: Commands,
     common_assets: Res<CommonAssets>,
     styles: Res<Assets<FGUiStyle>>,
 ) {
-    let slot = addition.slot;
-    create_portrait(
-        slot,
-        query.fighter_portait_container,
-        commands,
-        styles
-            .get(&common_assets.ui_style)
-            .expect("UI Style should be loaded by now"),
-        &addition.input_source,
-    );
+
+    for addition in addition.read() {
+        let slot = addition.slot;
+        create_portrait(
+            slot,
+            query.fighter_portait_container,
+            &mut commands,
+            styles
+                .get(&common_assets.ui_style)
+                .expect("UI Style should be loaded by now"),
+            &addition.input_source,
+        );
+    }
+
 }
 
 pub fn css_auto_assign_slots(
     menu_inputs: Res<crate::menus::input::MenuInputState>,
     mut assignments: ResMut<LocalInputAssignments>,
     mut match_config: ResMut<MenuMatchConfig>,
-    mut commands: Commands,
+    mut ev_assigned: MessageWriter<PlayerSlotAssigned>,
 ) {
     for (source, input) in &menu_inputs.inputs {
         if input.movement != Vec2::ZERO {
@@ -178,7 +174,7 @@ pub fn css_auto_assign_slots(
                     fighter: None,
                 });
                 info!("New input assignment");
-                commands.trigger(PlayerSlotAssigned {
+                ev_assigned.write(PlayerSlotAssigned {
                     slot: free_idx,
                     input_source: source.clone(),
                 });
@@ -267,4 +263,10 @@ pub fn copy_cursor_transform_to_token(
         }
     }
     Ok(())
+}
+
+pub fn despawn_tokens(tokens: Query<Entity, With<CharacterSelectToken>>, mut commands: Commands) {
+    for token in tokens {
+        commands.entity(token).despawn();
+    }
 }
