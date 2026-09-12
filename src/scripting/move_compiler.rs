@@ -87,11 +87,12 @@ impl MoveCompiler {
 
     fn into_attack_script(mut self) -> Result<FighterAttackScript, String> {
         self.remove_all_hitboxes().map_err(|err| err.to_string())?;
-        let hitboxes = self
+        let mut hitboxes: Vec<_> = self
             .hitboxes
             .into_iter()
             .map(|(_, hitbox)| hitbox)
             .collect();
+        hitboxes.sort_unstable_by_key(|hitbox| hitbox.id);
         let iasa_frame = self.iasa_frame.unwrap_or(100000);
         let wont_autocancel_window = self.wont_autocancel_window.unwrap_or((0, 100000));
         Ok(FighterAttackScript {
@@ -241,4 +242,42 @@ pub fn compile_script(text: &str) -> Result<FighterAttackScript, String> {
                 .into_attack_script()
         })
         .map_err(|err| err.to_string())?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn compiled_hitboxes_are_sorted_by_authored_id() {
+        let script = compile_script(
+            r#"
+                frame(1);
+                hitbox(20, "hand_l", damage("1"), vec3("0", "0", "0"), fg32("1"), angle(fg32("0")), knockback_normal(), knockback("1"), fg32("1"));
+                frame(2);
+                hitbox(3, "hand_l", damage("2"), vec3("0", "0", "0"), fg32("1"), angle(fg32("0")), knockback_normal(), knockback("1"), fg32("1"));
+                frame(3);
+                hitbox(10, "hand_l", damage("3"), vec3("0", "0", "0"), fg32("1"), angle(fg32("0")), knockback_normal(), knockback("1"), fg32("1"));
+                frame(4);
+            "#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            script
+                .hitboxes
+                .iter()
+                .map(|hitbox| hitbox.id)
+                .collect::<Vec<_>>(),
+            vec![3, 10, 20]
+        );
+        assert_eq!(
+            script
+                .hitboxes
+                .iter()
+                .map(|hitbox| hitbox.start_frame)
+                .collect::<Vec<_>>(),
+            vec![2, 3, 1]
+        );
+    }
 }

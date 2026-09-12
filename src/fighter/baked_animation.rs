@@ -3,7 +3,6 @@
 use std::{
     collections::{HashMap, HashSet},
     io,
-    path::Path,
 };
 
 use bevy::{
@@ -18,11 +17,12 @@ use bevy::{
     reflect::TypePath,
     world_serialization::{WorldInstanceReady, WorldInstanceSpawner},
 };
-use bevy_ggrs::prelude::GgrsSchedule;
+use bevy_ggrs::{GgrsFrameTiming, prelude::GgrsSchedule};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     fighter::{
+        Fighter,
         animation::{AnimKind, FighterAnimationFrame},
         manifest::FighterManifest,
         visual::FighterAnimations,
@@ -194,7 +194,10 @@ impl BakedFighterAnimations {
     pub fn sample_pose(&self, frame: &FighterAnimationFrame) -> Option<&[FixedMat4]> {
         let frames = &self.clip(frame.kind)?.frames;
         let frame_index = if frame.repeat {
-            frame.frame % frames.len() as u32
+            // The terminal sample is retained for one-shot animations, but is
+            // the same point in time as the next loop's first sample.
+            let loop_frame_count = frames.len().saturating_sub(1).max(1) as u32;
+            frame.frame % loop_frame_count
         } else {
             frame.frame
         };
@@ -224,6 +227,7 @@ pub struct FighterBoneMatrices {
     matrices: Vec<FixedMat4>,
     previous_frame_matrices: Vec<FixedMat4>,
     local_matrices: Vec<FixedMat4>,
+    previous_local_matrices: Vec<FixedMat4>,
 }
 
 #[derive(Component)]
@@ -263,7 +267,23 @@ impl FighterBoneMatrices {
         self.local_matrices.get(index).copied()
     }
 
-    fn set_pose(&mut self, bone_names: &[String], parents: &[Option<usize>], local: &[FixedMat4]) {
+    fn presentation_local(&self, index: usize, overstep_fraction: f32) -> Option<Transform> {
+        let current = self.local_matrices.get(index).copied()?;
+        let previous = self
+            .previous_local_matrices
+            .get(index)
+            .copied()
+            .unwrap_or(current);
+        Some(interpolate_transform(previous, current, overstep_fraction))
+    }
+
+    fn set_pose(
+        &mut self,
+        bone_names: &[String],
+        parents: &[Option<usize>],
+        local: &[FixedMat4],
+        model_scale: FGi32,
+    ) {
         assert_eq!(
             bone_names.len(),
             local.len(),
@@ -282,6 +302,7 @@ impl FighterBoneMatrices {
             assert_eq!(self.parents, parents, "baked bone parents changed");
         }
         std::mem::swap(&mut self.matrices, &mut self.previous_frame_matrices);
+        std::mem::swap(&mut self.local_matrices, &mut self.previous_local_matrices);
         self.local_matrices.clear();
         self.local_matrices.extend_from_slice(local);
         let mut model = vec![None; local.len()];
@@ -289,9 +310,17 @@ impl FighterBoneMatrices {
             resolve_model_transform(index, parents, local, &mut model)
                 .expect("baked bone hierarchy should be valid");
         }
+        let model_scale = FixedMat4 {
+            cols: [
+                [model_scale, FGi32::ZERO, FGi32::ZERO, FGi32::ZERO],
+                [FGi32::ZERO, model_scale, FGi32::ZERO, FGi32::ZERO],
+                [FGi32::ZERO, FGi32::ZERO, model_scale, FGi32::ZERO],
+                [FGi32::ZERO, FGi32::ZERO, FGi32::ZERO, FGi32::ONE],
+            ],
+        };
         self.matrices = model
             .into_iter()
-            .map(|matrix| matrix.expect("baked bone hierarchy should be valid"))
+            .map(|matrix| model_scale.mul(matrix.expect("baked bone hierarchy should be valid")))
             .collect();
     }
 }
@@ -300,18 +329,32 @@ pub fn update_fighter_bone_matrices(
     mut fighters: Query<(
         &FighterAnimationFrame,
         &FighterAnimations,
+        &Fighter,
         &mut FighterBoneMatrices,
     )>,
     baked_assets: Res<Assets<BakedFighterAnimations>>,
+    manifests: Res<Assets<FighterManifest>>,
 ) {
-    for (frame, animations, mut matrices) in &mut fighters {
+    for (frame, animations, fighter, mut matrices) in &mut fighters {
         let baked = baked_assets
             .get(&animations.baked)
             .expect("fighter baked animation asset should be loaded before the match starts");
+        assert_eq!(
+            baked.frame_rate, BAKED_ANIMATION_FPS,
+            "fighter baked animation rate does not match the simulation rate"
+        );
         let pose = baked
             .sample_pose(frame)
             .expect("fighter animation frame should select a baked pose");
-        matrices.set_pose(&baked.bone_names, &baked.parents, pose);
+        let manifest = manifests
+            .get(&fighter.manifest)
+            .expect("fighter manifest should be loaded before the match starts");
+        matrices.set_pose(
+            &baked.bone_names,
+            &baked.parents,
+            pose,
+            manifest.model_scale,
+        );
     }
 }
 
@@ -403,15 +446,30 @@ fn bind_fighter_visual_bones(
 fn apply_baked_fighter_visual_pose(
     mut nodes: Query<(&mut Transform, &BakedFighterBone)>,
     fighters: Query<&FighterBoneMatrices>,
+    timing: Res<GgrsFrameTiming>,
 ) {
+    let overstep_fraction = timing.overstep_fraction();
     for (mut transform, bone) in &mut nodes {
         let Ok(matrices) = fighters.get(bone.fighter) else {
             continue;
         };
-        let Some(local) = matrices.local(bone.index) else {
+        let Some(local) = matrices.presentation_local(bone.index, overstep_fraction) else {
             continue;
         };
-        *transform = Transform::from_matrix(local.to_mat4());
+        *transform = local;
+    }
+}
+
+fn interpolate_transform(previous: FixedMat4, current: FixedMat4, factor: f32) -> Transform {
+    let (previous_scale, previous_rotation, previous_translation) =
+        previous.to_mat4().to_scale_rotation_translation();
+    let (current_scale, current_rotation, current_translation) =
+        current.to_mat4().to_scale_rotation_translation();
+    let factor = factor.clamp(0.0, 1.0);
+    Transform {
+        translation: previous_translation.lerp(current_translation, factor),
+        rotation: previous_rotation.slerp(current_rotation, factor),
+        scale: previous_scale.lerp(current_scale, factor),
     }
 }
 
@@ -452,10 +510,10 @@ impl AssetLoader for FighterBakeSourceLoader {
         let manifest: FighterManifest = ron::de::from_bytes(&manifest_bytes)
             .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
 
-        // The processor's AssetServer reads processed assets. Reading this
-        // source dependency through it would wait for a processed GLB while
-        // this processor is still producing the first processed asset.
-        let model_bytes = std::fs::read(Path::new("assets").join(&manifest.model_path))?;
+        let model_bytes = load_context
+            .read_asset_bytes(&manifest.model_path)
+            .await
+            .map_err(|error| io::Error::other(error.to_string()))?;
         Ok(FighterBakeSource {
             model_bytes,
             animations: manifest.animations,
@@ -616,10 +674,10 @@ fn bake_gltf(
             .iter()
             .filter_map(Channel::duration)
             .fold(0.0_f32, f32::max);
-        let frame_count = (duration * BAKED_ANIMATION_FPS as f32).ceil() as usize + 1;
+        let frame_count = baked_frame_count(duration, BAKED_ANIMATION_FPS);
         let mut frames = Vec::with_capacity(frame_count);
         for frame in 0..frame_count {
-            let time = frame as f32 / BAKED_ANIMATION_FPS as f32;
+            let time = (frame as f32 / BAKED_ANIMATION_FPS as f32).min(duration);
             let local = nodes
                 .iter()
                 .map(|node| local_transform(node.clone(), &channels, time))
@@ -656,6 +714,17 @@ fn bake_gltf(
         clips,
         clip_indices,
     })
+}
+
+fn baked_frame_count(duration: f32, frame_rate: u32) -> usize {
+    let frame = duration as f64 * frame_rate as f64;
+    let nearest_frame = frame.round();
+    let last_frame = if (frame - nearest_frame).abs() < 0.0001 {
+        nearest_frame
+    } else {
+        frame.ceil()
+    };
+    last_frame as usize + 1
 }
 
 fn resolve_model_transform(
@@ -829,18 +898,19 @@ mod tests {
         let manifest: FighterManifest =
             ron::from_str(include_str!("../../assets/fighters/test/test.fighter.ron")).unwrap();
         let baked = bake_gltf(
-            include_bytes!("../../assets/fighters/test/test-fighter-normal.glb"),
+            include_bytes!("../../assets/fighters/test/test-fighter-2.glb"),
             &manifest.animations,
         )
         .unwrap();
 
         assert_eq!(baked.frame_rate, BAKED_ANIMATION_FPS);
-        assert!(baked.frame_count(AnimKind::Wait).unwrap() > 1);
+        assert_eq!(baked.frame_count(AnimKind::Wait), Some(121));
+        assert_eq!(baked.frame_count(AnimKind::Walk), Some(33));
+        assert_eq!(baked.frame_count(AnimKind::Run), Some(33));
+        assert_eq!(baked.frame_count(AnimKind::Dash), Some(21));
+        assert_eq!(baked.frame_count(AnimKind::Landing), Some(9));
+        assert_eq!(baked.frame_count(AnimKind::JumpBack), Some(57));
         assert_eq!(baked.clip_indices.len(), manifest.animations.len());
-        assert_eq!(
-            baked.clip_indices[&AnimKind::JumpSquat],
-            baked.clip_indices[&AnimKind::Landing]
-        );
         assert_eq!(
             baked.clip(AnimKind::Wait).unwrap().frames[0].len(),
             baked.bone_names.len()
@@ -853,12 +923,14 @@ mod tests {
         let first = FixedMat4::IDENTITY;
         let mut second = FixedMat4::IDENTITY;
         second.translate(FGVec3::lit("2", "0", "0"));
+        let mut terminal = FixedMat4::IDENTITY;
+        terminal.translate(FGVec3::lit("4", "0", "0"));
         let baked = BakedFighterAnimations {
             frame_rate: BAKED_ANIMATION_FPS,
             bone_names: vec!["root".into()],
             parents: vec![None],
             clips: vec![BakedAnimationClip {
-                frames: vec![vec![first], vec![second]],
+                frames: vec![vec![first], vec![second], vec![terminal]],
             }],
             clip_indices: HashMap::from([(AnimKind::Wait, 0)]),
         };
@@ -870,12 +942,48 @@ mod tests {
         };
         let finished = FighterAnimationFrame {
             kind: AnimKind::Wait,
-            frame: 3,
+            frame: 4,
             repeat: false,
         };
 
         assert_eq!(baked.sample_pose(&repeating), Some(&[second][..]));
-        assert_eq!(baked.sample_pose(&finished), Some(&[second][..]));
+        assert_eq!(baked.sample_pose(&finished), Some(&[terminal][..]));
+    }
+
+    #[test]
+    fn frame_count_snaps_source_frame_rounding_error_to_the_bake_grid() {
+        assert_eq!(baked_frame_count(0.533333361, 60), 33);
+        assert_eq!(baked_frame_count(0.333333343, 60), 21);
+        assert_eq!(baked_frame_count(0.133333340, 60), 9);
+        assert_eq!(baked_frame_count(2.0, 60), 121);
+    }
+
+    #[test]
+    fn linear_source_channel_is_resampled_between_thirty_hz_keys() {
+        let channel = Channel {
+            node: 0,
+            property: gltf::animation::Property::Translation,
+            interpolation: gltf::animation::Interpolation::Linear,
+            times: vec![0.0, 1.0 / 30.0],
+            values: ChannelValues::Vec3(vec![[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]]),
+        };
+        let ChannelValues::Vec3(values) = &channel.values else {
+            unreachable!()
+        };
+
+        assert_eq!(sample_vec3(&channel, values, 1.0 / 60.0), [1.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn presentation_pose_interpolates_previous_and_current_local_transforms() {
+        let mut previous = FixedMat4::IDENTITY;
+        previous.translate(FGVec3::lit("2", "0", "0"));
+        let mut current = FixedMat4::IDENTITY;
+        current.translate(FGVec3::lit("6", "0", "0"));
+
+        let transform = interpolate_transform(previous, current, 0.25);
+
+        assert_eq!(transform.translation, Vec3::new(3.0, 0.0, 0.0));
     }
 
     #[test]
@@ -888,6 +996,7 @@ mod tests {
             &["root".into(), "hand".into()],
             &[None, Some(0)],
             &[first, second],
+            FGi32::ONE,
         );
 
         assert_eq!(matrices.get_current("hand"), Some(second));
@@ -909,6 +1018,7 @@ mod tests {
             &["root".into(), "hand".into()],
             &[None, Some(0)],
             &[root, hand],
+            FGi32::ONE,
         );
 
         assert_eq!(matrices.local(1), Some(hand));
@@ -923,6 +1033,28 @@ mod tests {
                 .to_mat4()
                 .transform_point3(Vec3::ZERO),
             Vec3::new(0.0, 3.0, 0.0)
+        );
+    }
+
+    #[test]
+    fn model_scale_affects_gameplay_bones_without_changing_visual_locals() {
+        let mut root = FixedMat4::IDENTITY;
+        root.translate(FGVec3::lit("1", "0", "0"));
+        let mut hand = FixedMat4::IDENTITY;
+        hand.translate(FGVec3::lit("0", "2", "0"));
+        let mut matrices = FighterBoneMatrices::default();
+
+        matrices.set_pose(
+            &["root".into(), "hand".into()],
+            &[None, Some(0)],
+            &[root, hand],
+            FGi32::lit("10"),
+        );
+
+        assert_eq!(matrices.local(1), Some(hand));
+        assert_eq!(
+            matrices.get_current("hand").unwrap().get_translation(),
+            FGVec3::lit("10", "20", "0")
         );
     }
 

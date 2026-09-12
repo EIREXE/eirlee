@@ -43,7 +43,10 @@ impl LocalInputAssignments {
     }
 
     pub fn get_from_slot(&self, slot: usize) -> Option<&LocalInputSource> {
-        self.0.iter().find(|(c_slot, _)| slot == *c_slot).map(|(_, source)| source)
+        self.0
+            .iter()
+            .find(|(c_slot, _)| slot == *c_slot)
+            .map(|(_, source)| source)
     }
 }
 

@@ -341,14 +341,15 @@ pub fn attack_debug(
     for (hitboxes, matrices, translation, facing_direction, frame) in query {
         if let Some(script) = &hitboxes.attack_script {
             for solved_hitbox in hitboxes.active_hitboxes_solved.iter() {
-                let start = solved_hitbox.start.to_vec3();
-                let end = solved_hitbox.end.to_vec3();
-                let center = (solved_hitbox.start + solved_hitbox.end) * FGi32::lit("0.5");
+                let start = solved_hitbox.capsule.start.to_vec3();
+                let end = solved_hitbox.capsule.end.to_vec3();
+                let center =
+                    (solved_hitbox.capsule.start + solved_hitbox.capsule.end) * FGi32::lit("0.5");
                 let length = (start - end).length();
 
                 let attack_capsule = Capsule3d {
                     half_length: length * 0.5,
-                    radius: solved_hitbox.radius.to_num(),
+                    radius: solved_hitbox.capsule.radius.to_num(),
                 };
 
                 let aim_dir = (end - start).normalize_or(Vec3::Y);

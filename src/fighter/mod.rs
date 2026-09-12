@@ -26,13 +26,18 @@ pub mod visual;
 pub use attributes::FighterAttributes;
 pub use ecb::FighterECB;
 pub use manifest::FighterId;
-pub use motion::{FighterPreviousTranslation, FighterTranslation, FighterVelocity, Grounded};
+pub use motion::{
+    FighterPreviousFacingDirection, FighterPreviousTranslation, FighterTranslation,
+    FighterVelocity, Grounded,
+};
 
 use crate::{
     fighter::{
-        attack::{FighterAttackPlugin, FighterAttackScriptAssets, FighterSolvedHurtboxes},
+        attack::{
+            FighterAttackPlugin, FighterAttackScriptAssets, FighterSolvedHitboxes,
+            FighterSolvedHurtboxes,
+        },
         baked_animation::FighterBoneMatrices,
-        hurtbox::FixedCapsule,
         manifest::FighterManifest,
         state::{FighterState, fall::FallState},
         visual::FighterAnimations,
@@ -113,7 +118,8 @@ impl Plugin for FighterPlugin {
             .add_systems(
                 GgrsSchedule,
                 (
-                    ecb::snapshot_fighter_ecb.before(state_interrupt_system),
+                    (ecb::snapshot_fighter_ecb, motion::snapshot_fighter_motion)
+                        .before(state_interrupt_system),
                     animation::advance_fighter_animation_frames.before(state_interrupt_system),
                     state::state_interrupt_system,
                 )
@@ -155,6 +161,8 @@ impl Plugin for FighterPlugin {
             .checksum_component_with_hash::<FighterTranslation>()
             .rollback_component_with_copy::<FighterPreviousTranslation>()
             .checksum_component_with_hash::<FighterPreviousTranslation>()
+            .rollback_component_with_copy::<FighterPreviousFacingDirection>()
+            .checksum_component_with_hash::<FighterPreviousFacingDirection>()
             .rollback_component_with_copy::<animation::FighterAnimationFrame>()
             .checksum_component_with_hash::<animation::FighterAnimationFrame>()
             .rollback_component_with_copy::<Grounded>()
@@ -198,13 +206,15 @@ impl Plugin for FighterPlugin {
 pub struct FighterHitboxes {
     pub attack_script: Option<Handle<FighterAttackScript>>,
     pub active_hitboxes: Vec<usize>,
-    pub active_hitboxes_solved: Vec<FixedCapsule>,
+    pub active_hitboxes_solved: Vec<attack::FighterSolvedHitbox>,
+    pub hit_fighters: Vec<Entity>,
 }
 
 impl FighterHitboxes {
     pub fn clear(&mut self) {
         self.attack_script = None;
         self.active_hitboxes.clear();
+        self.hit_fighters.clear();
     }
 }
 
@@ -213,6 +223,7 @@ pub fn spawn_fighter(
     player_handle: usize,
     spawn_position: FGVec2,
     manifest: Handle<FighterManifest>,
+    model_scale: FGi32,
     animations: FighterAnimations,
     attack_scripts: FighterAttackScriptAssets,
     visual_root: WorldAssetRoot,
@@ -224,6 +235,8 @@ pub fn spawn_fighter(
         },
         Fighter { manifest: manifest },
         FighterFacingDirection::Right,
+        FighterPreviousFacingDirection(FighterFacingDirection::Right),
+        Transform::from_scale(Vec3::splat(model_scale.to_num())),
         (
             FighterECB {
                 vertical_half: FGi32::lit("5.0"),
@@ -233,6 +246,7 @@ pub fn spawn_fighter(
                 attack_script: None,
                 active_hitboxes: vec![],
                 active_hitboxes_solved: vec![],
+                hit_fighters: vec![],
             },
         ),
         (
@@ -248,6 +262,7 @@ pub fn spawn_fighter(
         (
             baked_animation::FighterBoneMatrices::default(),
             FighterSolvedHurtboxes::default(),
+            FighterSolvedHitboxes::default(),
             FighterVisual,
             FighterInput::default(),
             crate::camera::FighterCameraExtents::default(),

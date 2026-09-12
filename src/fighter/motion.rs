@@ -11,6 +11,9 @@ use crate::{
 };
 
 #[derive(Component, Clone, Copy, Hash)]
+pub struct FighterPreviousFacingDirection(pub FighterFacingDirection);
+
+#[derive(Component, Clone, Copy, Hash)]
 pub struct Grounded;
 
 #[derive(Component, Deref, DerefMut, Default, Debug, Clone, Copy, Hash)]
@@ -100,6 +103,20 @@ pub fn copy_fighter_transform_to_visuals(fighters: Query<(&FighterTranslation, &
 
 pub fn fighter_movement() {}
 
+pub fn snapshot_fighter_motion(
+    query: Query<(
+        &FighterTranslation,
+        &FighterFacingDirection,
+        &mut FighterPreviousTranslation,
+        &mut FighterPreviousFacingDirection,
+    )>,
+) {
+    for (translation, facing, mut previous_translation, mut previous_facing) in query {
+        previous_translation.0 = translation.0;
+        previous_facing.0 = *facing;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -126,5 +143,35 @@ mod tests {
         );
 
         assert_eq!(position, Vec2::new(7.0, 14.0));
+    }
+
+    #[test]
+    fn snapshot_fighter_motion_copies_current_world_state() {
+        let mut world = World::new();
+        world.spawn((
+            FighterTranslation(FGVec2::new(FGi32::lit("3"), FGi32::lit("4"))),
+            FighterFacingDirection::Left,
+            FighterPreviousTranslation::default(),
+            FighterPreviousFacingDirection(FighterFacingDirection::Right),
+        ));
+
+        let mut schedule = Schedule::default();
+        schedule.add_systems(snapshot_fighter_motion);
+        schedule.run(&mut world);
+
+        let (_, _, previous_translation, previous_facing) = world
+            .query::<(
+                &FighterTranslation,
+                &FighterFacingDirection,
+                &FighterPreviousTranslation,
+                &FighterPreviousFacingDirection,
+            )>()
+            .single(&world)
+            .unwrap();
+        assert_eq!(
+            previous_translation.0,
+            FGVec2::new(FGi32::lit("3"), FGi32::lit("4"))
+        );
+        assert_eq!(previous_facing.0, FighterFacingDirection::Left);
     }
 }
