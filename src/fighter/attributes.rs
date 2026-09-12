@@ -45,6 +45,13 @@ pub struct FighterAttributes {
 }
 
 impl FighterAttributes {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.weight <= FGi32::ZERO {
+            return Err("weight must be positive".into());
+        }
+        Ok(())
+    }
+
     pub fn get_accel_and_target_dashrun(
         &self,
         input: &FighterInputFrame,

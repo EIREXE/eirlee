@@ -11,10 +11,10 @@ use crate::{
     AppState,
     args::Args,
     fighter::{
-        FighterId,
+        FighterId, FighterRoster,
         animation::AnimKind,
         attack::{AttackKind, FighterAttackScriptAssets},
-        baked_animation::BakedFighterAnimations,
+        baked_animation::{BAKED_ANIMATION_FPS, BakedFighterAnimations},
         manifest::{FighterManifest, FighterManifestRegistry},
         spawn_fighter,
         visual::FighterAnimations,
@@ -192,6 +192,7 @@ pub fn prepare_match(
     assets: Res<MatchAssets>,
     gltfs: Res<Assets<Gltf>>,
     baked_animations: Res<Assets<BakedFighterAnimations>>,
+    attack_scripts: Res<Assets<FighterAttackScript>>,
     registry: Res<FighterManifestRegistry>,
     stage_registry: Res<StageManifestRegistry>,
     manifests: Res<Assets<FighterManifest>>,
@@ -236,6 +237,89 @@ pub fn prepare_match(
             );
             return;
         };
+        if baked.frame_rate != BAKED_ANIMATION_FPS {
+            fail_match(
+                &mut next_state,
+                &format!(
+                    "{:?} baked animation rate is {}, expected {}",
+                    character.fighter, baked.frame_rate, BAKED_ANIMATION_FPS
+                ),
+            );
+            return;
+        }
+        if !baked.has_unique_bone_names() {
+            fail_match(
+                &mut next_state,
+                &format!(
+                    "{:?} baked animation contains duplicate bone names",
+                    character.fighter
+                ),
+            );
+            return;
+        }
+        if let Err(error) = manifest.attributes.validate() {
+            fail_match(
+                &mut next_state,
+                &format!("{:?} has invalid attributes: {error}", character.fighter),
+            );
+            return;
+        }
+        for (index, hurtbox) in manifest.hurtboxes.iter().enumerate() {
+            if let Err(error) = hurtbox.validate() {
+                fail_match(
+                    &mut next_state,
+                    &format!(
+                        "{:?} hurtbox {index} is invalid: {error}",
+                        character.fighter
+                    ),
+                );
+                return;
+            }
+            if !baked.contains_bone(&hurtbox.bone) {
+                fail_match(
+                    &mut next_state,
+                    &format!(
+                        "{:?} hurtbox {index} references missing bone {:?}",
+                        character.fighter, hurtbox.bone
+                    ),
+                );
+                return;
+            }
+        }
+        for (kind, handle) in &character.attack_scripts {
+            let Some(script) = attack_scripts.get(handle) else {
+                fail_match(
+                    &mut next_state,
+                    &format!(
+                        "{:?} {kind:?} attack script is unavailable",
+                        character.fighter
+                    ),
+                );
+                return;
+            };
+            if let Err(error) = script.validate() {
+                fail_match(
+                    &mut next_state,
+                    &format!(
+                        "{:?} {kind:?} attack script is invalid: {error}",
+                        character.fighter
+                    ),
+                );
+                return;
+            }
+            for hitbox in &script.hitboxes {
+                if !baked.contains_bone(&hitbox.bone) {
+                    fail_match(
+                        &mut next_state,
+                        &format!(
+                            "{:?} {kind:?} hitbox {} references missing bone {:?}",
+                            character.fighter, hitbox.id, hitbox.bone
+                        ),
+                    );
+                    return;
+                }
+            }
+        }
         let Some(scene) = gltf.scenes.first().cloned() else {
             fail_match(&mut next_state, "a character GLTF contains no scene");
             return;
@@ -303,11 +387,12 @@ pub fn prepare_match(
         stage_manifest.camera.clone(),
     );
 
+    let mut fighter_roster = Vec::with_capacity(request.players.len());
     for (index, (player, (scene, animations, attack_scripts, manifest_handle, model_scale))) in
         request.players.iter().zip(prepared).enumerate()
     {
         let spawn_x = (index as i32 * 2 + 1 - request.players.len() as i32) * 5;
-        spawn_fighter(
+        fighter_roster.push(spawn_fighter(
             &mut commands,
             player.handle,
             FGVec2::new(FGi32::from_num(spawn_x), FGi32::lit("12.5")),
@@ -316,9 +401,10 @@ pub fn prepare_match(
             animations,
             attack_scripts,
             WorldAssetRoot(scene),
-        );
+        ));
     }
 
+    commands.insert_resource(FighterRoster(fighter_roster));
     commands.insert_resource::<Session<GGRSCfg>>(session);
     next_state.set(AppState::InMatch);
 }
@@ -352,6 +438,7 @@ pub fn cleanup_match(
     commands.remove_resource::<stage::line::StageCollision>();
     commands.remove_resource::<MatchAssets>();
     commands.remove_resource::<PendingMatch>();
+    commands.remove_resource::<FighterRoster>();
 }
 
 #[cfg(test)]

@@ -17,6 +17,16 @@ struct MoveCompiler {
     cursor: u32,
 }
 
+fn rhai_u32(value: i64, parameter: &str) -> Result<u32, Box<EvalAltResult>> {
+    u32::try_from(value).map_err(|_| {
+        format!(
+            "{parameter} must be between 0 and {}, got {value}",
+            u32::MAX
+        )
+        .into()
+    })
+}
+
 impl MoveCompiler {
     fn frame(&mut self, new_frame: u32) -> Result<(), Box<EvalAltResult>> {
         if new_frame < self.cursor {
@@ -87,11 +97,7 @@ impl MoveCompiler {
 
     fn into_attack_script(mut self) -> Result<FighterAttackScript, String> {
         self.remove_all_hitboxes().map_err(|err| err.to_string())?;
-        let mut hitboxes: Vec<_> = self
-            .hitboxes
-            .into_iter()
-            .map(|(_, hitbox)| hitbox)
-            .collect();
+        let mut hitboxes: Vec<_> = self.hitboxes.into_values().collect();
         hitboxes.sort_unstable_by_key(|hitbox| hitbox.id);
         let iasa_frame = self.iasa_frame.unwrap_or(100000);
         let wont_autocancel_window = self.wont_autocancel_window.unwrap_or((0, 100000));
@@ -141,7 +147,7 @@ pub fn compile_script(text: &str) -> Result<FighterAttackScript, String> {
                 "frame",
                 move |frame: i64| -> Result<(), Box<EvalAltResult>> {
                     let mut b = mc.borrow_mut();
-                    b.frame(frame as u32)
+                    b.frame(rhai_u32(frame, "frame")?)
                 },
             );
         }
@@ -160,10 +166,10 @@ pub fn compile_script(text: &str) -> Result<FighterAttackScript, String> {
         {
             let mc = mc.clone();
             engine.register_fn(
-                "remove_all_hitboxes",
+                "remove_hitbox",
                 move |id: i64| -> Result<(), Box<EvalAltResult>> {
                     let mut b = mc.borrow_mut();
-                    b.remove_hitbox(id as u32)
+                    b.remove_hitbox(rhai_u32(id, "hitbox id")?)
                 },
             );
         }
@@ -174,17 +180,24 @@ pub fn compile_script(text: &str) -> Result<FighterAttackScript, String> {
                 "set_wont_autocancel_window",
                 move |start: i64, end: i64| -> Result<(), Box<EvalAltResult>> {
                     let mut b = mc.borrow_mut();
-                    b.set_wont_autocancel_window(start as u32, end as u32)
+                    b.set_wont_autocancel_window(
+                        rhai_u32(start, "autocancel start")?,
+                        rhai_u32(end, "autocancel end")?,
+                    )
                 },
             );
         }
 
         {
             let mc = mc.clone();
-            engine.register_fn("set_iasa_frame", move |frame: i64| {
-                let mut b = mc.borrow_mut();
-                b.set_iasa_frame(frame as u32);
-            });
+            engine.register_fn(
+                "set_iasa_frame",
+                move |frame: i64| -> Result<(), Box<EvalAltResult>> {
+                    let mut b = mc.borrow_mut();
+                    b.set_iasa_frame(rhai_u32(frame, "IASA frame")?);
+                    Ok(())
+                },
+            );
         }
 
         {
@@ -204,7 +217,7 @@ pub fn compile_script(text: &str) -> Result<FighterAttackScript, String> {
                     let mut b = mc.borrow_mut();
 
                     // Rhai does not have first class u32 support, so we have to do this.
-                    let id = id as u32;
+                    let id = rhai_u32(id, "hitbox id")?;
 
                     if b.hitboxes.contains_key(&id) {
                         return Err(format!("Hitbox with ID {} already existed!", id).into());
@@ -248,6 +261,8 @@ pub fn compile_script(text: &str) -> Result<FighterAttackScript, String> {
 mod tests {
     use super::*;
 
+    const HITBOX: &str = "hitbox(0, \"hand_l\", damage(\"1\"), vec3(\"0\", \"0\", \"0\"), fg32(\"1\"), angle(fg32(\"0\")), knockback_normal(), knockback(\"1\"), fg32(\"1\"));";
+
     #[test]
     fn compiled_hitboxes_are_sorted_by_authored_id() {
         let script = compile_script(
@@ -279,5 +294,26 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![2, 3, 1]
         );
+    }
+
+    #[test]
+    fn negative_and_overflowing_frames_are_rejected() {
+        for source in ["frame(-1);", "frame(4294967296);"] {
+            let error = match compile_script(source) {
+                Ok(_) => panic!("invalid frame was accepted"),
+                Err(error) => error,
+            };
+            assert!(error.contains("frame"));
+        }
+    }
+
+    #[test]
+    fn remove_hitbox_ends_only_the_named_hitbox() {
+        let script =
+            compile_script(&format!("frame(1); {HITBOX} frame(2); remove_hitbox(0);")).unwrap();
+
+        assert_eq!(script.hitboxes.len(), 1);
+        assert_eq!(script.hitboxes[0].start_frame, 1);
+        assert_eq!(script.hitboxes[0].end_frame, 2);
     }
 }

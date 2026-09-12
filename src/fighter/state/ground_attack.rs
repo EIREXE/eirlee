@@ -1,8 +1,7 @@
-
 use crate::fighter::{
-        attack::{AttackKind, update_active_hitbox_list},
-        state::{FighterState, FighterStateImpl, ground::GroundedStateCommon, wait::WaitState},
-    };
+    attack::{AttackKind, update_active_hitbox_list},
+    state::{FighterState, FighterStateImpl, ground::GroundedStateCommon, wait::WaitState},
+};
 
 #[derive(Clone, Debug, Hash)]
 pub struct GroundAttackState {

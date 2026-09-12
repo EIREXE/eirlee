@@ -37,7 +37,7 @@ use crate::{
             FighterAttackPlugin, FighterAttackScriptAssets, FighterSolvedHitboxes,
             FighterSolvedHurtboxes,
         },
-        baked_animation::FighterBoneMatrices,
+        baked_animation::{FighterBoneIndexMap, FighterBoneMatrices},
         manifest::FighterManifest,
         state::{FighterState, fall::FallState},
         visual::FighterAnimations,
@@ -110,6 +110,9 @@ pub struct FighterVisual;
 pub struct Fighter {
     pub manifest: Handle<FighterManifest>,
 }
+
+#[derive(Resource, Clone, Debug)]
+pub struct FighterRoster(pub Vec<Entity>);
 
 impl Plugin for FighterPlugin {
     fn build(&self, app: &mut App) {
@@ -214,6 +217,7 @@ impl FighterHitboxes {
     pub fn clear(&mut self) {
         self.attack_script = None;
         self.active_hitboxes.clear();
+        self.active_hitboxes_solved.clear();
         self.hit_fighters.clear();
     }
 }
@@ -227,45 +231,48 @@ pub fn spawn_fighter(
     animations: FighterAnimations,
     attack_scripts: FighterAttackScriptAssets,
     visual_root: WorldAssetRoot,
-) {
-    commands.spawn((
-        Name(format!("Fighter {player_handle}").into()),
-        Player {
-            handle: player_handle,
-        },
-        Fighter { manifest: manifest },
-        FighterFacingDirection::Right,
-        FighterPreviousFacingDirection(FighterFacingDirection::Right),
-        Transform::from_scale(Vec3::splat(model_scale.to_num())),
-        (
-            FighterECB {
-                vertical_half: FGi32::lit("5.0"),
-                horizontal_half: FGi32::lit("2.5"),
+) -> Entity {
+    commands
+        .spawn((
+            Name(format!("Fighter {player_handle}").into()),
+            Player {
+                handle: player_handle,
             },
-            FighterHitboxes {
-                attack_script: None,
-                active_hitboxes: vec![],
-                active_hitboxes_solved: vec![],
-                hit_fighters: vec![],
-            },
-        ),
-        (
-            FighterVelocity::default(),
-            FighterTranslation(spawn_position),
-            FighterPreviousTranslation(spawn_position),
-        ),
-        visual_root,
-        animations,
-        attack_scripts,
-        FighterState::Fall(FallState),
-        animation::FighterAnimationFrame::new(animation::AnimKind::Wait, true),
-        (
-            baked_animation::FighterBoneMatrices::default(),
-            FighterSolvedHurtboxes::default(),
-            FighterSolvedHitboxes::default(),
-            FighterVisual,
-            FighterInput::default(),
-            crate::camera::FighterCameraExtents::default(),
-        ),
-    ));
+            Fighter { manifest: manifest },
+            FighterFacingDirection::Right,
+            FighterPreviousFacingDirection(FighterFacingDirection::Right),
+            Transform::from_scale(Vec3::splat(model_scale.to_num())),
+            (
+                FighterECB {
+                    vertical_half: FGi32::lit("5.0"),
+                    horizontal_half: FGi32::lit("2.5"),
+                },
+                FighterHitboxes {
+                    attack_script: None,
+                    active_hitboxes: vec![],
+                    active_hitboxes_solved: vec![],
+                    hit_fighters: vec![],
+                },
+            ),
+            (
+                FighterVelocity::default(),
+                FighterTranslation(spawn_position),
+                FighterPreviousTranslation(spawn_position),
+            ),
+            visual_root,
+            animations,
+            attack_scripts,
+            FighterState::Fall(FallState),
+            animation::FighterAnimationFrame::new(animation::AnimKind::Wait, true),
+            (
+                baked_animation::FighterBoneMatrices::default(),
+                FighterBoneIndexMap::default(),
+                FighterSolvedHurtboxes::default(),
+                FighterSolvedHitboxes::default(),
+                FighterVisual,
+                FighterInput::default(),
+                crate::camera::FighterCameraExtents::default(),
+            ),
+        ))
+        .id()
 }

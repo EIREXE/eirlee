@@ -5,12 +5,8 @@ use crate::{
     game_settings::CommonAssets,
     match_loading::initiate_match,
     menus::{
-        MenuMarker,
-        cursor,
-        match_config::MenuMatchConfig,
-        spawn_menu,
-        stage_select::stage_box::StageBox,
-        style::FGUiStyle,
+        MenuMarker, cursor, match_config::MenuMatchConfig, spawn_menu,
+        stage_select::stage_box::StageBox, style::FGUiStyle,
     },
     stage::manifest::{StageManifest, StageManifestRegistry},
 };

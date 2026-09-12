@@ -1,7 +1,4 @@
-use bevy::{
-    picking::pointer::PointerId,
-    prelude::*,
-};
+use bevy::{picking::pointer::PointerId, prelude::*};
 
 use crate::{
     AppState,

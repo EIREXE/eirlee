@@ -7,9 +7,10 @@ use serde::{Deserialize, Serialize};
 use crate::{
     fighter::{
         Fighter, FighterAttributes, FighterFacingDirection, FighterHitboxes,
-        FighterPreviousFacingDirection, FighterPreviousTranslation, FighterTranslation,
+        FighterPreviousFacingDirection, FighterPreviousTranslation, FighterRoster,
+        FighterTranslation,
         animation::{AnimKind, FighterAnimationFrame},
-        baked_animation::{FighterBoneMatrices, FixedMat4},
+        baked_animation::{FighterBoneIndexMap, FighterBoneMatrices, FixedMat4},
         hurtbox::{FixedAffineCapsule, FixedCapsule},
         manifest::FighterManifest,
     },
@@ -131,6 +132,28 @@ pub struct AttackHitbox {
 pub struct StaleMoveQueue(pub VecDeque<AttackKind>);
 
 impl AttackHitbox {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.bone.trim().is_empty() {
+            return Err("bone name is empty".into());
+        }
+        if self.radius <= FGi32::ZERO {
+            return Err("radius must be positive".into());
+        }
+        if self.damage.0 < FGi32::ZERO {
+            return Err("damage must be non-negative".into());
+        }
+        if self.knockback.0 < FGi32::ZERO {
+            return Err("knockback must be non-negative".into());
+        }
+        if self.knockback_growth < FGi32::ZERO {
+            return Err("knockback growth must be non-negative".into());
+        }
+        if self.end_frame <= self.start_frame {
+            return Err("end frame must be greater than start frame".into());
+        }
+        Ok(())
+    }
+
     /// Knockback calculation
     pub fn calculate_knockback(
         &self,
@@ -186,13 +209,15 @@ impl AttackHitbox {
 }
 
 pub fn update_active_hitbox_list(script: &FighterAttackScript, list: &mut Vec<usize>, frame: u32) {
-    *list = script
-        .hitboxes
-        .iter()
-        .enumerate()
-        .filter(|(_, hb)| hb.start_frame <= frame && hb.end_frame > frame)
-        .map(|(i, _)| i)
-        .collect()
+    list.clear();
+    list.extend(
+        script
+            .hitboxes
+            .iter()
+            .enumerate()
+            .filter(|(_, hb)| hb.start_frame <= frame && hb.end_frame > frame)
+            .map(|(i, _)| i),
+    );
 }
 
 #[derive(Clone, Debug, PartialEq, Hash)]
@@ -213,6 +238,7 @@ pub struct FighterSolvedHitboxes(pub Vec<FighterSolvedHitbox>);
 pub fn solve_hitboxes(
     mut query: Query<(
         &FighterBoneMatrices,
+        &FighterBoneIndexMap,
         &FighterTranslation,
         &FighterPreviousTranslation,
         &FighterFacingDirection,
@@ -224,6 +250,7 @@ pub fn solve_hitboxes(
 ) {
     for (
         matrices,
+        bone_indices,
         translation,
         previous_translation,
         facing_direction,
@@ -232,23 +259,31 @@ pub fn solve_hitboxes(
         animation_frame,
     ) in &mut query
     {
-        hitboxes.active_hitboxes_solved.clear();
-        if let Some(ref attack_script) = hitboxes.attack_script {
+        let FighterHitboxes {
+            attack_script: script_handle,
+            active_hitboxes,
+            active_hitboxes_solved,
+            ..
+        } = &mut *hitboxes;
+        active_hitboxes_solved.clear();
+        if let Some(attack_script) = script_handle {
             let attack_script = attack_scripts
                 .get(attack_script)
                 .expect("Attack script should be valid");
             let fighter_trf = translation.get_3d_transform(facing_direction);
             let previous_fighter_trf = FighterTranslation(previous_translation.0)
                 .get_3d_transform(&previous_facing_direction.0);
-            let active_hitboxes = hitboxes.active_hitboxes.clone();
-            for hitbox_idx in active_hitboxes {
+            for hitbox_idx in active_hitboxes.iter().copied() {
                 let hitbox = attack_script
                     .hitboxes
                     .get(hitbox_idx)
                     .expect("Hitbox IDX should be valid");
-                let matrices = matrices.get(&hitbox.bone);
+                let matrices = bone_indices
+                    .0
+                    .get(&hitbox.bone)
+                    .and_then(|index| matrices.get_index(*index));
 
-                if let None = matrices {
+                if matrices.is_none() {
                     warn!("Bone {} not found!", hitbox.bone);
                     continue;
                 }
@@ -260,7 +295,7 @@ pub fn solve_hitboxes(
 
                 if hitbox.start_frame == animation_frame.frame {
                     // Sphere only
-                    hitboxes.active_hitboxes_solved.push(FighterSolvedHitbox {
+                    active_hitboxes_solved.push(FighterSolvedHitbox {
                         hitbox_idx,
                         capsule: FixedCapsule {
                             start: curr_hbox_pos,
@@ -271,7 +306,7 @@ pub fn solve_hitboxes(
                 } else {
                     let prev_hbox_matrix = previous_fighter_trf.mul(prev_bone_matrix);
                     let prev_hbox_pos = prev_hbox_matrix.transform_point(hitbox.offset);
-                    hitboxes.active_hitboxes_solved.push(FighterSolvedHitbox {
+                    active_hitboxes_solved.push(FighterSolvedHitbox {
                         hitbox_idx,
                         capsule: FixedCapsule {
                             start: prev_hbox_pos,
@@ -294,6 +329,7 @@ pub struct FighterSolvedHurtboxes(pub Vec<FighterSolvedHurtbox>);
 pub fn solve_hurtboxes(
     mut query: Query<(
         &FighterBoneMatrices,
+        &FighterBoneIndexMap,
         &FighterTranslation,
         &FighterFacingDirection,
         &mut FighterSolvedHurtboxes,
@@ -301,14 +337,19 @@ pub fn solve_hurtboxes(
     )>,
     manifests: Res<Assets<FighterManifest>>,
 ) {
-    for (matrices, translation, facing_direction, mut solved_hurtboxes, fighter) in &mut query {
+    for (matrices, bone_indices, translation, facing_direction, mut solved_hurtboxes, fighter) in
+        &mut query
+    {
         let manifest = manifests
             .get(&fighter.manifest)
             .expect("Manifest should be valid");
         let fighter_trf = translation.get_3d_transform(facing_direction);
         solved_hurtboxes.0.clear();
         for (hurtbox_idx, hurtbox) in manifest.hurtboxes.iter().enumerate() {
-            let bone_matrix = matrices.get_current(&hurtbox.bone);
+            let bone_matrix = bone_indices
+                .0
+                .get(&hurtbox.bone)
+                .and_then(|index| matrices.get_current_index(*index));
 
             if let Some(bone_matrix) = bone_matrix {
                 let to_global = fighter_trf.mul(bone_matrix);
@@ -333,18 +374,15 @@ pub fn solve_hurtboxes(
 }
 
 pub fn intersect_attacks_with_hurtboxes(
+    roster: Res<FighterRoster>,
     mut query_attacker: Query<(Entity, &mut FighterHitboxes, &Fighter, &Player)>,
     query_attacked: Query<(Entity, &FighterSolvedHurtboxes, &Player)>,
     attack_scripts: Res<Assets<FighterAttackScript>>,
 ) {
-    let mut attackers = query_attacker.iter_mut().collect::<Vec<_>>();
-    attackers
-        .sort_by(|(_, _, _, player_a), (_, _, _, player_b)| player_a.handle.cmp(&player_b.handle));
-
-    let mut receivers = query_attacked.iter().collect::<Vec<_>>();
-    receivers.sort_by(|(_, _, player_a), (_, _, player_b)| player_a.handle.cmp(&player_b.handle));
-
-    for (entity_hurting, mut hitboxes, _, _) in attackers {
+    for &entity_hurting in &roster.0 {
+        let Ok((_, mut hitboxes, _, _)) = query_attacker.get_mut(entity_hurting) else {
+            continue;
+        };
         if hitboxes.attack_script.is_none() {
             continue;
         }
@@ -358,35 +396,36 @@ pub fn intersect_attacks_with_hurtboxes(
 
             let attack_script = attack_script.unwrap();
 
-            for (entity_receiving, hurtboxes, _) in receivers.iter() {
-                if entity_hurting == *entity_receiving {
+            for &entity_receiving in &roster.0 {
+                if entity_hurting == entity_receiving {
                     continue;
                 }
-                if hitboxes.hit_fighters.contains(entity_receiving) {
+                if hitboxes.hit_fighters.contains(&entity_receiving) {
                     continue;
                 }
-                let mut hitting_hitboxes = vec![];
+                let Ok((_, hurtboxes, _)) = query_attacked.get(entity_receiving) else {
+                    continue;
+                };
+                let mut hitting_hitbox_idx = None;
                 for hurtbox in hurtboxes.0.iter() {
                     for solved_hitbox in hitboxes.active_hitboxes_solved.iter() {
                         if hurtbox.capsule.intersects(solved_hitbox.capsule) {
-                            hitting_hitboxes.push(solved_hitbox.hitbox_idx);
+                            let candidate = solved_hitbox.hitbox_idx;
+                            if hitting_hitbox_idx.is_none_or(|current: usize| {
+                                attack_script.hitboxes[candidate].id
+                                    < attack_script.hitboxes[current].id
+                            }) {
+                                hitting_hitbox_idx = Some(candidate);
+                            }
                         }
                     }
                 }
 
-                hitting_hitboxes.sort_by(|a, b| {
-                    let hitbox_id_a = attack_script.hitboxes[*a].id;
-                    let hitbox_id_b = attack_script.hitboxes[*b].id;
-
-                    hitbox_id_a.cmp(&hitbox_id_b)
-                });
-
-                if hitting_hitboxes.is_empty() {
+                let Some(hitting_hitbox_idx) = hitting_hitbox_idx else {
                     continue;
-                }
+                };
 
-                let hitting_hitbox_idx = hitting_hitboxes[0];
-                hitboxes.hit_fighters.push(*entity_receiving);
+                hitboxes.hit_fighters.push(entity_receiving);
                 info!("Hit by hitbox {}!!!!", hitting_hitbox_idx);
             }
         }

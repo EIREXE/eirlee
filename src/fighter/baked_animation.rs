@@ -191,6 +191,15 @@ pub struct BakedFighterAnimations {
 }
 
 impl BakedFighterAnimations {
+    pub fn contains_bone(&self, bone: &str) -> bool {
+        self.bone_names.iter().any(|name| name == bone)
+    }
+
+    pub fn has_unique_bone_names(&self) -> bool {
+        let mut names = std::collections::HashSet::with_capacity(self.bone_names.len());
+        self.bone_names.iter().all(|name| names.insert(name))
+    }
+
     pub fn sample_pose(&self, frame: &FighterAnimationFrame) -> Option<&[FixedMat4]> {
         let frames = &self.clip(frame.kind)?.frames;
         let frame_index = if frame.repeat {
@@ -230,6 +239,12 @@ pub struct FighterBoneMatrices {
     previous_local_matrices: Vec<FixedMat4>,
 }
 
+/// Immutable lookup table populated from the baked skeleton. Keeping this
+/// separate from rollback-tracked matrices avoids rebuilding string searches
+/// during every simulated frame.
+#[derive(Component, Clone, Debug, Default)]
+pub struct FighterBoneIndexMap(pub HashMap<String, usize>);
+
 #[derive(Component)]
 struct BakedFighterBone {
     fighter: Entity,
@@ -253,6 +268,17 @@ impl FighterBoneMatrices {
 
     pub fn get_current(&self, bone: &str) -> Option<FixedMat4> {
         let index = self.bone_names.iter().position(|name| name == bone)?;
+        self.matrices.get(index).copied()
+    }
+
+    pub fn get_index(&self, index: usize) -> Option<(FixedMat4, FixedMat4)> {
+        Some((
+            *self.previous_frame_matrices.get(index)?,
+            *self.matrices.get(index)?,
+        ))
+    }
+
+    pub fn get_current_index(&self, index: usize) -> Option<FixedMat4> {
         self.matrices.get(index).copied()
     }
 
@@ -331,11 +357,12 @@ pub fn update_fighter_bone_matrices(
         &FighterAnimations,
         &Fighter,
         &mut FighterBoneMatrices,
+        &mut FighterBoneIndexMap,
     )>,
     baked_assets: Res<Assets<BakedFighterAnimations>>,
     manifests: Res<Assets<FighterManifest>>,
 ) {
-    for (frame, animations, fighter, mut matrices) in &mut fighters {
+    for (frame, animations, fighter, mut matrices, mut bone_indices) in &mut fighters {
         let baked = baked_assets
             .get(&animations.baked)
             .expect("fighter baked animation asset should be loaded before the match starts");
@@ -355,6 +382,15 @@ pub fn update_fighter_bone_matrices(
             pose,
             manifest.model_scale,
         );
+        if bone_indices.0.is_empty() {
+            bone_indices.0.extend(
+                baked
+                    .bone_names
+                    .iter()
+                    .enumerate()
+                    .map(|(index, name)| (name.clone(), index)),
+            );
+        }
     }
 }
 

@@ -52,11 +52,21 @@ impl FixedAffineCapsule {
         }
         let mut simplex = [FGVec3::ZERO; 4];
         let mut simplex_len = 0;
-        for _ in 0..20 {
+        let mut supports = [FGVec3::ZERO; 20];
+        let mut support_count = 0;
+        while support_count < supports.len() {
             let point = self.support(direction) - rhs.support(-direction);
             if point.dot(direction) < FGWide::ZERO {
                 return false;
             }
+            if supports[..support_count].contains(&point) {
+                // Fixed-point quantization can make GJK revisit a support
+                // point without making progress. This is not proof of an
+                // intersection, so terminate conservatively as a miss
+                return false;
+            }
+            supports[support_count] = point;
+            support_count += 1;
             for index in (1..=simplex_len.min(3)).rev() {
                 simplex[index] = simplex[index - 1];
             }
@@ -69,9 +79,10 @@ impl FixedAffineCapsule {
                 return true;
             }
         }
-        // A capped GJK iteration means the origin remains enclosed by the
-        // current simplex to fixed-point precision, so conservatively collide.
-        true
+        // Exhaustion means the fixed-point solver could not prove an
+        // intersection. Treating it as a hit creates phantom contacts for
+        // cycling or degenerate simplexes
+        false
     }
 }
 

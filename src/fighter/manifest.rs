@@ -34,6 +34,21 @@ pub struct FighterHurtbox {
     pub radius: FGi32,
 }
 
+impl FighterHurtbox {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.bone.trim().is_empty() {
+            return Err("bone name is empty".into());
+        }
+        if self.radius <= FGi32::ZERO {
+            return Err("radius must be positive".into());
+        }
+        if self.half_length < FGi32::ZERO {
+            return Err("half-length must be non-negative".into());
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone, Asset, Deserialize, Reflect, RonAsset)]
 pub struct FighterManifest {
     pub id: FighterId,

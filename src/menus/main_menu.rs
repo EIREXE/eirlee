@@ -1,6 +1,4 @@
-use bevy::{
-    prelude::*, text::FontSourceTemplate,
-};
+use bevy::{prelude::*, text::FontSourceTemplate};
 
 use crate::{
     AppState,

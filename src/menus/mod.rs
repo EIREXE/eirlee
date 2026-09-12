@@ -100,10 +100,8 @@ where
     S::scene(props)
 }
 
-pub fn build_menu<S>(
-    existing_menu: Option<Single<Entity, With<MenuMarker>>>,
-    commands: Commands,
-) where
+pub fn build_menu<S>(existing_menu: Option<Single<Entity, With<MenuMarker>>>, commands: Commands)
+where
     S: SceneComponent + Default + Clone + Send + Sync,
 {
     spawn_menu(
