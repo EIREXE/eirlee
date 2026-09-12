@@ -5,8 +5,20 @@ use bevy::{
 use bevy_egui::egui::accesskit::TextAlign;
 
 use crate::{
-    AppState, fighter::manifest::{FighterManifest, FighterManifestRegistry}, game_settings::CommonAssets, input::{LocalInputAssignments, LocalInputSource}, menus::{
-        MenuMarker, build_menu_with_props, button::FGUiButton, character_select::{character_box::CharacterBox, token::CharacterSelectToken}, cursor::{FGMenuCursor, MenuCursorInputSource}, errors::MenuErrors::{self, FighterManifestNotFound}, match_config::{MenuMatchConfig, MenuMatchPlayerSlot}, scaling, spawn_menu, style::{FGUiButtonType, FGUiStyle}, wrap_menu,
+    AppState,
+    fighter::manifest::{FighterManifest, FighterManifestRegistry},
+    game_settings::CommonAssets,
+    input::{LocalInputAssignments, LocalInputSource},
+    menus::{
+        MenuMarker, build_menu_with_props,
+        button::FGUiButton,
+        character_select::{character_box::CharacterBox, token::CharacterSelectToken},
+        cursor::{FGMenuCursor, MenuCursorInputSource},
+        errors::MenuErrors::{self, FighterManifestNotFound},
+        match_config::{MenuMatchConfig, MenuMatchPlayerSlot},
+        scaling, spawn_menu,
+        style::{FGUiButtonType, FGUiStyle},
+        wrap_menu,
     },
 };
 
@@ -142,7 +154,6 @@ pub fn handle_fighter_slot_addition(
     common_assets: Res<CommonAssets>,
     styles: Res<Assets<FGUiStyle>>,
 ) {
-
     for addition in addition.read() {
         let slot = addition.slot;
         create_portrait(
@@ -155,7 +166,6 @@ pub fn handle_fighter_slot_addition(
             &addition.input_source,
         );
     }
-
 }
 
 pub fn css_auto_assign_slots(
@@ -220,7 +230,11 @@ pub fn update_start_banner_visibility(
     config: Res<MenuMatchConfig>,
 ) {
     let match_ready = config.all_players_ready();
-    commands.entity(banner.into_inner()).insert(if match_ready {Visibility::Visible} else {Visibility::Hidden});
+    commands.entity(banner.into_inner()).insert(if match_ready {
+        Visibility::Visible
+    } else {
+        Visibility::Hidden
+    });
 }
 
 pub fn copy_cursor_transform_to_token(

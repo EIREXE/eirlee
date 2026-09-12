@@ -1,13 +1,14 @@
 use bevy::{picking::Pickable, prelude::*, text::FontSourceTemplate, ui::widget::ImageNodeSize};
 
 use crate::{
-    fighter::{FighterId, manifest::FighterManifest}, menus::{button::FGUiButton, style::FGUiButtonType},
+    fighter::{FighterId, manifest::FighterManifest},
+    menus::{button::FGUiButton, style::FGUiButtonType},
 };
 
 #[derive(Component, Clone, FromTemplate)]
 pub struct CharacterBox {
     pub fighter_manifest: Handle<FighterManifest>,
-    pub fighter_id: FighterId
+    pub fighter_id: FighterId,
 }
 
 impl CharacterBox {

@@ -48,7 +48,7 @@ pub fn process_inputs(
     action_state.pressed_actions.clear();
     let input = menu_inputs.aggregate();
     let has_direction = input.movement.length() != 0.0;
-    
+
     let mut dir_distances = [
         (input.movement_digital_up, input.movement.dot(Vec2::Y)),
         (input.movement_digital_down, input.movement.dot(Vec2::NEG_Y)),
@@ -82,12 +82,32 @@ pub fn process_inputs(
         false
     };
     if curr_dir.is_just_pressed() || repeat_press {
-        if input.movement.y > 0.0 { action_state.pressed_actions.insert(DirectionalNavigationAction::Up); }
-        if input.movement.y < 0.0 { action_state.pressed_actions.insert(DirectionalNavigationAction::Down); }
-        if input.movement.x < 0.0 { action_state.pressed_actions.insert(DirectionalNavigationAction::Left); }
-        if input.movement.x > 0.0 { action_state.pressed_actions.insert(DirectionalNavigationAction::Right); }
+        if input.movement.y > 0.0 {
+            action_state
+                .pressed_actions
+                .insert(DirectionalNavigationAction::Up);
+        }
+        if input.movement.y < 0.0 {
+            action_state
+                .pressed_actions
+                .insert(DirectionalNavigationAction::Down);
+        }
+        if input.movement.x < 0.0 {
+            action_state
+                .pressed_actions
+                .insert(DirectionalNavigationAction::Left);
+        }
+        if input.movement.x > 0.0 {
+            action_state
+                .pressed_actions
+                .insert(DirectionalNavigationAction::Right);
+        }
     }
-    if input.accept.is_pressed() { action_state.pressed_actions.insert(DirectionalNavigationAction::Select); }
+    if input.accept.is_pressed() {
+        action_state
+            .pressed_actions
+            .insert(DirectionalNavigationAction::Select);
+    }
 }
 
 const FOCUSED_BORDER: Srgba = bevy::color::palettes::tailwind::BLUE_50;

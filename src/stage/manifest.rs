@@ -7,10 +7,14 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use crate::{
-    AppState, game_settings::GameSettings, math::vec::FGVec2, stage::{
+    AppState,
+    game_settings::GameSettings,
+    math::vec::FGVec2,
+    stage::{
         StagePoly,
         line::{StageCollision, StagePolyLineSegmentType, StagePolyType},
-    }, texture_reference::TextureReference,
+    },
+    texture_reference::TextureReference,
 };
 use bevy::prelude::*;
 
@@ -58,7 +62,9 @@ pub struct StageCameraProfile {
     pub max_downward_pan_degrees: f32,
 }
 
-#[derive(Reflect, Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Hash, Debug, EnumIter, Default)]
+#[derive(
+    Reflect, Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Hash, Debug, EnumIter, Default,
+)]
 pub enum StageId {
     #[default]
     TestStage,
@@ -176,7 +182,7 @@ pub fn prepare_stage_manifests(
     }
 
     commands.insert_resource(StageManifestRegistry(registry));
-    next_state.set(AppState::MainMenu);
+    next_state.set(AppState::PreMainMenu);
 }
 
 impl StageManifest {

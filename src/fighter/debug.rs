@@ -149,14 +149,16 @@ pub fn fighter_debug(
 
 pub fn animation_debug(query: Query<(&GlobalTransform, &FighterBoneMatrices)>, mut gizmos: Gizmos) {
     for (global_transform, matrices) in query {
+        let (_, rotation, translation) = global_transform.to_scale_rotation_translation();
+        let marker_transform = Transform::from_translation(translation).with_rotation(rotation);
         for (_, matrix) in matrices.iter() {
-            let pos = global_transform.transform_point(Vec3::new(
+            let pos = marker_transform.transform_point(Vec3::new(
                 matrix.cols[3][0].to_num(),
                 matrix.cols[3][1].to_num(),
                 matrix.cols[3][2].to_num(),
             ));
             gizmos.cross(pos, 0.5, bevy::color::palettes::css::RED);
-            gizmos.axes(*global_transform, 1.0);
+            gizmos.axes(marker_transform, 1.0);
         }
     }
 }
@@ -289,6 +291,20 @@ fn capsule_wireframe() -> &'static CapsuleWireframe {
 #[cfg(test)]
 mod capsule_debug_tests {
     use super::*;
+
+    #[test]
+    fn animation_markers_ignore_visual_scale() {
+        let global = GlobalTransform::from(Transform {
+            translation: Vec3::new(3.0, 4.0, 5.0),
+            rotation: Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
+            scale: Vec3::splat(10.0),
+        });
+        let (_, rotation, translation) = global.to_scale_rotation_translation();
+        let marker_transform = Transform::from_translation(translation).with_rotation(rotation);
+
+        let marker = marker_transform.transform_point(Vec3::new(2.0, 0.0, 0.0));
+        assert!(marker.abs_diff_eq(Vec3::new(3.0, 4.0, 3.0), 1e-5));
+    }
 
     #[test]
     fn capsule_wireframe_caps_extend_in_opposite_directions() {

@@ -1,9 +1,19 @@
 use bevy::prelude::*;
 
 use crate::{
-    AppState, game_settings::CommonAssets, match_loading::initiate_match, menus::{
-        MenuMarker, button::FGUiButton, cursor, match_config::MenuMatchConfig, spawn_menu, stage_select::stage_box::StageBox, style::{FGUiButtonType, FGUiStyle},
-    }, stage::manifest::{StageManifest, StageManifestRegistry},
+    AppState,
+    game_settings::CommonAssets,
+    match_loading::initiate_match,
+    menus::{
+        MenuMarker,
+        button::FGUiButton,
+        cursor,
+        match_config::MenuMatchConfig,
+        spawn_menu,
+        stage_select::stage_box::StageBox,
+        style::{FGUiButtonType, FGUiStyle},
+    },
+    stage::manifest::{StageManifest, StageManifestRegistry},
 };
 
 pub mod stage_box;
@@ -64,12 +74,16 @@ pub fn stage_selected(
     query: Query<&StageBox>,
     mut commands: Commands,
     mut next_state: ResMut<NextState<AppState>>,
-    mut match_config: ResMut<MenuMatchConfig>
+    mut match_config: ResMut<MenuMatchConfig>,
 ) -> Result {
     let stage_box = query.get(ev.event_target());
     if let Ok(stage_box) = stage_box {
         match_config.stage = Some(stage_box.stage_id);
-        initiate_match(&mut commands, &mut next_state, match_config.to_pending_match()?);
+        initiate_match(
+            &mut commands,
+            &mut next_state,
+            match_config.to_pending_match()?,
+        );
     }
     Ok(())
 }

@@ -30,8 +30,15 @@ pub fn ui_scaling_system(
     }
 }
 
-pub fn world_to_ui_position(pos: Vec2, camera: &Camera, camera_transform: &GlobalTransform, ui_scale: &UiScale) -> Vec2 {
-    let viewport_position = camera.world_to_viewport(camera_transform, Vec3::new(pos.x, pos.y, 0.0)).unwrap();
+pub fn world_to_ui_position(
+    pos: Vec2,
+    camera: &Camera,
+    camera_transform: &GlobalTransform,
+    ui_scale: &UiScale,
+) -> Vec2 {
+    let viewport_position = camera
+        .world_to_viewport(camera_transform, Vec3::new(pos.x, pos.y, 0.0))
+        .unwrap();
 
     let viewport_rect = camera.logical_viewport_rect().unwrap();
 

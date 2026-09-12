@@ -19,9 +19,10 @@ pub enum GameplaySet {
     StateUpdate,
     /// Integrate velocities into positions.
     Physics,
+    /// Solve collision boxes
+    Animation,
     /// Resolve the integrated positions against the stage.
     Collision,
-    Animation,
 }
 
 /// Declares the order of [`GameplaySet`] inside [`GgrsSchedule`]. Added by

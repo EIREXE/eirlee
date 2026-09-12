@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
-use serde::{Deserialize, Serialize};
 use ron_asset_manager::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::texture_reference::TextureReference;
 

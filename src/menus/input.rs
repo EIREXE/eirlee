@@ -91,10 +91,14 @@ impl MenuInput {
         self.accept.accumulate(&other.accept);
         self.back.accumulate(&other.back);
         self.start.accumulate(&other.start);
-        self.movement_digital_up.accumulate(&other.movement_digital_up);
-        self.movement_digital_down.accumulate(&other.movement_digital_down);
-        self.movement_digital_left.accumulate(&other.movement_digital_left);
-        self.movement_digital_right.accumulate(&other.movement_digital_right);
+        self.movement_digital_up
+            .accumulate(&other.movement_digital_up);
+        self.movement_digital_down
+            .accumulate(&other.movement_digital_down);
+        self.movement_digital_left
+            .accumulate(&other.movement_digital_left);
+        self.movement_digital_right
+            .accumulate(&other.movement_digital_right);
         self.movement = self.movement.clamp_length_max(1.0);
     }
 }
@@ -247,9 +251,12 @@ pub fn sample_menu_inputs(
     state
         .inputs
         .push((LocalInputSource::Keyboard, keyboard_input(&key, &map)));
-    
+
     let mut prev_joystick_states: Vec<(LocalInputSource, MenuJoystickState)> = vec![];
-    std::mem::swap(&mut prev_joystick_states, &mut state.prev_frame_joystick_state);
+    std::mem::swap(
+        &mut prev_joystick_states,
+        &mut state.prev_frame_joystick_state,
+    );
 
     for (entity, pad) in pads.iter() {
         let local_source = LocalInputSource::Gamepad(entity);

@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 
-use bevy::{
-    asset::UntypedHandle,
-    prelude::*,
-};
+use bevy::{asset::UntypedHandle, prelude::*};
 use bevy_asset_loader::asset_collection::AssetCollection;
 use ron_asset_manager::prelude::RonAsset;
 use serde::{Deserialize, Serialize};
@@ -11,10 +8,16 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use crate::{
-    AppState, fighter::{FighterAttributes, FighterCameraProfile, animation::AnimKind, attack::AttackKind}, game_settings::GameSettings, math::{int::FGi32, vec3::FGVec3}, texture_reference::TextureReference,
+    AppState,
+    fighter::{FighterAttributes, FighterCameraProfile, animation::AnimKind, attack::AttackKind},
+    game_settings::GameSettings,
+    math::{int::FGi32, vec3::FGVec3},
+    texture_reference::TextureReference,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Reflect, EnumIter, Default)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Reflect, EnumIter, Default,
+)]
 pub enum FighterId {
     #[default]
     TestFighter,
@@ -35,6 +38,8 @@ pub struct FighterHurtbox {
 pub struct FighterManifest {
     pub id: FighterId,
     pub model_path: String,
+    #[reflect(ignore)]
+    pub model_scale: FGi32,
     pub baked_animation_path: String,
     #[asset]
     #[dependency]
@@ -105,6 +110,13 @@ pub fn prepare_fighter_manifests(
             fail(
                 &mut next_state,
                 &format!("{:?} has an empty model path", manifest.id),
+            );
+            return;
+        }
+        if manifest.model_scale <= FGi32::ZERO {
+            fail(
+                &mut next_state,
+                &format!("{:?} has a non-positive model scale", manifest.id),
             );
             return;
         }

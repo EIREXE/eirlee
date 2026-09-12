@@ -9,7 +9,12 @@ use bevy::{
 };
 
 use crate::{
-    input::{LocalInputAssignments, LocalInputSource}, menus::{input::{MenuInput, MenuInputState}, scaling, style::FGUiStyle},
+    input::{LocalInputAssignments, LocalInputSource},
+    menus::{
+        input::{MenuInput, MenuInputState},
+        scaling,
+        style::FGUiStyle,
+    },
 };
 
 #[derive(Default)]
@@ -30,7 +35,7 @@ impl FGMenuCursor {
     pub fn create_cursor(
         input_source: MenuCursorInputSource,
         style: &FGUiStyle,
-        pointer_id: PointerId
+        pointer_id: PointerId,
     ) -> impl Bundle {
         let circle_icon = style.cursor.handle().clone();
         (
@@ -57,22 +62,22 @@ impl FGMenuCursor {
         )
     }
     pub fn create_shared_cursor(style: &FGUiStyle) -> impl Bundle {
-        Self::create_cursor(
-            MenuCursorInputSource::Any,
-            style,
-            PointerId::Mouse
-        )
+        Self::create_cursor(MenuCursorInputSource::Any, style, PointerId::Mouse)
     }
     pub fn create_player_cursor(
         player_slot: usize,
         style: &FGUiStyle,
         input_source: &LocalInputSource,
     ) -> impl Bundle {
-        let pointer_id = if matches!(input_source, LocalInputSource::Keyboard) {PointerId::Mouse} else {PointerId::Custom(Uuid::new_v4())};
+        let pointer_id = if matches!(input_source, LocalInputSource::Keyboard) {
+            PointerId::Mouse
+        } else {
+            PointerId::Custom(Uuid::new_v4())
+        };
         Self::create_cursor(
             MenuCursorInputSource::Player(player_slot),
             style,
-            pointer_id
+            pointer_id,
         )
     }
 }
@@ -81,19 +86,17 @@ impl FGMenuCursor {
 pub fn copy_mouse_input(
     mut query: Query<(&FGMenuCursor, &mut PointerLocation, &PointerId)>,
     assignments: Res<LocalInputAssignments>,
-    mut input_events: MessageReader<Pointer<Move>>
+    mut input_events: MessageReader<Pointer<Move>>,
 ) {
-
     for event in input_events.read() {
         if let PointerId::Mouse = event.pointer_id {
             for (cursor, mut location, _) in query.iter_mut() {
                 let is_mouse = match cursor.input_source {
                     MenuCursorInputSource::Any => true,
-                    MenuCursorInputSource::Player(slot) => {
-                        assignments.get(slot).map(|(_, source)| {
-                            matches!(source, LocalInputSource::Keyboard)
-                        }).unwrap_or_default()
-                    },
+                    MenuCursorInputSource::Player(slot) => assignments
+                        .get(slot)
+                        .map(|(_, source)| matches!(source, LocalInputSource::Keyboard))
+                        .unwrap_or_default(),
                 };
 
                 if is_mouse {
@@ -185,7 +188,15 @@ pub fn update_cursor_transform(
     let camera = camera.into_inner();
 
     for (mut node, location) in query {
-        let ui_pos = scaling::logical_to_ui_position(location.location.as_ref().map(|d| d.position).unwrap_or_default(), camera, &ui_scale);
+        let ui_pos = scaling::logical_to_ui_position(
+            location
+                .location
+                .as_ref()
+                .map(|d| d.position)
+                .unwrap_or_default(),
+            camera,
+            &ui_scale,
+        );
         node.left = px(ui_pos.x);
         node.top = px(ui_pos.y);
     }

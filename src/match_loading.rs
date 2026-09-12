@@ -169,9 +169,6 @@ pub fn initiate_default_match(
         }
         return;
     }
-    if !args.synctest {
-        return;
-    }
     let players = (0..args.players)
         .map(|handle| MatchPlayer {
             handle,
@@ -270,7 +267,13 @@ pub fn prepare_match(
             scripts: character.attack_scripts.clone(),
         };
 
-        prepared.push((scene, animations, attack_scripts, manifest_handle));
+        prepared.push((
+            scene,
+            animations,
+            attack_scripts,
+            manifest_handle,
+            manifest.model_scale,
+        ));
     }
 
     let session = match create_session(&args, request.players.len()) {
@@ -300,7 +303,7 @@ pub fn prepare_match(
         stage_manifest.camera.clone(),
     );
 
-    for (index, (player, (scene, animations, attack_scripts, manifest_handle))) in
+    for (index, (player, (scene, animations, attack_scripts, manifest_handle, model_scale))) in
         request.players.iter().zip(prepared).enumerate()
     {
         let spawn_x = (index as i32 * 2 + 1 - request.players.len() as i32) * 5;
@@ -309,6 +312,7 @@ pub fn prepare_match(
             player.handle,
             FGVec2::new(FGi32::from_num(spawn_x), FGi32::lit("12.5")),
             manifest_handle.clone(),
+            model_scale,
             animations,
             attack_scripts,
             WorldAssetRoot(scene),

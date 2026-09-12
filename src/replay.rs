@@ -346,7 +346,7 @@ fn finish_playback(
         commands.remove_resource::<ReplayRuntime>();
         commands.remove_resource::<LoadedReplay>();
         commands.insert_resource(ReplayComplete);
-        next_state.set(AppState::MainMenu);
+        next_state.set(AppState::PreMainMenu);
     }
 }
 

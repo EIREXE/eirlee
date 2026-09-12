@@ -22,12 +22,15 @@
 //! appears in `Add Component`. No registration code is needed.
 
 use bevy::{
-    asset::processor::{AssetProcessor, ProcessorState}, prelude::*, settings::SettingsPlugin, tasks::block_on,
+    asset::processor::{AssetProcessor, ProcessorState},
+    prelude::*,
+    settings::SettingsPlugin,
+    tasks::block_on,
 };
 use bevy_asset_loader::prelude::*;
-use ron_asset_manager::RonAssetPlugin;
 use bevy_wind_waker_shader::prelude::*;
 use clap::Parser;
+use ron_asset_manager::RonAssetPlugin;
 
 use crate::{
     camera::MatchCameraPlugin, fighter::manifest::FighterManifest, game_settings::GameSettings,
@@ -42,13 +45,13 @@ pub mod game_settings;
 pub mod input;
 pub mod match_loading;
 mod math;
+pub mod menus;
 pub mod netcode;
 pub mod player;
 pub mod replay;
 pub mod schedule;
 pub mod scripting;
 pub mod stage;
-pub mod menus;
 pub mod texture_reference;
 
 #[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
@@ -61,6 +64,7 @@ pub enum AppState {
     LoadStageManifests,
     PrepareStageManifests,
     CommonAssetLoadFailed,
+    PreMainMenu,
     MainMenu,
     CharacterSelect,
     StageSelect,
@@ -139,7 +143,7 @@ impl Plugin for GamePlugin {
                 stage::manifest::prepare_stage_manifests,
             )
             .add_systems(
-                OnEnter(AppState::MainMenu),
+                OnEnter(AppState::PreMainMenu),
                 match_loading::initiate_default_match,
             )
             .add_systems(

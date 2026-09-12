@@ -49,7 +49,6 @@ pub fn apply_animation(
     >,
 ) {
     for (mut trf, facing_direction, frame) in children {
-        // Melee model scale is in decimeters
         trf.rotation = Quat::IDENTITY;
         if let AnimKind::Turn = frame.kind {
             trf.rotate_local_y(

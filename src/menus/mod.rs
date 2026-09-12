@@ -190,7 +190,10 @@ impl Plugin for MenuPlugin {
         )
         .add_systems(
             PreUpdate,
-            (character_select::css_auto_assign_slots, character_select::handle_fighter_slot_addition)
+            (
+                character_select::css_auto_assign_slots,
+                character_select::handle_fighter_slot_addition,
+            )
                 .chain()
                 .run_if(in_state(AppState::CharacterSelect))
                 .run_if(any_with_component::<CharacterSelectScreen>),
@@ -214,14 +217,11 @@ impl Plugin for MenuPlugin {
             OnEnter(AppState::StageSelect),
             stage_select::setup_stage_select,
         )
-        .add_observer(stage_select::stage_selected.run_if(in_state(AppState::StageSelect)),
-        )
-
+        .add_observer(stage_select::stage_selected.run_if(in_state(AppState::StageSelect)))
         .add_systems(
             OnExit(AppState::StageSelect),
             (cursor::despawn_cursors, despawn_menu),
         )
-
         //---------
         // STAGE SELECT END
         //---------
