@@ -4,7 +4,7 @@ pub struct FighterPortrait {
 }
 
 impl FighterPortrait {
-    pub fn create(player_slot: usize) -> impl Scene {
+    pub fn create(_player_slot: usize) -> impl Scene {
         bsn![
             Node {
                 max_width: px(300),

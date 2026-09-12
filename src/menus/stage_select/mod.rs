@@ -6,12 +6,11 @@ use crate::{
     match_loading::initiate_match,
     menus::{
         MenuMarker,
-        button::FGUiButton,
         cursor,
         match_config::MenuMatchConfig,
         spawn_menu,
         stage_select::stage_box::StageBox,
-        style::{FGUiButtonType, FGUiStyle},
+        style::FGUiStyle,
     },
     stage::manifest::{StageManifest, StageManifestRegistry},
 };

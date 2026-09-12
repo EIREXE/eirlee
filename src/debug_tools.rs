@@ -347,10 +347,6 @@ impl DebugSettings {
         self.motion_sampling.cycle();
     }
 
-    fn cycle_game_speed(&mut self) {
-        self.motion_sampling.cycle();
-    }
-
     fn rows_mut(&mut self, handle: usize) -> &mut [FighterDebugRowKind; PLAYER_DEBUG_ROW_COUNT] {
         self.player_rows
             .entry(handle)
@@ -493,7 +489,7 @@ fn handle_palette_input(
         } else {
             None
         };
-        if let Some(direction) = direction {}
+        if let Some(_direction) = direction {}
     }
     if gamepad.just_pressed(GamepadButton::South) {
         match page {

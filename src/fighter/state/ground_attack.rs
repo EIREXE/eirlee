@@ -1,12 +1,8 @@
-use fixed::types::I16F16;
 
-use crate::{
-    fighter::{
+use crate::fighter::{
         attack::{AttackKind, update_active_hitbox_list},
         state::{FighterState, FighterStateImpl, ground::GroundedStateCommon, wait::WaitState},
-    },
-    math::int::FGi32,
-};
+    };
 
 #[derive(Clone, Debug, Hash)]
 pub struct GroundAttackState {

@@ -1,11 +1,10 @@
 use bevy::{
     prelude::*, text::FontSourceTemplate,
-    ui::auto_directional_navigation::AutoDirectionalNavigation,
 };
 
 use crate::{
     AppState,
-    menus::{MenuMarker, button::menu_button, navigation::NavigationDefaultFocus},
+    menus::{button::menu_button, navigation::NavigationDefaultFocus},
 };
 
 #[derive(SceneComponent, Default, Clone)]
@@ -58,4 +57,4 @@ impl MainMenu {
     }
 }
 
-pub fn setup_main_menu(mut commands: Commands) {}
+pub fn setup_main_menu(_commands: Commands) {}

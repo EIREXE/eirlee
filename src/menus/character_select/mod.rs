@@ -1,8 +1,7 @@
 use bevy::{
-    picking::pointer::{PointerId, PointerLocation},
+    picking::pointer::PointerId,
     prelude::*,
 };
-use bevy_egui::egui::accesskit::TextAlign;
 
 use crate::{
     AppState,
@@ -10,15 +9,14 @@ use crate::{
     game_settings::CommonAssets,
     input::{LocalInputAssignments, LocalInputSource},
     menus::{
-        MenuMarker, build_menu_with_props,
+        MenuMarker,
         button::FGUiButton,
         character_select::{character_box::CharacterBox, token::CharacterSelectToken},
         cursor::{FGMenuCursor, MenuCursorInputSource},
-        errors::MenuErrors::{self, FighterManifestNotFound},
+        errors::MenuErrors::FighterManifestNotFound,
         match_config::{MenuMatchConfig, MenuMatchPlayerSlot},
         scaling, spawn_menu,
         style::{FGUiButtonType, FGUiStyle},
-        wrap_menu,
     },
 };
 
@@ -42,10 +40,10 @@ pub fn setup_character_select(
     existing_menu: Option<Single<Entity, With<MenuMarker>>>,
     mut commands: Commands,
     manifest_registry: Res<FighterManifestRegistry>,
-    assignments: Res<LocalInputAssignments>,
+    _assignments: Res<LocalInputAssignments>,
     manifests: Res<Assets<FighterManifest>>,
-    common_assets: Res<CommonAssets>,
-    styles: Res<Assets<FGUiStyle>>,
+    _common_assets: Res<CommonAssets>,
+    _styles: Res<Assets<FGUiStyle>>,
 ) {
     let character_boxes = manifest_registry
         .iter()
@@ -195,7 +193,7 @@ pub fn css_auto_assign_slots(
 
 #[derive(Event)]
 pub struct FighterSelectedEvent {
-    slot: usize,
+    _slot: usize,
 }
 
 pub fn select_fighter(
@@ -215,7 +213,7 @@ pub fn select_fighter(
                     .get(&character_box.fighter_manifest)
                     .ok_or(FighterManifestNotFound)?;
                 match_config.set_player_fighter(slot, Some(manifest.id))?;
-                commands.trigger(FighterSelectedEvent { slot });
+                commands.trigger(FighterSelectedEvent { _slot: slot });
             }
         }
     }

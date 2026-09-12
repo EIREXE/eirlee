@@ -1,6 +1,6 @@
-use bevy::{ecs::query::QueryEntityError, reflect::Reflect};
+use bevy::reflect::Reflect;
 
-use crate::{fighter::FighterId, menus::match_config::MenuMatchConfigErrors};
+use crate::menus::match_config::MenuMatchConfigErrors;
 
 #[derive(thiserror::Error, Debug, Reflect)]
 pub enum MenuErrors {

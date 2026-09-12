@@ -12,7 +12,6 @@ use strum_macros::EnumIter;
 use crate::fighter::attack::AttackKind;
 use crate::game_settings::GameSettings;
 use crate::input::FighterInputFrame;
-use crate::math::int::FGi32;
 use crate::netcode::GGRSCfg;
 use crate::player::Player;
 

@@ -10,7 +10,6 @@ use bevy::{
     prelude::*,
     ui::auto_directional_navigation::AutoDirectionalNavigator,
 };
-use bevy_egui::egui::IntoAtoms;
 use std::collections::HashSet;
 
 // Action state and input handling

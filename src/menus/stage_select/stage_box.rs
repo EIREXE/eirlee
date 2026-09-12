@@ -1,7 +1,6 @@
-use bevy::{picking::Pickable, prelude::*, text::FontSourceTemplate, ui::widget::ImageNodeSize};
+use bevy::{picking::Pickable, prelude::*, text::FontSourceTemplate};
 
 use crate::{
-    fighter::{FighterId, manifest::FighterManifest},
     menus::{button::FGUiButton, style::FGUiButtonType},
     stage::manifest::{StageId, StageManifest},
 };

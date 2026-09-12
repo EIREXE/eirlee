@@ -134,7 +134,7 @@ impl AttackHitbox {
     /// Knockback calculation
     pub fn calculate_knockback(
         &self,
-        attack: AttackKind,
+        _attack: AttackKind,
 
         receiver_attribs: &FighterAttributes,
         receiver_damage: FighterDamage,

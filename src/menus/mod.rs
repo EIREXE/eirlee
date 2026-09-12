@@ -6,7 +6,6 @@ use bevy::{
     prelude::*,
 };
 
-use bevy::prelude::*;
 use ron_asset_manager::RonAssetPlugin;
 
 use crate::{
@@ -31,7 +30,7 @@ pub struct MenuMarker {}
 
 pub struct MenuPlugin;
 
-pub fn build_menu_scene<S>(existing_menu: Option<Single<Entity, With<MenuMarker>>>) -> impl Scene
+pub fn build_menu_scene<S>(_existing_menu: Option<Single<Entity, With<MenuMarker>>>) -> impl Scene
 where
     S: SceneComponent + Default + Clone + Send + Sync,
 {
@@ -103,7 +102,7 @@ where
 
 pub fn build_menu<S>(
     existing_menu: Option<Single<Entity, With<MenuMarker>>>,
-    mut commands: Commands,
+    commands: Commands,
 ) where
     S: SceneComponent + Default + Clone + Send + Sync,
 {

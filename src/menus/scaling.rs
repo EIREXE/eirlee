@@ -1,5 +1,3 @@
-use bevy::camera::CameraProjection;
-use bevy::camera::Projection::Orthographic;
 use bevy::prelude::*;
 use bevy::window::WindowResized;
 

@@ -20,7 +20,6 @@ use crate::fighter::{
 };
 use crate::input::FighterInput;
 use crate::math::int::FGi32;
-use crate::math::vec3::FGVec3;
 use crate::player::Player;
 use crate::scripting::FighterAttackScript;
 
@@ -335,11 +334,11 @@ pub fn attack_debug(
         &FighterFacingDirection,
         &FighterAnimationFrame,
     )>,
-    attack_scripts: Res<Assets<FighterAttackScript>>,
+    _attack_scripts: Res<Assets<FighterAttackScript>>,
     mut gizmos: Gizmos,
 ) {
-    for (hitboxes, matrices, translation, facing_direction, frame) in query {
-        if let Some(script) = &hitboxes.attack_script {
+    for (hitboxes, _matrices, _translation, _facing_direction, _frame) in query {
+        if let Some(_script) = &hitboxes.attack_script {
             for solved_hitbox in hitboxes.active_hitboxes_solved.iter() {
                 let start = solved_hitbox.capsule.start.to_vec3();
                 let end = solved_hitbox.capsule.end.to_vec3();
